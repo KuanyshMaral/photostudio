@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourcePerFileMappings">
-    <file url="file://$PROJECT_DIR$/.idea/queries/Query.sql" value="b7e4623c-4d15-4be3-bf17-db242bbd80e1" />
     <file url="file://$PROJECT_DIR$/migrations/000001_create_users_and_studio_owners.up.sql" value="b7e4623c-4d15-4be3-bf17-db242bbd80e1" />
   </component>
 </project>
