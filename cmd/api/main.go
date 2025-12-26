@@ -9,6 +9,7 @@ import (
 
 	"photostudio/internal/database"
 	"photostudio/internal/modules/auth"
+	"photostudio/internal/modules/booking"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
 )
@@ -34,10 +35,17 @@ func main() {
 	authService := auth.NewService(userRepo, j)
 	authHandler := auth.NewHandler(authService)
 
+	bookingRepo := repository.NewBookingRepository(db)
+	roomRepo := repository.NewRoomRepository(db)
+
+	bookingService := booking.NewService(bookingRepo, roomRepo)
+	bookingHandler := booking.NewHandler(bookingService)
+
 	r := gin.Default()
 	v1 := r.Group("/api/v1")
 	{
 		authHandler.RegisterRoutes(v1)
+		bookingHandler.RegisterRoutes(v1)
 	}
 
 	if err := r.Run(":8080"); err != nil {
