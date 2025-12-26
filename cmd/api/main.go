@@ -10,6 +10,7 @@ import (
 	"photostudio/internal/database"
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
+	"photostudio/internal/modules/catalog"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
 )
@@ -35,8 +36,19 @@ func main() {
 	authService := auth.NewService(userRepo, j)
 	authHandler := auth.NewHandler(authService)
 
-	bookingRepo := repository.NewBookingRepository(db)
 	roomRepo := repository.NewRoomRepository(db)
+	studioRepo := repository.NewStudioRepository(db)
+	equipmentRepo := repository.NewEquipmentRepository(db)
+
+	catalogService := catalog.NewService(
+		studioRepo,
+		roomRepo,
+		equipmentRepo,
+	)
+	catalogHandler := catalog.NewHandler(catalogService)
+
+
+	bookingRepo := repository.NewBookingRepository(db)
 
 	bookingService := booking.NewService(bookingRepo, roomRepo)
 	bookingHandler := booking.NewHandler(bookingService)
@@ -45,6 +57,7 @@ func main() {
 	v1 := r.Group("/api/v1")
 	{
 		authHandler.RegisterRoutes(v1)
+		catalogHandler.RegisterRoutes(v1)
 		bookingHandler.RegisterRoutes(v1)
 	}
 

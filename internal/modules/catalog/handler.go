@@ -1,10 +1,7 @@
 package catalog
 
 import (
-	"net/http"
 	"strconv"
-
-	"photostudio/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,69 +10,103 @@ type Handler struct {
 	service *Service
 }
 
-func NewHandler(repo *repository.StudioRepository) *Handler {
-	return &Handler{
-		service: NewService(repo),
-	}
+func NewHandler(service *Service) *Handler {
+	return &Handler{service: service}
 }
 
-func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
-	r.GET("/studios", h.GetStudios)
-	r.GET("/studios/:id", h.GetStudioByID)
-}
+/* ---------- STUDIO ---------- */
 
 func (h *Handler) GetStudios(c *gin.Context) {
-	f := repository.StudioFilters{
-		City:     c.Query("city"),
-		RoomType: c.Query("room_type"),
-		Limit:    20,
-		Offset:   0,
-	}
-
-	if v := c.Query("min_price"); v != "" {
-		f.MinPrice, _ = strconv.ParseFloat(v, 64)
-	}
-
-	studios, total, err := h.service.GetStudios(c.Request.Context(), f)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+	var f StudioFilters
+	// Bind query parameters (city, price, etc.) to the filter struct
+	if err := c.ShouldBindQuery(&f); err != nil {
+		c.JSON(400, gin.H{"error": "invalid filters"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"studios": studios,
-			"pagination": gin.H{
-				"total":  total,
-				"limit":  f.Limit,
-				"offset": f.Offset,
-			},
-		},
+	studios, total, err := h.service.studioRepo.GetAll(c.Request.Context(), f)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"data":  studios,
+		"total": total,
 	})
 }
 
-func (h *Handler) GetStudioByID(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid studio id",
-		})
+func (h *Handler) CreateStudio(c *gin.Context) {
+	var req CreateStudioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
 		return
 	}
 
-	studio, err := h.service.GetStudioByID(c.Request.Context(), id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "studio not found",
-		})
+	user := c.MustGet("user").(*domain.User)
+
+	if err := h.service.CreateStudio(c.Request.Context(), user, req); err != nil {
+		handleError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    studio,
-	})
+	c.JSON(201, gin.H{"success": true})
+}
+
+func (h *Handler) UpdateStudio(c *gin.Context) {
+	var req UpdateStudioRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	userID := c.GetInt64("user_id")
+	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := h.service.UpdateStudio(c.Request.Context(), userID, studioID, req); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(200, gin.H{"success": true})
+}
+
+/* ---------- ROOM ---------- */
+
+func (h *Handler) CreateRoom(c *gin.Context) {
+	var req CreateRoomRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	userID := c.GetInt64("user_id")
+	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := h.service.CreateRoom(c.Request.Context(), userID, studioID, req); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(201, gin.H{"success": true})
+}
+
+/* ---------- EQUIPMENT ---------- */
+
+func (h *Handler) AddEquipment(c *gin.Context) {
+	var req CreateEquipmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	userID := c.GetInt64("user_id")
+	roomID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := h.service.AddEquipment(c.Request.Context(), userID, roomID, req); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(201, gin.H{"success": true})
 }
