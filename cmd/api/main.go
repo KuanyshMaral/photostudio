@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,14 +33,15 @@ func main() {
 	}
 
 	userRepo := repository.NewUserRepository(db)
+	roomRepo := repository.NewRoomRepository(db)
+	studioRepo := repository.NewStudioRepository(db)
+	equipmentRepo := repository.NewEquipmentRepository(db)
+	bookingRepo := repository.NewBookingRepository(db)
+
 	j := jwtsvc.New(secret, 24*time.Hour)
 
 	authService := auth.NewService(userRepo, j)
 	authHandler := auth.NewHandler(authService)
-
-	roomRepo := repository.NewRoomRepository(db)
-	studioRepo := repository.NewStudioRepository(db)
-	equipmentRepo := repository.NewEquipmentRepository(db)
 
 	catalogService := catalog.NewService(
 		studioRepo,
@@ -47,21 +50,82 @@ func main() {
 	)
 	catalogHandler := catalog.NewHandler(catalogService)
 
-
-	bookingRepo := repository.NewBookingRepository(db)
-
 	bookingService := booking.NewService(bookingRepo, roomRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	r := gin.Default()
+
 	v1 := r.Group("/api/v1")
 	{
+		// public
 		authHandler.RegisterRoutes(v1)
 		catalogHandler.RegisterRoutes(v1)
-		bookingHandler.RegisterRoutes(v1)
+
+		// protected (booking endpoints)
+		protected := v1.Group("/")
+		protected.Use(authMiddleware(j))
+		{
+			bookingHandler.RegisterRoutes(protected)
+		}
 	}
 
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func authMiddleware(jwt *jwtsvc.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		h := c.GetHeader("Authorization")
+		if h == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Missing Authorization header",
+				},
+			})
+			return
+		}
+
+		if !strings.HasPrefix(h, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Invalid Authorization header",
+				},
+			})
+			return
+		}
+
+		tokenStr := strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))
+		if tokenStr == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Empty token",
+				},
+			})
+			return
+		}
+
+		claims, err := jwt.ValidateToken(tokenStr)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Invalid token",
+				},
+			})
+			return
+		}
+
+		c.Set("user_id", claims.UserID)
+		c.Set("role", claims.Role)
+
+		c.Next()
 	}
 }

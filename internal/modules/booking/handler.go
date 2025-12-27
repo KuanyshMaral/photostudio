@@ -2,6 +2,7 @@ package booking
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,15 @@ func NewHandler(service *Service) *Handler {
 
 func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.POST("/bookings", h.CreateBooking)
+
+	// Task 3.1
+	rg.GET("/rooms/:id/availability", h.GetRoomAvailability)
+
+	// Task 3.2 (requires auth middleware that sets user_id in context)
+	rg.GET("/users/me/bookings", h.GetMyBookings)
+
+	// Task 3.3 (requires auth middleware that sets user_id and role in context)
+	rg.PATCH("/bookings/:id/status", h.UpdateBookingStatus)
 }
 
 func (h *Handler) CreateBooking(c *gin.Context) {
@@ -72,6 +82,197 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 			"booking": gin.H{
 				"id":     b.ID,
 				"status": b.Status,
+			},
+		},
+	})
+}
+
+// Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD
+func (h *Handler) GetRoomAvailability(c *gin.Context) {
+	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || roomID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "VALIDATION_ERROR", "message": "Invalid room id"},
+		})
+		return
+	}
+
+	date := c.Query("date")
+	if date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "VALIDATION_ERROR", "message": "date is required (YYYY-MM-DD)"},
+		})
+		return
+	}
+
+	slots, err := h.service.GetRoomAvailability(c.Request.Context(), roomID, date)
+	if err != nil {
+		code := "INTERNAL_ERROR"
+		msg := "Failed to get availability"
+		if err == ErrValidation {
+			code = "VALIDATION_ERROR"
+			msg = "Invalid date format (YYYY-MM-DD)"
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": code, "message": msg}})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": gin.H{"code": code, "message": msg}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"room_id":         roomID,
+			"date":            date,
+			"available_slots": slots,
+		},
+	})
+}
+
+// Task 3.2: GET /users/me/bookings?limit=&offset=
+// Requires middleware to set c.Set("user_id", int64(...))
+func (h *Handler) GetMyBookings(c *gin.Context) {
+	userIDAny, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Missing auth"},
+		})
+		return
+	}
+
+	userID, ok := userIDAny.(int64)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Invalid auth context"},
+		})
+		return
+	}
+
+	limit := 20
+	offset := 0
+
+	if v := c.Query("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
+			limit = n
+		}
+	}
+	if v := c.Query("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	items, err := h.service.GetMyBookings(c.Request.Context(), userID, limit, offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "INTERNAL_ERROR", "message": "Failed to get bookings"},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"items":  items,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+type UpdateBookingStatusRequest struct {
+	Status string `json:"status"`
+}
+
+// Task 3.3: PATCH /bookings/:id/status
+// Requires middleware to set c.Set("user_id", int64(...)) and c.Set("role", string(...))
+func (h *Handler) UpdateBookingStatus(c *gin.Context) {
+	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || bookingID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "VALIDATION_ERROR", "message": "Invalid booking id"},
+		})
+		return
+	}
+
+	userIDAny, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Missing auth"},
+		})
+		return
+	}
+	userID, ok := userIDAny.(int64)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Invalid auth context"},
+		})
+		return
+	}
+
+	roleAny, ok := c.Get("role")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Missing role"},
+		})
+		return
+	}
+	role, _ := roleAny.(string)
+
+	var req UpdateBookingStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Status == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "VALIDATION_ERROR", "message": "Invalid request body"},
+		})
+		return
+	}
+
+	updated, err := h.service.UpdateBookingStatus(c.Request.Context(), bookingID, userID, role, req.Status)
+	if err != nil {
+		switch err {
+		case ErrForbidden:
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "FORBIDDEN", "message": "Only studio owner can change status"},
+			})
+			return
+		case ErrInvalidStatusTransition:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "INVALID_STATUS_TRANSITION", "message": "Invalid status transition"},
+			})
+			return
+		case ErrNotFound:
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "NOT_FOUND", "message": "Booking not found"},
+			})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   gin.H{"code": "INTERNAL_ERROR", "message": "Failed to update status"},
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"booking": gin.H{
+				"id":     updated.ID,
+				"status": updated.Status,
 			},
 		},
 	})
