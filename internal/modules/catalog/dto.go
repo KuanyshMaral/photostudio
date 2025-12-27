@@ -41,3 +41,16 @@ type CreateStudioRequest struct {
 	WorkingHours domain.WorkingHours  `json:"working_hours,omitempty"`
 }
 
+// ---------- STUDIO UPDATE ----------
+
+type UpdateStudioRequest struct {
+	Name         string             `json:"name" validate:"required"`
+	Description  string             `json:"description"`
+	Address      string             `json:"address" validate:"required"`
+	City         string             `json:"city" validate:"required"`
+	Phone        string             `json:"phone"`
+	Email        string             `json:"email"`
+	Website      string             `json:"website"`
+	WorkingHours domain.WorkingHours `json:"working_hours,omitempty"`
+}
+

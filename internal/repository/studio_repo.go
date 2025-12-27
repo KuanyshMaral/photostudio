@@ -8,6 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
+type StudioFilters struct {
+	City     string
+	MinPrice float64
+	RoomType string
+	Limit    int
+	Offset   int
+}
+
 type StudioRepository struct {
 	db *gorm.DB
 }
@@ -16,6 +24,7 @@ func NewStudioRepository(db *gorm.DB) *StudioRepository {
 	return &StudioRepository{db: db}
 }
 
+// GetAll returns studios with optional filters
 func (r *StudioRepository) GetAll(
 	ctx context.Context,
 	f StudioFilters,
@@ -56,6 +65,7 @@ func (r *StudioRepository) GetAll(
 	return studios, total, err
 }
 
+// GetByID fetches a studio by its ID
 func (r *StudioRepository) GetByID(
 	ctx context.Context,
 	id int64,
@@ -74,4 +84,14 @@ func (r *StudioRepository) GetByID(
 	}
 
 	return &studio, nil
+}
+
+// Create a new studio
+func (r *StudioRepository) Create(ctx context.Context, studio *domain.Studio) error {
+	return r.db.WithContext(ctx).Create(studio).Error
+}
+
+// Update an existing studio
+func (r *StudioRepository) Update(ctx context.Context, studio *domain.Studio) error {
+	return r.db.WithContext(ctx).Save(studio).Error
 }

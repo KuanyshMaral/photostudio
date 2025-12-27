@@ -1,7 +1,11 @@
 package catalog
 
 import (
+	"net/http"
 	"strconv"
+
+	"photostudio/internal/domain"
+	"photostudio/internal/repository"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,20 +21,19 @@ func NewHandler(service *Service) *Handler {
 /* ---------- STUDIO ---------- */
 
 func (h *Handler) GetStudios(c *gin.Context) {
-	var f StudioFilters
-	// Bind query parameters (city, price, etc.) to the filter struct
+	var f repository.StudioFilters
 	if err := c.ShouldBindQuery(&f); err != nil {
-		c.JSON(400, gin.H{"error": "invalid filters"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid filters"})
 		return
 	}
 
 	studios, total, err := h.service.studioRepo.GetAll(c.Request.Context(), f)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		handleError(c, err)
 		return
 	}
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"data":  studios,
 		"total": total,
 	})
@@ -109,4 +112,19 @@ func (h *Handler) AddEquipment(c *gin.Context) {
 	}
 
 	c.JSON(201, gin.H{"success": true})
+}
+
+func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
+	r.GET("/studios", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"message": "ok"})
+	})
+}
+
+func handleError(c *gin.Context, err error) {
+	switch err {
+	case nil:
+		return
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
 }
