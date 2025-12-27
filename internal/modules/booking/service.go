@@ -119,16 +119,40 @@ func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr
 		return []TimeSlot{}, nil
 	}
 
-	busy, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, open, close)
+	busyRepo, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, open, close)
 	if err != nil {
 		return nil, err
+	}
+
+	busy := make([]TimeSlot, 0, len(busyRepo))
+	for _, b := range busyRepo {
+		busy = append(busy, TimeSlot{Start: b.Start, End: b.End})
 	}
 
 	return subtractBusy(open, close, busy), nil
 }
 
 func (s *Service) GetMyBookings(ctx context.Context, userID int64, limit, offset int) ([]BookingDetails, error) {
-	return s.bookings.GetUserBookingsWithDetails(ctx, userID, limit, offset)
+	rows, err := s.bookings.GetUserBookingsWithDetails(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]BookingDetails, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, BookingDetails{
+			ID:         r.ID,
+			Status:     r.Status,
+			StartTime:  r.StartTime,
+			EndTime:    r.EndTime,
+			TotalPrice: r.TotalPrice,
+			RoomID:     r.RoomID,
+			RoomName:   r.RoomName,
+			StudioID:   r.StudioID,
+			StudioName: r.StudioName,
+		})
+	}
+	return out, nil
 }
 
 func (s *Service) UpdateBookingStatus(ctx context.Context, bookingID, actorUserID int64, actorRole, newStatus string) (*domain.Booking, error) {
