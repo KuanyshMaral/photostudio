@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"photostudio/internal/domain"
 
 	"gorm.io/gorm"
@@ -50,7 +51,6 @@ type EquipmentRepository struct {
 	db *gorm.DB
 }
 
-
 func NewEquipmentRepository(db *gorm.DB) *EquipmentRepository {
 	return &EquipmentRepository{db: db}
 }
@@ -59,4 +59,36 @@ func (r *EquipmentRepository) Create(ctx context.Context, e *domain.Equipment) e
 	return r.db.WithContext(ctx).
 		Table("equipment").
 		Create(e).Error
+}
+func (r *RoomRepository) GetPriceByID(ctx context.Context, roomID int64) (float64, error) {
+	var price float64
+	tx := r.db.WithContext(ctx).
+		Table("rooms").
+		Select("price_per_hour_min").
+		Where("id = ?", roomID).
+		Scan(&price)
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+	return price, nil
+}
+
+func (r *RoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) (json.RawMessage, error) {
+	var raw []byte
+	q := `
+SELECT s.working_hours
+FROM rooms rm
+JOIN studios s ON s.id = rm.studio_id
+WHERE rm.id = ?
+
+
+`
+	tx := r.db.WithContext(ctx).Raw(q, roomID).Scan(&raw)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, nil
+	}
+	return json.RawMessage(raw), nil
 }

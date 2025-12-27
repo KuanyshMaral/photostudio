@@ -116,3 +116,106 @@ WHERE room_id = ?
 	}
 	return cnt == 0, nil
 }
+
+type BusySlot struct {
+	Start time.Time `gorm:"column:start"`
+	End   time.Time `gorm:"column:end"`
+}
+
+func (r *BookingRepository) GetBusySlotsForRoom(ctx context.Context, roomID int64, from, to time.Time) ([]BusySlot, error) {
+	var rows []BusySlot
+	q := `
+SELECT start_time AS start, end_time AS end
+FROM bookings
+WHERE room_id = ?
+  AND status NOT IN ('cancelled')
+  AND tstzrange(start_time, end_time, '[)') && tstzrange(?, ?, '[)')
+ORDER BY start_time
+`
+	tx := r.db.WithContext(ctx).Raw(q, roomID, from, to).Scan(&rows)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return rows, nil
+}
+
+type UserBookingDetails struct {
+	ID         int64     `gorm:"column:id"`
+	Status     string    `gorm:"column:status"`
+	StartTime  time.Time `gorm:"column:start_time"`
+	EndTime    time.Time `gorm:"column:end_time"`
+	TotalPrice float64   `gorm:"column:total_price"`
+
+	RoomID   int64  `gorm:"column:room_id"`
+	RoomName string `gorm:"column:room_name"`
+
+	StudioID   int64  `gorm:"column:studio_id"`
+	StudioName string `gorm:"column:studio_name"`
+}
+
+func (r *BookingRepository) GetUserBookingsWithDetails(ctx context.Context, userID int64, limit, offset int) ([]UserBookingDetails, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	var rows []UserBookingDetails
+	q := `
+SELECT
+  b.id,
+  b.status,
+  b.start_time,
+  b.end_time,
+  b.total_price,
+  b.room_id,
+  rm.name AS room_name,
+  b.studio_id,
+  s.name AS studio_name
+FROM bookings b
+JOIN rooms rm ON rm.id = b.room_id
+JOIN studios s ON s.id = b.studio_id
+WHERE b.user_id = ?
+ORDER BY b.created_at DESC
+LIMIT ? OFFSET ?
+`
+	tx := r.db.WithContext(ctx).Raw(q, userID, limit, offset).Scan(&rows)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return rows, nil
+}
+
+func (r *BookingRepository) GetStudioOwnerForBooking(ctx context.Context, bookingID int64) (int64, string, error) {
+	type row struct {
+		OwnerID int64  `gorm:"column:owner_id"`
+		Status  string `gorm:"column:status"`
+	}
+	var out row
+	q := `
+SELECT s.owner_id, b.status
+FROM bookings b
+JOIN studios s ON s.id = b.studio_id
+WHERE b.id = ?
+`
+	tx := r.db.WithContext(ctx).Raw(q, bookingID).Scan(&out)
+	if tx.Error != nil {
+		return 0, "", tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return 0, "", nil
+	}
+	return out.OwnerID, out.Status, nil
+}
+
+func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID int64, newStatus string) error {
+	tx := r.db.WithContext(ctx).
+		Table("bookings").
+		Where("id = ?", bookingID).
+		Updates(map[string]any{
+			"status":     newStatus,
+			"updated_at": time.Now().UTC(),
+		})
+	return tx.Error
+}
