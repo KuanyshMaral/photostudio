@@ -219,3 +219,18 @@ func (r *BookingRepository) UpdateStatus(ctx context.Context, bookingID int64, n
 		})
 	return tx.Error
 }
+func (r *BookingRepository) HasCompletedBookingForStudio(ctx context.Context, userID, studioID int64) (bool, error) {
+	var cnt int64
+	q := `
+SELECT COUNT(1)
+FROM bookings
+WHERE user_id = ?
+  AND studio_id = ?
+  AND status = 'completed'
+`
+	tx := r.db.WithContext(ctx).Raw(q, userID, studioID).Scan(&cnt)
+	if tx.Error != nil {
+		return false, tx.Error
+	}
+	return cnt > 0, nil
+}
