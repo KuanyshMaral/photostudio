@@ -8,7 +8,10 @@ import (
 	"photostudio/internal/repository"
 )
 
-var ErrForbidden = errors.New("forbidden")
+var (
+	ErrForbidden       = errors.New("forbidden")
+	ErrInvalidRoomType = errors.New("invalid room type")
+)
 
 type Service struct {
 	studioRepo    *repository.StudioRepository
@@ -26,87 +29,121 @@ func NewService(
 
 /* ---------- STUDIO ---------- */
 
-func (s *Service) CreateStudio(ctx context.Context, user *domain.User, req CreateStudioRequest) error {
+func (s *Service) CreateStudio(ctx context.Context, user *domain.User, req CreateStudioRequest) (*domain.Studio, error) {
+	// Check if user has permission
 	if user.Role != domain.RoleStudioOwner || user.StudioStatus != domain.StatusVerified {
-		return ErrForbidden
+		return nil, ErrForbidden
 	}
 
 	studio := &domain.Studio{
 		OwnerID:      user.ID,
 		Name:         req.Name,
+		Description:  req.Description,
 		Address:      req.Address,
+		District:     req.District,
 		City:         req.City,
+		Phone:        req.Phone,
+		Email:        req.Email,
+		Website:      req.Website,
 		WorkingHours: req.WorkingHours,
 	}
 
-	return s.studioRepo.Create(ctx, studio)
+	if err := s.studioRepo.Create(ctx, studio); err != nil {
+		return nil, err
+	}
+
+	return studio, nil
 }
 
-func (s *Service) UpdateStudio(ctx context.Context, userID, studioID int64, req UpdateStudioRequest) error {
+func (s *Service) UpdateStudio(ctx context.Context, userID, studioID int64, req UpdateStudioRequest) (*domain.Studio, error) {
 	studio, err := s.studioRepo.GetByID(ctx, studioID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	// Check ownership
 	if studio.OwnerID != userID {
-		return ErrForbidden
+		return nil, ErrForbidden
 	}
 
+	// Update fields
 	studio.Name = req.Name
+	studio.Description = req.Description
 	studio.Address = req.Address
+	studio.City = req.City
+	studio.District = req.District
+	studio.Phone = req.Phone
+	studio.Email = req.Email
+	studio.Website = req.Website
 	studio.WorkingHours = req.WorkingHours
 
-	return s.studioRepo.Update(ctx, studio)
+	if err := s.studioRepo.Update(ctx, studio); err != nil {
+		return nil, err
+	}
+
+	return studio, nil
 }
 
 /* ---------- ROOMS ---------- */
 
-func (s *Service) CreateRoom(ctx context.Context, userID, studioID int64, req CreateRoomRequest) error {
+func (s *Service) CreateRoom(ctx context.Context, userID, studioID int64, req CreateRoomRequest) (*domain.Room, error) {
+	// Verify studio exists and user owns it
 	studio, err := s.studioRepo.GetByID(ctx, studioID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if studio.OwnerID != userID {
-		return ErrForbidden
+		return nil, ErrForbidden
+	}
+
+	roomType, err := domain.ParseRoomType(req.RoomType)
+	if err != nil {
+		return nil, ErrInvalidRoomType
 	}
 
 	room := &domain.Room{
 		StudioID:        studioID,
 		Name:            req.Name,
+		Description:     req.Description,
 		AreaSqm:         req.AreaSqm,
 		Capacity:        req.Capacity,
-		RoomType:        domain.RoomType(req.RoomType),
+		RoomType:        roomType,
 		PricePerHourMin: req.PricePerHourMin,
 		PricePerHourMax: req.PricePerHourMax,
 		Amenities:       req.Amenities,
+		Photos:          req.Photos,
 		IsActive:        true,
 	}
 
-	return s.roomRepo.Create(ctx, room)
+	if err := s.roomRepo.Create(ctx, room); err != nil {
+		return nil, err
+	}
+
+	return room, nil
 }
 
 /* ---------- EQUIPMENT ---------- */
 
-func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req CreateEquipmentRequest) error {
+func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req CreateEquipmentRequest) (*domain.Equipment, error) {
 	// 1. Find the room
 	room, err := s.roomRepo.GetByID(ctx, roomID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 2. Find the studio to check ownership
 	studio, err := s.studioRepo.GetByID(ctx, room.StudioID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 3. Security Check: Only the owner can add equipment to their rooms
 	if studio.OwnerID != userID {
-		return ErrForbidden
+		return nil, ErrForbidden
 	}
 
-	eq := &domain.Equipment{
+	equipment := &domain.Equipment{
 		RoomID:      roomID,
 		Name:        req.Name,
 		Category:    req.Category,
@@ -116,5 +153,9 @@ func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req Cr
 		RentalPrice: req.RentalPrice,
 	}
 
-	return s.equipmentRepo.Create(ctx, eq)
+	if err := s.equipmentRepo.Create(ctx, equipment); err != nil {
+		return nil, err
+	}
+
+	return equipment, nil
 }

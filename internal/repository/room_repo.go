@@ -16,6 +16,18 @@ func NewRoomRepository(db *gorm.DB) *RoomRepository {
 	return &RoomRepository{db: db}
 }
 
+func (r *RoomRepository) GetAll(ctx context.Context, studioID *int64) ([]domain.Room, error) {
+	var rooms []domain.Room
+	db := r.db.WithContext(ctx).Table("rooms").Where("is_active = true")
+	if studioID != nil {
+		db = db.Where("studio_id = ?", *studioID)
+	}
+	if err := db.Find(&rooms).Error; err != nil {
+		return nil, err
+	}
+	return rooms, nil
+}
+
 func (r *RoomRepository) GetByID(ctx context.Context, id int64) (*domain.Room, error) {
 	var room domain.Room
 	err := r.db.WithContext(ctx).

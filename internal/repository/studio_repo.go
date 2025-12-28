@@ -11,6 +11,7 @@ import (
 type StudioFilters struct {
 	City     string
 	MinPrice float64
+	MaxPrice float64
 	RoomType string
 	Limit    int
 	Offset   int
@@ -37,25 +38,37 @@ func (r *StudioRepository) GetAll(
 		Model(&domain.Studio{}).
 		Where("deleted_at IS NULL")
 
+	// Filter by city
 	if f.City != "" {
 		q = q.Where("city = ?", f.City)
 	}
 
-	if f.MinPrice > 0 || f.RoomType != "" {
+	// If we need to filter by price or room type, join with rooms table
+	if f.MinPrice > 0 || f.MaxPrice > 0 || f.RoomType != "" {
 		q = q.Joins("JOIN rooms ON rooms.studio_id = studios.id AND rooms.is_active = true")
 	}
 
+	// Filter by minimum price
 	if f.MinPrice > 0 {
 		q = q.Where("rooms.price_per_hour_min >= ?", f.MinPrice)
 	}
 
+	// Filter by maximum price
+	if f.MaxPrice > 0 {
+		q = q.Where("rooms.price_per_hour_min <= ?", f.MaxPrice)
+	}
+
+	// Filter by room type
 	if f.RoomType != "" {
 		q = q.Where("rooms.room_type = ?", f.RoomType)
 	}
 
+	// Count total before pagination
 	q.Count(&total)
 
+	// Apply pagination and load relations
 	err := q.
+		Distinct("studios.*").
 		Preload("Rooms", "is_active = true").
 		Preload("Rooms.Equipment").
 		Limit(f.Limit).
@@ -65,7 +78,7 @@ func (r *StudioRepository) GetAll(
 	return studios, total, err
 }
 
-// GetByID fetches a studio by its ID
+// GetByID fetches a studio by its ID with all relations
 func (r *StudioRepository) GetByID(
 	ctx context.Context,
 	id int64,
@@ -86,12 +99,20 @@ func (r *StudioRepository) GetByID(
 	return &studio, nil
 }
 
-// Create a new studio
+// Create creates a new studio
 func (r *StudioRepository) Create(ctx context.Context, studio *domain.Studio) error {
 	return r.db.WithContext(ctx).Create(studio).Error
 }
 
-// Update an existing studio
+// Update updates an existing studio
 func (r *StudioRepository) Update(ctx context.Context, studio *domain.Studio) error {
 	return r.db.WithContext(ctx).Save(studio).Error
+}
+
+// Delete soft deletes a studio (sets deleted_at)
+func (r *StudioRepository) Delete(ctx context.Context, id int64) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.Studio{}).
+		Where("id = ?", id).
+		Update("deleted_at", gorm.Expr("NOW()")).Error
 }

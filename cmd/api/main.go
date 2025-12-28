@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"photostudio/internal/middleware"
 	"strings"
 	"time"
 
@@ -40,6 +41,9 @@ func main() {
 
 	j := jwtsvc.New(secret, 24*time.Hour)
 
+	// Initialize ownership checker
+	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
+
 	authService := auth.NewService(userRepo, j)
 	authHandler := auth.NewHandler(authService)
 
@@ -60,12 +64,26 @@ func main() {
 		// public
 		authHandler.RegisterRoutes(v1)
 		catalogHandler.RegisterRoutes(v1)
+		catalogHandler.RegisterProtectedRoutes(v1)
 
 		// protected (booking endpoints)
 		protected := v1.Group("/")
-		protected.Use(authMiddleware(j))
+		protected.Use(authMiddleware(j, userRepo))
 		{
 			bookingHandler.RegisterRoutes(protected)
+
+			// Protected catalog endpoints with ownership checks
+			studios := protected.Group("/studios")
+			{
+				studios.POST("", catalogHandler.CreateStudio)
+				studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
+				studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
+			}
+
+			//rooms := protected.Group("/rooms")
+			//{
+			//	rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
+			//}
 		}
 	}
 
@@ -74,7 +92,7 @@ func main() {
 	}
 }
 
-func authMiddleware(jwt *jwtsvc.Service) gin.HandlerFunc {
+func authMiddleware(jwt *jwtsvc.Service, userRepo *repository.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h := c.GetHeader("Authorization")
 		if h == "" {
@@ -123,8 +141,22 @@ func authMiddleware(jwt *jwtsvc.Service) gin.HandlerFunc {
 			return
 		}
 
+		// Load full user object
+		user, err := userRepo.GetByID(c.Request.Context(), claims.UserID)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "User not found",
+				},
+			})
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Set("user", user)
 
 		c.Next()
 	}
