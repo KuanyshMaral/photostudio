@@ -10,25 +10,25 @@ type DaySchedule struct {
 }
 
 type Studio struct {
-	ID            int64        `json:"id"`
-	OwnerID       int64        `json:"owner_id"`
-	Name          string       `json:"name" validate:"required"`
-	Description   string       `json:"description,omitempty"`
-	Address       string       `json:"address" validate:"required"`
-	District      string       `json:"district,omitempty"`
-	City          string       `json:"city" validate:"required"`
-	Latitude      *float64     `json:"latitude,omitempty"`
-	Longitude     *float64     `json:"longitude,omitempty"`
-	Rating        float64      `json:"rating"`
-	TotalReviews  int          `json:"total_reviews"`
-	Phone         string       `json:"phone,omitempty"`
-	Email         string       `json:"email,omitempty"`
-	Website       string       `json:"website,omitempty"`
-	WorkingHours  WorkingHours `json:"working_hours,omitempty"`
-	DeletedAt     *time.Time   `json:"-"`
-	CreatedAt     time.Time    `json:"created_at"`
-	UpdatedAt     time.Time    `json:"updated_at"`
+	ID           int64        `json:"id"`
+	OwnerID      int64        `json:"owner_id"`
+	Name         string       `json:"name" validate:"required"`
+	Description  string       `json:"description,omitempty"`
+	Address      string       `json:"address" validate:"required"`
+	District     string       `json:"district,omitempty"`
+	City         string       `json:"city" validate:"required"`
+	Latitude     *float64     `json:"latitude,omitempty"`
+	Longitude    *float64     `json:"longitude,omitempty"`
+	Rating       float64      `json:"rating"`
+	TotalReviews int          `json:"total_reviews"`
+	Phone        string       `json:"phone,omitempty"`
+	Email        string       `json:"email,omitempty"`
+	Website      string       `json:"website,omitempty"`
+	WorkingHours WorkingHours `gorm:"type:jsonb" json:"working_hours,omitempty"`
+	DeletedAt    *time.Time   `json:"-"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
 
 	// Relations (loaded separately)
-	Rooms         []Room       `json:"rooms,omitempty"`
+	Rooms []Room `json:"rooms,omitempty"`
 }
