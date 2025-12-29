@@ -56,7 +56,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*domain.User, st
 	if err != nil {
 		return nil, "", err
 	}
-	
+
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, "", ErrInvalidCredentials
 	}
