@@ -4,6 +4,7 @@ import (
 	"context"
 	"gorm.io/gorm"
 	"photostudio/internal/domain"
+	"photostudio/internal/modules/auth"
 )
 
 type OwnerRepository struct {
@@ -32,3 +33,5 @@ func (r *OwnerRepository) AppendVerificationDocs(ctx context.Context, userID int
 func (r *OwnerRepository) DB() *gorm.DB {
 	return r.db
 }
+
+var _ auth.StudioOwnerRepositoryInterface = (*OwnerRepository)(nil)

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"photostudio/internal/domain"
-	"photostudio/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -18,16 +17,16 @@ type jwtService interface {
 
 // Service contains all business logic for authentication
 type Service struct {
-	users        *repository.UserRepository
-	studioOwners *repository.OwnerRepository // needed for verification docs
+	users        UserRepositoryInterface
+	studioOwners StudioOwnerRepositoryInterface
 	jwt          jwtService
 }
 
 // NewService creates a new auth service with all dependencies
 // This is where we inject repositories — clean dependency injection
 func NewService(
-	users *repository.UserRepository,
-	studioOwners *repository.OwnerRepository,
+	users UserRepositoryInterface,
+	studioOwners StudioOwnerRepositoryInterface,
 	jwt jwtService,
 ) *Service {
 	return &Service{
