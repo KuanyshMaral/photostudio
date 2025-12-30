@@ -93,6 +93,10 @@ func toUserModel(u *domain.User) userModel {
 	}
 }
 
+func (r *UserRepository) DB() *gorm.DB {
+	return r.db
+}
+
 func (r *UserRepository) Create(ctx context.Context, u *domain.User) error {
 	m := toUserModel(u)
 	tx := r.db.WithContext(ctx).Create(&m)
@@ -121,4 +125,30 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 		return nil, tx.Error
 	}
 	return toDomainUser(m), nil
+}
+
+// ExistsByEmail checks if email already exists (case-insensitive)
+func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&userModel{}).
+		Where("LOWER(email) = ?", strings.ToLower(strings.TrimSpace(email))).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *UserRepository) Update(ctx context.Context, u *domain.User) error {
+	m := toUserModel(u)
+	// We use Save because it updates all fields (including timestamps)
+	// and works whether ID is set or not
+	tx := r.db.WithContext(ctx).Save(&m)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	// Optional: refresh domain object with updated timestamps
+	*u = *toDomainUser(m)
+	return nil
 }

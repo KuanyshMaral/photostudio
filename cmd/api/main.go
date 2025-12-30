@@ -13,7 +13,7 @@ import (
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
-	review "photostudio/internal/modules/review"
+	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
 )
@@ -46,6 +46,7 @@ func main() {
 	equipmentRepo := repository.NewEquipmentRepository(db)
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
+	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
 
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
@@ -54,7 +55,7 @@ func main() {
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
-	authService := auth.NewService(userRepo, jwtService)
+	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
 	authHandler := auth.NewHandler(authService)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
@@ -74,7 +75,7 @@ func main() {
 	v1 := r.Group("/api/v1")
 
 	// Public routes
-	authHandler.RegisterRoutes(v1)
+	authHandler.RegisterPublicRoutes(v1)
 	catalogHandler.RegisterRoutes(v1) // only GET endpoints
 
 	// Public reviews (list only)
@@ -85,6 +86,8 @@ func main() {
 	protected.Use(middleware.JWTAuth(jwtService))
 
 	{
+		authHandler.RegisterProtectedRoutes(protected)
+		
 		// Booking
 		bookingHandler.RegisterRoutes(protected)
 
@@ -103,6 +106,9 @@ func main() {
 		// rooms := protected.Group("/rooms")
 		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
 	}
+
+	// Static files for uploads
+	r.Static("/static", "./uploads")
 
 	// Start server
 	log.Println("Server starting on :8080")
