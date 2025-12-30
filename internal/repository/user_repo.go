@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"photostudio/internal/modules/auth"
 	"strings"
 	"time"
 
@@ -152,3 +153,5 @@ func (r *UserRepository) Update(ctx context.Context, u *domain.User) error {
 	*u = *toDomainUser(m)
 	return nil
 }
+
+var _ auth.UserRepositoryInterface = (*UserRepository)(nil)
