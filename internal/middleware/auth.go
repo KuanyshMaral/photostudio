@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"net/http"
-	"strconv"
+	"photostudio/internal/pkg/jwt"
 
+	"photostudio/internal/pkg/response"
 	"photostudio/internal/repository"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -118,6 +121,44 @@ func (oc *OwnershipChecker) CheckRoomOwnership() gin.HandlerFunc {
 			})
 			return
 		}
+
+		c.Next()
+	}
+}
+
+// JWTAuth requires a valid JWT Bearer token and puts user_id (int64) into context
+func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			response.Error(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
+			c.Abort()
+			return
+		}
+
+		// Expected format: "Bearer <token>"
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			response.Error(c, http.StatusUnauthorized, "INVALID_AUTH_FORMAT", "Authorization header must be 'Bearer <token>'")
+			c.Abort()
+			return
+		}
+
+		tokenString := parts[1]
+
+		claims, err := jwtService.ValidateToken(tokenString)
+
+		if err != nil {
+			response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or expired token")
+			c.Abort()
+			return
+		}
+		
+		// Everything is OK → store user_id in context for downstream handlers
+		// We store it as int64 because Gin’s c.GetInt64 is convenient and safe
+		c.Set("user_id", claims.UserID)
+		// Optional: you can also store role if you need it later
+		c.Set("role", claims.Role)
 
 		c.Next()
 	}

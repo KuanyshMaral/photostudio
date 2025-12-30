@@ -1,11 +1,10 @@
 package main
 
 import (
+	"github.com/joho/godotenv"
 	"log"
-	"net/http"
 	"os"
 	"photostudio/internal/middleware"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,166 +13,106 @@ import (
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
-	review "photostudio/internal/modules/review"
+	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
 )
 
 func main() {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL is empty")
+	// Load .env file if it exists (only in local dev)
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, continuing with system env vars")
 	}
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
+
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is empty")
 	}
 
-	db, err := database.Connect(dsn)
-	if err != nil {
-		log.Fatal(err)
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is empty")
 	}
 
+	db, err := database.Connect(databaseURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+
+	// Repositories
 	userRepo := repository.NewUserRepository(db)
-	roomRepo := repository.NewRoomRepository(db)
 	studioRepo := repository.NewStudioRepository(db)
+	roomRepo := repository.NewRoomRepository(db)
 	equipmentRepo := repository.NewEquipmentRepository(db)
 	bookingRepo := repository.NewBookingRepository(db)
-
-	// reviews
 	reviewRepo := repository.NewReviewRepository(db)
+	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
 
-	j := jwtsvc.New(secret, 24*time.Hour)
+	// Shared services
+	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
-	// Initialize ownership checker
+	// Ownership checker (for catalog module)
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
-	authService := auth.NewService(userRepo, j)
+	// Module services & handlers
+	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
 	authHandler := auth.NewHandler(authService)
 
-	catalogService := catalog.NewService(
-		studioRepo,
-		roomRepo,
-		equipmentRepo,
-	)
+	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
 	catalogHandler := catalog.NewHandler(catalogService)
 
 	bookingService := booking.NewService(bookingRepo, roomRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
-	// reviews service/handler
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	r := gin.Default()
+	// Router setup
+	r := gin.New() // Better than gin.Default() — we add only what we need
+	r.Use(gin.Recovery())
+	r.Use(gin.Logger())
 
 	v1 := r.Group("/api/v1")
+
+	// Public routes
+	authHandler.RegisterPublicRoutes(v1)
+	catalogHandler.RegisterRoutes(v1) // only GET endpoints
+
+	// Public reviews (list only)
+	reviewHandler.RegisterRoutes(v1, nil)
+
+	// Protected routes
+	protected := v1.Group("")
+	protected.Use(middleware.JWTAuth(jwtService))
+
 	{
-		// public
-		authHandler.RegisterRoutes(v1)
-		catalogHandler.RegisterRoutes(v1)
+		authHandler.RegisterProtectedRoutes(protected)
+		
+		// Booking
+		bookingHandler.RegisterRoutes(protected)
 
-		// public reviews
-		// GET /api/v1/studios/:id/reviews
-		reviewHandler.RegisterRoutes(v1, nil)
+		// Protected reviews (create, respond)
+		reviewHandler.RegisterRoutes(nil, protected)
 
-		// protected (booking + protected catalog + protected reviews)
-		protected := v1.Group("/")
-		protected.Use(authMiddleware(j, userRepo))
+		// Protected catalog (owner actions)
+		studios := protected.Group("/studios")
 		{
-			bookingHandler.RegisterRoutes(protected)
-
-			// protected reviews
-			// POST /api/v1/reviews
-			// POST /api/v1/reviews/:id/response
-			reviewHandler.RegisterRoutes(v1, protected)
-
-			// Protected catalog endpoints with ownership checks
-			studios := protected.Group("/studios")
-			{
-				studios.POST("", catalogHandler.CreateStudio)
-				studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
-				studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
-			}
-
-			//rooms := protected.Group("/rooms")
-			//{
-			//	rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
-			//}
+			studios.POST("", catalogHandler.CreateStudio)
+			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
+			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
 		}
+
+		// You can uncomment when ready
+		// rooms := protected.Group("/rooms")
+		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
 	}
 
+	// Static files for uploads
+	r.Static("/static", "./uploads")
+
+	// Start server
+	log.Println("Server starting on :8080")
 	if err := r.Run(":8080"); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func authMiddleware(jwt *jwtsvc.Service, userRepo *repository.UserRepository) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		h := c.GetHeader("Authorization")
-		if h == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "UNAUTHORIZED",
-					"message": "Missing Authorization header",
-				},
-			})
-			return
-		}
-
-		if !strings.HasPrefix(h, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "UNAUTHORIZED",
-					"message": "Invalid Authorization header",
-				},
-			})
-			return
-		}
-
-		tokenStr := strings.TrimSpace(strings.TrimPrefix(h, "Bearer "))
-		if tokenStr == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "UNAUTHORIZED",
-					"message": "Empty token",
-				},
-			})
-			return
-		}
-
-		claims, err := jwt.ValidateToken(tokenStr)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "UNAUTHORIZED",
-					"message": "Invalid token",
-				},
-			})
-			return
-		}
-
-		// Load full user object
-		user, err := userRepo.GetByID(c.Request.Context(), claims.UserID)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "UNAUTHORIZED",
-					"message": "User not found",
-				},
-			})
-			return
-		}
-
-		c.Set("user_id", claims.UserID)
-		c.Set("role", claims.Role)
-		c.Set("user", user)
-
-		c.Next()
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }

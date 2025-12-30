@@ -15,10 +15,17 @@ func NewHandler(svc *Service) *Handler {
 	return &Handler{svc: svc}
 }
 
-func (h *Handler) RegisterRoutes(v1 *gin.RouterGroup, protected *gin.RouterGroup) {
-	protected.POST("/reviews", h.Create)
-	protected.POST("/reviews/:id/response", h.AddOwnerResponse)
-	v1.GET("/studios/:id/reviews", h.GetByStudio)
+func (h *Handler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	// Public routes (no auth required)
+	if public != nil {
+		public.GET("/studios/:id/reviews", h.GetByStudio)
+	}
+
+	// Protected routes (auth required)
+	if protected != nil {
+		protected.POST("/reviews", h.Create)
+		protected.POST("/reviews/:id/response", h.AddOwnerResponse)
+	}
 }
 
 func (h *Handler) Create(c *gin.Context) {
