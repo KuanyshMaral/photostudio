@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	_ "errors"
+	"github.com/golang-jwt/jwt/v5"
 	"testing"
 
 	"github.com/stretchr/testify/assert"

@@ -3,21 +3,15 @@ package booking
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	_ "errors"
 	"math"
 	"sort"
 	"time"
 
 	"photostudio/internal/domain"
-	"photostudio/internal/repository"
+	_ "photostudio/internal/repository"
 
 	"github.com/jackc/pgx/v5/pgconn"
-)
-
-var (
-	ErrForbidden               = errors.New("forbidden")
-	ErrInvalidStatusTransition = errors.New("invalid_status_transition")
-	ErrNotFound                = errors.New("not_found")
 )
 
 type TimeSlot struct {
@@ -40,11 +34,11 @@ type BookingDetails struct {
 }
 
 type Service struct {
-	bookings *repository.BookingRepository
-	rooms    *repository.RoomRepository
+	bookings BookingRepository
+	rooms    RoomRepository
 }
 
-func NewService(bookings *repository.BookingRepository, rooms *repository.RoomRepository) *Service {
+func NewService(bookings BookingRepository, rooms RoomRepository) *Service {
 	return &Service{bookings: bookings, rooms: rooms}
 }
 
