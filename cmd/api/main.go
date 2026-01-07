@@ -4,6 +4,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
 	"time"
 
@@ -31,13 +32,33 @@ func main() {
 
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		log.Fatal("DATABASE_URL is empty")
+		databaseURL = "studio.db" // default sqlite file
+		log.Println("⚠️ DATABASE_URL not set → using SQLite: studio.db")
 	}
 
 	db, err := database.Connect(databaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	log.Println("Running AutoMigrate for local development...")
+	models := []interface{}{
+		domain.User{},
+		domain.StudioOwner{VerificationDocs: []string{}},
+		domain.Studio{},
+		domain.Room{},
+		domain.Equipment{},
+		domain.Booking{},
+		domain.Review{Photos: []string{}},
+	}
+
+	for _, model := range models {
+		if err := db.AutoMigrate(model); err != nil {
+			log.Fatalf("AutoMigrate failed for %T: %v", model, err)
+		}
+	}
+
+	log.Println("✅ AutoMigrate completed")
 
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
@@ -87,7 +108,7 @@ func main() {
 
 	{
 		authHandler.RegisterProtectedRoutes(protected)
-		
+
 		// Booking
 		bookingHandler.RegisterRoutes(protected)
 

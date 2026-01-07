@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"encoding/json"
 	"photostudio/internal/domain"
 
 	"gorm.io/gorm"
@@ -85,7 +84,7 @@ func (r *RoomRepository) GetPriceByID(ctx context.Context, roomID int64) (float6
 	return price, nil
 }
 
-func (r *RoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) (json.RawMessage, error) {
+func (r *RoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) ([]byte, error) {
 	var raw []byte
 	q := `
 SELECT s.working_hours
@@ -102,5 +101,5 @@ WHERE rm.id = ?
 	if tx.RowsAffected == 0 {
 		return nil, nil
 	}
-	return json.RawMessage(raw), nil
+	return []byte(raw), nil
 }

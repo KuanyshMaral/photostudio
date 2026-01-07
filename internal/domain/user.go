@@ -41,7 +41,7 @@ type StudioOwner struct {
 	LegalAddress     string     `json:"legal_address,omitempty"`
 	ContactPerson    string     `json:"contact_person"`
 	ContactPosition  string     `json:"contact_position,omitempty"`
-	VerificationDocs []string   `json:"verification_docs,omitempty"`
+	VerificationDocs []string   `json:"verification_docs,omitempty" gorm:"type:json"`
 	VerifiedAt       *time.Time `json:"verified_at,omitempty"`
 	VerifiedBy       *int64     `json:"verified_by,omitempty"`
 	RejectedReason   string     `json:"rejected_reason,omitempty"`
