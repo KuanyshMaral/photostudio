@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"photostudio/internal/database"
+	"photostudio/internal/modules/admin"
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
@@ -88,6 +89,9 @@ func main() {
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
+	adminService := admin.NewService()
+	adminHandler := admin.NewHandler(adminService)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(gin.Recovery())
@@ -123,6 +127,9 @@ func main() {
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
 		}
 
+		// Admin
+		adminGroup := protected.Group("/admin")
+		adminHandler.RegisterRoutes(adminGroup)
 		// You can uncomment when ready
 		// rooms := protected.Group("/rooms")
 		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
