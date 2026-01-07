@@ -1,4 +1,11 @@
-.idea/
 .env
 
 studio.db
+
+# Uploads
+uploads/
+
+# IDE
+.idea/
+.vscode/
+*.swp
