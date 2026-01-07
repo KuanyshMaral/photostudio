@@ -9,7 +9,7 @@ type Review struct {
 	BookingID     *int64     `json:"booking_id,omitempty"`
 	Rating        int        `json:"rating"`
 	Comment       string     `json:"comment,omitempty"`
-	Photos        []string   `json:"photos,omitempty"`
+	Photos        []string   `json:"photos,omitempty" gorm:"type:json"`
 	OwnerResponse *string    `json:"owner_response,omitempty"`
 	RespondedAt   *time.Time `json:"responded_at,omitempty"`
 	IsVerified    bool       `json:"is_verified"`
