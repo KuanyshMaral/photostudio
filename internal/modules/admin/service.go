@@ -44,19 +44,23 @@ func (s *Service) GetPendingStudios(ctx context.Context, page, limit int) ([]dom
 	}
 	offset := (page - 1) * limit
 
-	db := s.studioRepo.DB().WithContext(ctx).Model(&domain.Studio{})
-
+	// pending = owner(user).studio_status = 'pending'
+	// считаем total корректно
 	var total int64
-	if err := db.
-		Where("status = ? AND deleted_at IS NULL", domain.StatusPending).
+	if err := s.studioRepo.DB().WithContext(ctx).
+		Table("studios").
+		Joins("JOIN users u ON u.id = studios.owner_id").
+		Where("u.studio_status = ? AND studios.deleted_at IS NULL", domain.StatusPending).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	var studios []domain.Studio
-	if err := db.
-		Where("status = ? AND deleted_at IS NULL", domain.StatusPending).
-		Order("created_at DESC").
+	if err := s.studioRepo.DB().WithContext(ctx).
+		Table("studios").
+		Joins("JOIN users u ON u.id = studios.owner_id").
+		Where("u.studio_status = ? AND studios.deleted_at IS NULL", domain.StatusPending).
+		Order("studios.created_at DESC").
 		Limit(limit).
 		Offset(offset).
 		Find(&studios).Error; err != nil {
@@ -137,7 +141,8 @@ func (s *Service) GetStatistics(ctx context.Context) (*StatisticsResponse, error
 	var pendingStudios int64
 	if err := s.studioRepo.DB().WithContext(ctx).
 		Table("studios").
-		Where("status = ? AND deleted_at IS NULL", domain.StatusPending).
+		Joins("JOIN users u ON u.id = studios.owner_id").
+		Where("u.studio_status = ? AND studios.deleted_at IS NULL", domain.StatusPending).
 		Count(&pendingStudios).Error; err != nil {
 		return nil, err
 	}

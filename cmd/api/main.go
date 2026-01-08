@@ -66,8 +66,6 @@ func main() {
 		log.Println("Skipping AutoMigrate (non-sqlite database)")
 	}
 
-	log.Println("✅ AutoMigrate completed")
-
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 	studioRepo := repository.NewStudioRepository(db)
