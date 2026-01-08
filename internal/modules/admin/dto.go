@@ -28,3 +28,29 @@ type StatisticsResponse struct {
 	PendingStudios int `json:"pending_studios"`
 	TodayBookings  int `json:"today_bookings"`
 }
+
+type UserListFilter struct {
+	Role    string `form:"role"`
+	Blocked *bool  `form:"blocked"`
+	Query   string `form:"q"` // name/email contains
+}
+
+type UserListResponse struct {
+	Users []domain.User `json:"users"`
+	Total int           `json:"total"`
+	Page  int           `json:"page"`
+	Limit int           `json:"limit"`
+}
+
+type ReviewListFilter struct {
+	StudioID *int64 `form:"studio_id"`
+	UserID   *int64 `form:"user_id"`
+	Hidden   *bool  `form:"hidden"`
+}
+
+type ReviewListResponse struct {
+	Reviews []domain.Review `json:"reviews"`
+	Total   int             `json:"total"`
+	Page    int             `json:"page"`
+	Limit   int             `json:"limit"`
+}

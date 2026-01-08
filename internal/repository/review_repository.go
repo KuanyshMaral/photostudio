@@ -143,3 +143,16 @@ func (r *ReviewRepository) SetOwnerResponse(ctx context.Context, reviewID int64,
 	}
 	return r.GetByID(ctx, reviewID)
 }
+
+func (r *ReviewRepository) DB() *gorm.DB {
+	return r.db
+}
+
+func (r *ReviewRepository) Update(ctx context.Context, rv *domain.Review) error {
+	m := toReviewModel(rv)
+	tx := r.db.WithContext(ctx).
+		Table("reviews").
+		Where("id = ?", rv.ID).
+		Updates(&m)
+	return tx.Error
+}

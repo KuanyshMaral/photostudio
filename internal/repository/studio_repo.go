@@ -116,3 +116,7 @@ func (r *StudioRepository) Delete(ctx context.Context, id int64) error {
 		Where("id = ?", id).
 		Update("deleted_at", gorm.Expr("NOW()")).Error
 }
+
+func (r *StudioRepository) DB() *gorm.DB {
+	return r.db
+}

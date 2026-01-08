@@ -234,3 +234,6 @@ WHERE user_id = ?
 	}
 	return cnt > 0, nil
 }
+func (r *BookingRepository) DB() *gorm.DB {
+	return r.db
+}

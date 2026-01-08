@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	"github.com/gin-gonic/gin"
 
@@ -89,7 +90,7 @@ func main() {
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	adminService := admin.NewService()
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo)
 	adminHandler := admin.NewHandler(adminService)
 
 	// Router setup
