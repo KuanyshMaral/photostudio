@@ -103,6 +103,7 @@ func main() {
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(gin.Recovery())
 	r.Use(gin.Logger())
+	r.Use(middleware.CORS())
 
 	v1 := r.Group("/api/v1")
 
@@ -146,8 +147,15 @@ func main() {
 	r.Static("/static", "./uploads")
 
 	// Start server
-	log.Println("Server starting on :8080")
-	if err := r.Run(":8080"); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3001"
+	}
+
+	log.Printf("🚀 Server starting on :%s", port)
+
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+
 }
