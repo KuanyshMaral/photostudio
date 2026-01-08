@@ -24,7 +24,7 @@ type Studio struct {
 	Phone        string       `json:"phone,omitempty"`
 	Email        string       `json:"email,omitempty"`
 	Website      string       `json:"website,omitempty"`
-	WorkingHours WorkingHours `gorm:"type:jsonb" json:"working_hours,omitempty"`
+	WorkingHours WorkingHours `gorm:"-" json:"working_hours,omitempty"`
 	DeletedAt    *time.Time   `json:"-"`
 	CreatedAt    time.Time    `json:"created_at"`
 	UpdatedAt    time.Time    `json:"updated_at"`
