@@ -13,11 +13,15 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service  *Service
+	userRepo *repository.UserRepository
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, userRepo *repository.UserRepository) *Handler {
+	return &Handler{
+		service:  service,
+		userRepo: userRepo,
+	}
 }
 
 /* ---------- STUDIO HANDLERS ---------- */
@@ -135,7 +139,7 @@ func (h *Handler) CreateStudio(c *gin.Context) {
 
 	// Get user_id and role from context (set by auth middleware)
 	userID := c.GetInt64("user_id")
-	role := c.GetString("role")
+	//role = c.GetString("role")
 
 	if userID == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -149,11 +153,16 @@ func (h *Handler) CreateStudio(c *gin.Context) {
 	}
 
 	// Create minimal user object for service
-	userObj := &domain.User{
-		ID:           userID,
-		Role:         domain.UserRole(role),
-		StudioStatus: domain.StatusVerified, // ✅ Авто-верификация для тестов
-
+	userObj, err := h.userRepo.GetByID(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INTERNAL_ERROR",
+				"message": "Failed to load user",
+			},
+		})
+		return
 	}
 
 	studio, err := h.service.CreateStudio(c.Request.Context(), userObj, req)

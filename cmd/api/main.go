@@ -88,7 +88,7 @@ func main() {
 	authHandler := auth.NewHandler(authService)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
-	catalogHandler := catalog.NewHandler(catalogService)
+	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
 	bookingService := booking.NewService(bookingRepo, roomRepo)
 	bookingHandler := booking.NewHandler(bookingService)
@@ -135,9 +135,12 @@ func main() {
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
 		}
 
-		// Admin
+		// Admin routes (require admin role)
 		adminGroup := protected.Group("/admin")
-		adminHandler.RegisterRoutes(adminGroup)
+		adminGroup.Use(middleware.RequireRole("admin"))
+		{
+			adminHandler.RegisterRoutes(adminGroup)
+		}
 		// You can uncomment when ready
 		// rooms := protected.Group("/rooms")
 		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
