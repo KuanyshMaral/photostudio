@@ -1,26 +1,32 @@
 package admin
 
-import "context"
+import (
+	"context"
 
-// Заглушки под будущую реализацию (пока можно оставить пустыми/минимальными).
-// Потом сюда добавим методы репозиториев: studios/users/bookings.
-
-type StudioRepository interface {
-	// TODO
-}
+	"gorm.io/gorm"
+	"photostudio/internal/domain"
+	"photostudio/internal/repository"
+)
 
 type UserRepository interface {
-	// TODO
+	GetByID(ctx context.Context, id int64) (*domain.User, error)
+	Update(ctx context.Context, u *domain.User) error
+	DB() *gorm.DB
+}
+
+type StudioRepository interface {
+	GetByID(ctx context.Context, id int64) (*domain.Studio, error)
+	Update(ctx context.Context, studio *domain.Studio) error
+	GetAll(ctx context.Context, f repository.StudioFilters) ([]domain.Studio, int64, error)
+	DB() *gorm.DB
 }
 
 type BookingRepository interface {
-	// TODO
+	DB() *gorm.DB
 }
 
-type ServiceDeps struct {
-	Studios  StudioRepository
-	Users    UserRepository
-	Bookings BookingRepository
+type ReviewRepository interface {
+	GetByID(ctx context.Context, id int64) (*domain.Review, error)
+	Update(ctx context.Context, r *domain.Review) error
+	DB() *gorm.DB
 }
-
-var _ = context.Background
