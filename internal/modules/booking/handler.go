@@ -1,6 +1,7 @@
 package booking
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -43,8 +44,8 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 
 	b, err := h.service.CreateBooking(c.Request.Context(), req)
 	if err != nil {
-		switch err {
-		case ErrValidation:
+		switch {
+		case errors.Is(err, ErrValidation):
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -53,8 +54,7 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 				},
 			})
 			return
-
-		case ErrNotAvailable, ErrOverbooking:
+		case errors.Is(err, ErrNotAvailable), errors.Is(err, ErrOverbooking):
 			c.JSON(http.StatusConflict, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -63,7 +63,6 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 				},
 			})
 			return
-
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,
@@ -87,7 +86,7 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 	})
 }
 
-// Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD
+// GetRoomAvailability Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD
 func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || roomID <= 0 {
@@ -111,7 +110,7 @@ func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	if err != nil {
 		code := "INTERNAL_ERROR"
 		msg := "Failed to get availability"
-		if err == ErrValidation {
+		if errors.Is(err, ErrValidation) {
 			code = "VALIDATION_ERROR"
 			msg = "Invalid date format (YYYY-MM-DD)"
 			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": gin.H{"code": code, "message": msg}})
@@ -131,7 +130,7 @@ func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	})
 }
 
-// Task 3.2: GET /users/me/bookings?limit=&offset=
+// GetMyBookings Task 3.2: GET /users/me/bookings?limit=&offset=
 // Requires middleware to set c.Set("user_id", int64(...))
 func (h *Handler) GetMyBookings(c *gin.Context) {
 	userIDAny, ok := c.Get("user_id")
@@ -189,7 +188,7 @@ type UpdateBookingStatusRequest struct {
 	Status string `json:"status"`
 }
 
-// Task 3.3: PATCH /bookings/:id/status
+// UpdateBookingStatus Task 3.3: PATCH /bookings/:id/status
 // Requires middleware to set c.Set("user_id", int64(...)) and c.Set("role", string(...))
 func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -239,20 +238,20 @@ func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 
 	updated, err := h.service.UpdateBookingStatus(c.Request.Context(), bookingID, userID, role, req.Status)
 	if err != nil {
-		switch err {
-		case ErrForbidden:
+		switch {
+		case errors.Is(err, ErrForbidden):
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "FORBIDDEN", "message": "Only studio owner can change status"},
 			})
 			return
-		case ErrInvalidStatusTransition:
+		case errors.Is(err, ErrInvalidStatusTransition):
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "INVALID_STATUS_TRANSITION", "message": "Invalid status transition"},
 			})
 			return
-		case ErrNotFound:
+		case errors.Is(err, ErrNotFound):
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
 				"error":   gin.H{"code": "NOT_FOUND", "message": "Booking not found"},

@@ -40,7 +40,7 @@ func (m *MockBookingRepository) GetUserBookingsWithDetails(ctx context.Context, 
 
 func (m *MockBookingRepository) GetStudioOwnerForBooking(ctx context.Context, bookingID int64) (int64, string, error) {
 	args := m.Called(ctx, bookingID)
-	return 0, args.String(1), args.Error(2)
+	return args.Get(0).(int64), args.String(1), args.Error(2)
 }
 
 func (m *MockBookingRepository) UpdateStatus(ctx context.Context, bookingID int64, status string) error {
@@ -81,7 +81,7 @@ func TestService_CreateBooking_Success(t *testing.T) {
 
 	mockRooms.On("GetPriceByID", mock.Anything, int64(10)).Return(15000.0, nil)
 
-	start := time.Date(2025, 12, 31, 14, 0, 0, 0, time.UTC)
+	start := time.Date(2026, 12, 31, 14, 0, 0, 0, time.UTC)
 	end := start.Add(2 * time.Hour)
 	mockBookings.On("CheckAvailability", mock.Anything, int64(10), start, end).Return(true, nil)
 	mockBookings.On("Create", mock.Anything, mock.Anything).Return(nil)
@@ -141,7 +141,7 @@ func TestService_GetRoomAvailability_WithBusySlots(t *testing.T) {
 	mockRooms.On("GetStudioWorkingHoursByRoomID", mock.Anything, int64(10)).Return(whBytes, nil)
 
 	// Busy slot
-	day := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
+	day := time.Date(2026, 12, 30, 0, 0, 0, 0, time.UTC)
 	busy := []repository.BusySlot{
 		{Start: day.Add(12 * time.Hour), End: day.Add(14 * time.Hour)},
 	}
@@ -149,10 +149,145 @@ func TestService_GetRoomAvailability_WithBusySlots(t *testing.T) {
 
 	service := NewService(mockBookings, mockRooms)
 
-	slots, err := service.GetRoomAvailability(context.Background(), 10, "2025-12-31")
+	slots, err := service.GetRoomAvailability(context.Background(), 10, "2026-12-30")
 
 	assert.NoError(t, err)
 	assert.Len(t, slots, 2)
 	assert.Equal(t, "10:00", slots[0].Start.Format("15:04"))
 	assert.Equal(t, "12:00", slots[0].End.Format("15:04"))
+}
+
+// ============================================================================
+// Day 1 - Additional Unit Tests (Task 3.3)
+// Backend Developer #3
+// ============================================================================
+
+// Test 1: Validation error when end_time is before start_time
+func TestCreateBooking_ValidationError(t *testing.T) {
+	mockBookings := new(MockBookingRepository)
+	mockRooms := new(MockRoomRepository)
+	service := NewService(mockBookings, mockRooms)
+
+	// end_time раньше start_time
+	start := time.Date(2026, 12, 31, 14, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 12, 31, 12, 0, 0, 0, time.UTC)
+
+	req := CreateBookingRequest{
+		RoomID:    10,
+		StudioID:  5,
+		UserID:    999,
+		StartTime: start,
+		EndTime:   end,
+		Notes:     "Invalid time range",
+	}
+
+	_, err := service.CreateBooking(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrValidation)
+}
+
+// Test 2: Attempt to book an already occupied time slot
+func TestCreateBooking_Overbooking(t *testing.T) {
+	mockBookings := new(MockBookingRepository)
+	mockRooms := new(MockRoomRepository)
+
+	mockRooms.On("GetPriceByID", mock.Anything, int64(10)).Return(15000.0, nil)
+
+	start := time.Date(2026, 12, 31, 14, 0, 0, 0, time.UTC)
+	end := start.Add(2 * time.Hour)
+
+	// Room is NOT available (already booked)
+	mockBookings.On("CheckAvailability", mock.Anything, int64(10), start, end).Return(false, nil)
+
+	service := NewService(mockBookings, mockRooms)
+
+	req := CreateBookingRequest{
+		RoomID:    10,
+		StudioID:  5,
+		UserID:    999,
+		StartTime: start,
+		EndTime:   end,
+		Notes:     "Attempting to overbook",
+	}
+
+	_, err := service.CreateBooking(context.Background(), req)
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrNotAvailable)
+}
+
+// Test 3: Get available time slots successfully
+func TestGetRoomAvailability_Success(t *testing.T) {
+	mockBookings := new(MockBookingRepository)
+	mockRooms := new(MockRoomRepository)
+
+	// Working hours for Wednesday
+	wh := map[string]map[string]string{
+		"wednesday": {
+			"open":  "09:00",
+			"close": "18:00",
+		},
+	}
+	whBytes, _ := json.Marshal(wh)
+	mockRooms.On("GetStudioWorkingHoursByRoomID", mock.Anything, int64(10)).Return(whBytes, nil)
+
+	// No busy slots - fully available
+	mockBookings.On("GetBusySlotsForRoom", mock.Anything, int64(10), mock.Anything, mock.Anything).Return([]repository.BusySlot{}, nil)
+
+	service := NewService(mockBookings, mockRooms)
+
+	slots, err := service.GetRoomAvailability(context.Background(), 10, "2026-12-30")
+
+	assert.NoError(t, err)
+	assert.NotEmpty(t, slots)
+	// Should have at least one available slot from 09:00 to 18:00
+	assert.GreaterOrEqual(t, len(slots), 1)
+}
+
+// Test 4: Successfully update booking status
+func TestUpdateBookingStatus_Success(t *testing.T) {
+	mockBookings := new(MockBookingRepository)
+	mockRooms := new(MockRoomRepository)
+
+	bookingID := int64(123)
+	ownerUserID := int64(999)
+
+	// Mock: Booking exists and belongs to this owner
+	mockBookings.On("GetStudioOwnerForBooking", mock.Anything, bookingID).Return(ownerUserID, "pending", nil)
+	mockBookings.On("UpdateStatus", mock.Anything, bookingID, "confirmed").Return(nil)
+	mockBookings.On("GetByID", mock.Anything, bookingID).Return(&domain.Booking{
+		ID:     bookingID,
+		Status: domain.BookingConfirmed,
+	}, nil)
+
+	service := NewService(mockBookings, mockRooms)
+
+	result, err := service.UpdateBookingStatus(context.Background(), bookingID, ownerUserID, string(domain.RoleStudioOwner), "confirmed")
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, domain.BookingConfirmed, result.Status)
+	mockBookings.AssertExpectations(t)
+}
+
+// Test 5: Forbidden - user tries to update someone else's booking
+func TestUpdateBookingStatus_Forbidden(t *testing.T) {
+	mockBookings := new(MockBookingRepository)
+	mockRooms := new(MockRoomRepository)
+
+	bookingID := int64(123)
+	realOwnerUserID := int64(999)
+	unauthorizedUserID := int64(888)
+
+	// Mock: Booking belongs to realOwnerUserID, not unauthorizedUserID
+	mockBookings.On("GetStudioOwnerForBooking", mock.Anything, bookingID).Return(realOwnerUserID, "pending", nil)
+
+	service := NewService(mockBookings, mockRooms)
+
+	// Unauthorized user tries to update
+	_, err := service.UpdateBookingStatus(context.Background(), bookingID, unauthorizedUserID, string(domain.RoleStudioOwner), "confirmed")
+
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, ErrForbidden)
 }
