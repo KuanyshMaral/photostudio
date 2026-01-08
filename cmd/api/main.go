@@ -5,6 +5,7 @@ import (
 	"os"
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -53,11 +54,16 @@ func main() {
 		domain.Booking{},
 		domain.Review{Photos: []string{}},
 	}
-
-	for _, model := range models {
-		if err := db.AutoMigrate(model); err != nil {
-			log.Fatalf("AutoMigrate failed for %T: %v", model, err)
+	if strings.HasSuffix(databaseURL, ".db") {
+		log.Println("Running AutoMigrate for local development...")
+		for _, model := range models {
+			if err := db.AutoMigrate(model); err != nil {
+				log.Fatalf("AutoMigrate failed for %T: %v", model, err)
+			}
 		}
+		log.Println("✅ AutoMigrate completed")
+	} else {
+		log.Println("Skipping AutoMigrate (non-sqlite database)")
 	}
 
 	log.Println("✅ AutoMigrate completed")
