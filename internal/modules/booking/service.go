@@ -3,7 +3,6 @@ package booking
 import (
 	"context"
 	"encoding/json"
-	_ "errors"
 	"math"
 	"sort"
 	"time"
@@ -288,4 +287,20 @@ func subtractBusy(open, close time.Time, busy []TimeSlot) []TimeSlot {
 		out = append(out, TimeSlot{Start: cur, End: close})
 	}
 	return out
+}
+
+func (s *Service) GetBookingsByStudio(ctx context.Context, studioID int64) ([]domain.Booking, error) {
+	return s.bookings.GetByStudioID(ctx, studioID)
+}
+
+func (s *Service) UpdatePaymentStatus(ctx context.Context, bookingID, ownerID int64, status domain.PaymentStatus) (*domain.Booking, error) {
+	ok, err := s.bookings.IsBookingOwnedByUser(ctx, bookingID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
+
+	return s.bookings.UpdatePaymentStatus(ctx, bookingID, status)
 }

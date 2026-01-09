@@ -3,6 +3,7 @@ package booking
 import (
 	"errors"
 	"net/http"
+	"photostudio/internal/pkg/response"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -186,6 +187,53 @@ func (h *Handler) GetMyBookings(c *gin.Context) {
 
 type UpdateBookingStatusRequest struct {
 	Status string `json:"status"`
+}
+
+func (h *Handler) GetStudioBookings(c *gin.Context) {
+	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		return
+	}
+
+	bookings, err := h.service.GetBookingsByStudio(c.Request.Context(), studioID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get bookings")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"bookings": bookings})
+}
+func (h *Handler) UpdatePaymentStatus(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		return
+	}
+
+	var req UpdatePaymentStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	b, err := h.service.UpdatePaymentStatus(c.Request.Context(), bookingID, userID, req.PaymentStatus)
+	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You cannot update this booking")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to update payment status")
+		return
+	}
+
+	response.Success(c, http.StatusOK, b)
 }
 
 // UpdateBookingStatus Task 3.3: PATCH /bookings/:id/status
