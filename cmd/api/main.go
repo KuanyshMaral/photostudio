@@ -78,7 +78,6 @@ func main() {
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
 	// Ownership checker (for catalog module)
-	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
@@ -106,34 +105,21 @@ func main() {
 
 	// Public routes
 	authHandler.RegisterPublicRoutes(v1)
-	catalogHandler.RegisterRoutes(v1) // only GET endpoints
 
 	// Public reviews (list only)
 	reviewHandler.RegisterRoutes(v1, nil)
-
+	catalogHandler.RegisterRoutes(v1) // only GET endpoints
 	// Protected routes
 	protected := v1.Group("")
 	protected.Use(middleware.JWTAuth(jwtService))
 
 	{
 		authHandler.RegisterProtectedRoutes(protected)
-
 		// Booking
 		bookingHandler.RegisterRoutes(protected)
-
+		catalogHandler.RegisterProtectedRoutes(protected)
 		// Protected reviews (create, respond)
 		reviewHandler.RegisterRoutes(nil, protected)
-
-		// Protected catalog (owner actions)
-		studios := protected.Group("/studios")
-		{
-			studios.GET("/my", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.GetMyStudios)
-			studios.GET("/:id/bookings", middleware.RequireRole(string(domain.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
-
-			studios.POST("", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.CreateStudio)
-			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
-			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
-		}
 
 		// Admin routes (require admin role)
 		adminGroup := protected.Group("/admin")
