@@ -139,6 +139,14 @@ func main() {
 		{
 			adminHandler.RegisterRoutes(adminGroup)
 		}
+		
+		// Owner routes (для GetMyStudios)
+		ownerGroup := protected.Group("/studios")
+		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
+		}
+
 		// You can uncomment when ready
 		// rooms := protected.Group("/rooms")
 		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)

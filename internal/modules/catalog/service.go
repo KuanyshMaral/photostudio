@@ -84,6 +84,10 @@ func (s *Service) UpdateStudio(ctx context.Context, userID, studioID int64, req 
 	return studio, nil
 }
 
+func (s *Service) GetStudiosByOwner(ctx context.Context, ownerID int64) ([]domain.Studio, error) {
+	return s.studioRepo.GetByOwnerID(ctx, ownerID)
+}
+
 /* ---------- ROOMS ---------- */
 
 func (s *Service) CreateRoom(ctx context.Context, userID, studioID int64, req CreateRoomRequest) (*domain.Room, error) {

@@ -3,6 +3,7 @@ package catalog
 import (
 	"errors"
 	"net/http"
+	"photostudio/internal/pkg/response"
 	"strconv"
 
 	"photostudio/internal/domain"
@@ -120,6 +121,19 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 			"studio": studio,
 		},
 	})
+}
+
+// GetMyStudios — GET /studios/my
+func (h *Handler) GetMyStudios(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+
+	studios, err := h.service.GetStudiosByOwner(c.Request.Context(), userID.(int64))
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to fetch your studios")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"studios": studios})
 }
 
 // CreateStudio handles POST /api/v1/studios (protected)
