@@ -1,19 +1,30 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: studiobooking-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: studiobooking
+#  postgres:
+#    image: postgres:15-alpine
+#    container_name: studiobooking-postgres
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#      POSTGRES_DB: studiobooking
+#    ports:
+#      - "5444:5432"
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    restart: unless-stopped
+  api:
+    build: .
     ports:
-      - "5444:5432"
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=studio.db
+      - JWT_SECRET=docker_dev_secret_change_in_production
+      - PORT=3001
+      - ENV=development
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
+      - ./studio.db:/app/studio.db
+      - ./uploads:/app/uploads
 
 volumes:
   postgres_data:

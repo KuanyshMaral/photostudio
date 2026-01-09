@@ -99,6 +99,17 @@ func (r *StudioRepository) GetByID(
 	return &studio, nil
 }
 
+// GetByOwnerID returns all studios belonging to a user
+func (r *StudioRepository) GetByOwnerID(ctx context.Context, ownerID int64) ([]domain.Studio, error) {
+	var studios []domain.Studio
+	err := r.db.WithContext(ctx).
+		Where("owner_id = ? AND deleted_at IS NULL", ownerID).
+		Preload("Rooms", "is_active = true").
+		Preload("Rooms.Equipment").
+		Find(&studios).Error
+	return studios, err
+}
+
 // Create creates a new studio
 func (r *StudioRepository) Create(ctx context.Context, studio *domain.Studio) error {
 	return r.db.WithContext(ctx).Create(studio).Error

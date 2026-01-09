@@ -46,13 +46,13 @@ func main() {
 
 	log.Println("Running AutoMigrate for local development...")
 	models := []interface{}{
-		domain.User{},
-		domain.StudioOwner{VerificationDocs: []string{}},
-		domain.Studio{},
-		domain.Room{},
-		domain.Equipment{},
-		domain.Booking{},
-		domain.Review{Photos: []string{}},
+		&domain.User{},
+		&domain.StudioOwner{},
+		&domain.Studio{},
+		&domain.Room{},
+		&domain.Equipment{},
+		&domain.Booking{},
+		&domain.Review{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -139,6 +139,14 @@ func main() {
 		{
 			adminHandler.RegisterRoutes(adminGroup)
 		}
+		
+		// Owner routes (для GetMyStudios)
+		ownerGroup := protected.Group("/studios")
+		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
+		}
+
 		// You can uncomment when ready
 		// rooms := protected.Group("/rooms")
 		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
