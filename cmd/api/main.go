@@ -46,13 +46,13 @@ func main() {
 
 	log.Println("Running AutoMigrate for local development...")
 	models := []interface{}{
-		domain.User{},
-		domain.StudioOwner{VerificationDocs: []string{}},
-		domain.Studio{},
-		domain.Room{},
-		domain.Equipment{},
-		domain.Booking{},
-		domain.Review{Photos: []string{}},
+		&domain.User{},
+		&domain.StudioOwner{},
+		&domain.Studio{},
+		&domain.Room{},
+		&domain.Equipment{},
+		&domain.Booking{},
+		&domain.Review{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
