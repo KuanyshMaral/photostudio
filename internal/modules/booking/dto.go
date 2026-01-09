@@ -1,6 +1,9 @@
 package booking
 
-import "time"
+import (
+	"photostudio/internal/domain"
+	"time"
+)
 
 type CreateBookingRequest struct {
 	RoomID    int64     `json:"room_id" binding:"required"`
@@ -9,4 +12,7 @@ type CreateBookingRequest struct {
 	StartTime time.Time `json:"start_time" binding:"required"`
 	EndTime   time.Time `json:"end_time" binding:"required"`
 	Notes     string    `json:"notes"`
+}
+type UpdatePaymentStatusRequest struct {
+	PaymentStatus domain.PaymentStatus `json:"payment_status" binding:"required,oneof=unpaid paid refunded"`
 }

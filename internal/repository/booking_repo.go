@@ -237,3 +237,44 @@ WHERE user_id = ?
 func (r *BookingRepository) DB() *gorm.DB {
 	return r.db
 }
+func (r *BookingRepository) GetByStudioID(ctx context.Context, studioID int64) ([]domain.Booking, error) {
+	var rows []bookingModel
+
+	tx := r.db.WithContext(ctx).
+		Where("studio_id = ?", studioID).
+		Order("created_at DESC").
+		Find(&rows)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	out := make([]domain.Booking, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, *toDomainBooking(m))
+	}
+	return out, nil
+}
+func (r *BookingRepository) IsBookingOwnedByUser(ctx context.Context, bookingID, ownerID int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("bookings").
+		Joins("JOIN studios ON studios.id = bookings.studio_id").
+		Where("bookings.id = ? AND studios.owner_id = ? AND studios.deleted_at IS NULL", bookingID, ownerID).
+		Count(&count).Error
+	return count > 0, err
+}
+func (r *BookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID int64, status domain.PaymentStatus) (*domain.Booking, error) {
+	var m bookingModel
+	if err := r.db.WithContext(ctx).First(&m, bookingID).Error; err != nil {
+		return nil, err
+	}
+
+	// если в bookingModel PaymentStatus string
+	m.PaymentStatus = string(status)
+
+	if err := r.db.WithContext(ctx).Save(&m).Error; err != nil {
+		return nil, err
+	}
+
+	return toDomainBooking(m), nil
+}

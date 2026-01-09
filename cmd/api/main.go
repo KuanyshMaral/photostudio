@@ -44,7 +44,6 @@ func main() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	log.Println("Running AutoMigrate for local development...")
 	models := []interface{}{
 		&domain.User{},
 		&domain.StudioOwner{},
@@ -128,7 +127,10 @@ func main() {
 		// Protected catalog (owner actions)
 		studios := protected.Group("/studios")
 		{
-			studios.POST("", catalogHandler.CreateStudio)
+			studios.GET("/my", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.GetMyStudios)
+			studios.GET("/:id/bookings", middleware.RequireRole(string(domain.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
+
+			studios.POST("", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.CreateStudio)
 			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
 		}
@@ -139,12 +141,10 @@ func main() {
 		{
 			adminHandler.RegisterRoutes(adminGroup)
 		}
-		
-		// Owner routes (для GetMyStudios)
-		ownerGroup := protected.Group("/studios")
-		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+
+		bookings := protected.Group("/bookings")
 		{
-			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
+			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
 		}
 
 		// You can uncomment when ready

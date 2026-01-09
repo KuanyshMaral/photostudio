@@ -125,11 +125,15 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 
 // GetMyStudios — GET /studios/my
 func (h *Handler) GetMyStudios(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
 
-	studios, err := h.service.GetStudiosByOwner(c.Request.Context(), userID.(int64))
+	studios, err := h.service.GetStudiosByOwner(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to fetch your studios")
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get studios")
 		return
 	}
 
