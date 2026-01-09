@@ -548,21 +548,9 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 }
 
 // RegisterProtectedRoutes registers protected catalog routes that require authentication
-func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
-	studios := r.Group("/studios")
-	{
-		studios.POST("", h.CreateStudio)         // POST /api/v1/studios
-		studios.PUT("/:id", h.UpdateStudio)      // PUT /api/v1/studios/:id
-		studios.POST("/:id/rooms", h.CreateRoom) // POST /api/v1/studios/:id/rooms
-	}
+//func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
 
-	rooms := r.Group("/rooms")
-	{
-		rooms.POST("/:id/equipment", h.AddEquipment) // POST /api/v1/rooms/:id/equipment
-		rooms.GET("", h.GetRooms)                    // GET /api/v1/rooms
-		rooms.GET("/:id", h.GetRoomByID)             // GET /api/v1/rooms/:id
-	}
-}
+//}
 
 /* ---------- ERROR HANDLING ---------- */
 

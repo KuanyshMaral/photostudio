@@ -73,6 +73,8 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+	// Ownership checker (for catalog module)
+	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
@@ -117,9 +119,15 @@ func main() {
 		authHandler.RegisterProtectedRoutes(protected)
 		// Booking
 		bookingHandler.RegisterRoutes(protected)
-		catalogHandler.RegisterProtectedRoutes(protected)
 		// Protected reviews (create, respond)
 		reviewHandler.RegisterRoutes(nil, protected)
+
+		studios := protected.Group("/studios")
+		{
+			studios.POST("", catalogHandler.CreateStudio)
+			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
+			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
+		}
 
 		// Admin routes (require admin role)
 		adminGroup := protected.Group("/admin")
@@ -134,8 +142,10 @@ func main() {
 		}
 
 		// You can uncomment when ready
-		// rooms := protected.Group("/rooms")
-		// rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
+		rooms := protected.Group("/rooms")
+		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
+		rooms.GET("", catalogHandler.GetRooms)        // GET /api/v1/rooms
+		rooms.GET("/:id", catalogHandler.GetRoomByID) // GET /api/v1/rooms/:id
 	}
 
 	// Static files for uploads
