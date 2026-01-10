@@ -17,6 +17,7 @@ import (
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
+	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
@@ -52,6 +53,7 @@ func main() {
 		&domain.Equipment{},
 		&domain.Booking{},
 		&domain.Review{},
+		&domain.Notification{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -73,6 +75,7 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 	// Ownership checker (for catalog module)
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
@@ -88,13 +91,16 @@ func main() {
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo)
+	notificationService := notification.NewService(notificationRepo)
+	notificationHandler := notification.NewHandler(notificationService)
+
+	bookingService := booking.NewService(bookingRepo, roomRepo, nil)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo)
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, notificationService)
 	adminHandler := admin.NewHandler(adminService)
 
 	// Router setup
@@ -121,6 +127,7 @@ func main() {
 		bookingHandler.RegisterRoutes(protected)
 		// Protected reviews (create, respond)
 		reviewHandler.RegisterRoutes(nil, protected)
+		notificationHandler.RegisterRoutes(protected)
 
 		studios := protected.Group("/studios")
 		{

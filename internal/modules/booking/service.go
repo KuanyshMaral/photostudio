@@ -35,10 +35,11 @@ type BookingDetails struct {
 type Service struct {
 	bookings BookingRepository
 	rooms    RoomRepository
+	notifs   NotificationSender
 }
 
-func NewService(bookings BookingRepository, rooms RoomRepository) *Service {
-	return &Service{bookings: bookings, rooms: rooms}
+func NewService(bookings BookingRepository, rooms RoomRepository, notifs NotificationSender) *Service {
+	return &Service{bookings: bookings, rooms: rooms, notifs: notifs}
 }
 
 func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (*domain.Booking, error) {
@@ -80,6 +81,13 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 		Notes:         req.Notes,
 	}
 
+	if s.notifs != nil {
+		ownerID, _, err := s.bookings.GetStudioOwnerForBooking(ctx, b.ID)
+		if err == nil && ownerID > 0 {
+			_ = s.notifs.NotifyBookingCreated(ctx, ownerID, b.ID, b.StudioID, b.RoomID, b.StartTime)
+		}
+	}
+
 	if err := s.bookings.Create(ctx, b); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == "23505" && pgErr.ConstraintName == "idx_no_overbooking" {
@@ -90,6 +98,7 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 	}
 
 	return b, nil
+
 }
 
 func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr string) ([]TimeSlot, error) {
@@ -162,6 +171,17 @@ func (s *Service) UpdateBookingStatus(ctx context.Context, bookingID, actorUserI
 	}
 	if ownerID != actorUserID {
 		return nil, ErrForbidden
+	}
+	if s.notifs != nil {
+		b, err := s.bookings.GetByID(ctx, bookingID)
+		if err == nil && b != nil {
+			if newStatus == string(domain.BookingConfirmed) {
+				_ = s.notifs.NotifyBookingConfirmed(ctx, b.UserID, b.ID, b.StudioID)
+			}
+			if newStatus == string(domain.BookingCancelled) {
+				_ = s.notifs.NotifyBookingCancelled(ctx, b.UserID, b.ID, b.StudioID, "")
+			}
+		}
 	}
 
 	if !(currentStatus == "pending" && newStatus == "confirmed") {
