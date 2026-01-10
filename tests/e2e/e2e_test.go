@@ -15,6 +15,7 @@ import (
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
+	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
@@ -35,16 +36,32 @@ type E2ETestSuite struct {
 }
 
 type TestResponse struct {
-	Success bool                   `json:"success"`
-	Data    map[string]interface{} `json:"data,omitempty"`
-	Error   *ErrorDetail           `json:"error,omitempty"`
-	Message string                 `json:"message,omitempty"`
+	Success bool         `json:"success"`
+	Data    interface{}  `json:"data,omitempty"` // Can be m or array
+	Error   *ErrorDetail `json:"error,omitempty"`
+	Message string       `json:"message,omitempty"`
 }
 
 type ErrorDetail struct {
 	Code    string      `json:"code"`
 	Message string      `json:"message"`
 	Details interface{} `json:"details,omitempty"`
+}
+
+// Helper method to get Data as map (for single object responses)
+func (r *TestResponse) DataMap() map[string]interface{} {
+	if m, ok := r.Data.(map[string]interface{}); ok {
+		return m
+	}
+	return nil
+}
+
+// Helper method to get Data as array (for list responses)
+func (r *TestResponse) DataArray() []interface{} {
+	if a, ok := r.Data.([]interface{}); ok {
+		return a
+	}
+	return nil
 }
 
 func setupTestSuite(t *testing.T) *E2ETestSuite {
@@ -63,6 +80,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		&domain.Equipment{},
 		&domain.Booking{},
 		&domain.Review{},
+		&domain.Notification{},
 	}
 
 	for _, model := range models {
@@ -78,6 +96,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	// Setup services
 	jwtService := jwtsvc.New("test_secret_key_32_characters_min", 24*time.Hour)
@@ -88,13 +107,15 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo)
+	bookingService := booking.NewService(bookingRepo, roomRepo, nil)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo)
+	notificationService := notification.NewService(notificationRepo)
+
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, notificationService)
 	adminHandler := admin.NewHandler(adminService)
 
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
@@ -118,6 +139,10 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		authHandler.RegisterProtectedRoutes(protected)
 		bookingHandler.RegisterRoutes(protected)
 		reviewHandler.RegisterRoutes(nil, protected)
+
+		// Notification handler
+		notificationHandler := notification.NewHandler(notificationService)
+		notificationHandler.RegisterRoutes(protected)
 
 		studios := protected.Group("/studios")
 		{
@@ -213,6 +238,24 @@ func logErrorResponse(t *testing.T, resp *TestResponse, context string) {
 	}
 }
 
+// Helper function to create a booking request body with all required fields
+func (s *E2ETestSuite) createBookingBody(roomID int64, userID int64, startTime, endTime time.Time) (map[string]interface{}, error) {
+	// Get studio ID from room
+	var room domain.Room
+	err := s.db.First(&room, roomID).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"room_id":    roomID,
+		"studio_id":  room.StudioID,
+		"user_id":    userID,
+		"start_time": startTime.Format(time.RFC3339),
+		"end_time":   endTime.Format(time.RFC3339),
+	}, nil
+}
+
 // Helper function to verify a studio owner (needed for studio creation)
 func (s *E2ETestSuite) verifyStudioOwner(t *testing.T, email string) {
 	// Find the user by email
@@ -254,7 +297,7 @@ func TestFlow1_ClientRegistrationAndAuth(t *testing.T) {
 			logErrorResponse(t, resp, "Client registration failed")
 		}
 		assert.True(t, resp.Success)
-		assert.NotEmpty(t, resp.Data["token"])
+		assert.NotEmpty(t, resp.DataMap()["token"])
 
 		log.Printf("✅ POST /auth/register/client - SUCCESS")
 	})
@@ -273,7 +316,7 @@ func TestFlow1_ClientRegistrationAndAuth(t *testing.T) {
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
-		assert.NotEmpty(t, resp.Data["token"])
+		assert.NotEmpty(t, resp.DataMap()["token"])
 
 		log.Printf("✅ POST /auth/login - SUCCESS")
 	})
@@ -290,7 +333,7 @@ func TestFlow1_ClientRegistrationAndAuth(t *testing.T) {
 
 		loginData, err := parseResponse(loginResp)
 		require.NoError(t, err)
-		token := loginData.Data["token"].(string)
+		token := loginData.DataMap()["token"].(string)
 
 		// Now get user profile
 		w, err := suite.makeRequest("GET", "/api/v1/users/me", nil, token)
@@ -303,10 +346,10 @@ func TestFlow1_ClientRegistrationAndAuth(t *testing.T) {
 		assert.True(t, resp.Success)
 
 		// Check if email is in top-level data or nested in user object
-		if userMap, ok := resp.Data["user"].(map[string]interface{}); ok {
+		if userMap, ok := resp.DataMap()["user"].(map[string]interface{}); ok {
 			assert.Equal(t, "client@test.com", userMap["email"])
 		} else {
-			assert.Equal(t, "client@test.com", resp.Data["email"])
+			assert.Equal(t, "client@test.com", resp.DataMap()["email"])
 		}
 
 		log.Printf("✅ GET /users/me - SUCCESS")
@@ -336,7 +379,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		clientToken = resp.Data["token"].(string)
+		clientToken = resp.DataMap()["token"].(string)
 
 		// Create studio owner
 		ownerBody := map[string]interface{}{
@@ -351,7 +394,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.Data["token"].(string)
+		ownerToken = resp.DataMap()["token"].(string)
 
 		// Verify the studio owner so they can create studios
 		suite.verifyStudioOwner(t, ownerBody["email"].(string))
@@ -374,13 +417,13 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract studio ID from nested structure
-		if studioData, ok := resp.Data["studio"].(map[string]interface{}); ok {
+		if studioData, ok := resp.DataMap()["studio"].(map[string]interface{}); ok {
 			if idVal, ok := studioData["id"]; ok && idVal != nil {
 				studioID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Studio data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			studioID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Studio creation succeeded but no ID returned")
@@ -404,13 +447,13 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract room ID from nested structure
-		if roomData, ok := resp.Data["room"].(map[string]interface{}); ok {
+		if roomData, ok := resp.DataMap()["room"].(map[string]interface{}); ok {
 			if idVal, ok := roomData["id"]; ok && idVal != nil {
 				roomID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Room data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			roomID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Room creation succeeded but no ID returned")
@@ -439,7 +482,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
-		assert.Equal(t, "Test Studio", resp.Data["name"])
+		assert.Equal(t, "Test Studio", resp.DataMap()["name"])
 
 		log.Printf("✅ GET /studios/:id - SUCCESS")
 	})
@@ -448,7 +491,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		startDate := time.Now().Add(24 * time.Hour).Format("2006-01-02")
 		endDate := time.Now().Add(48 * time.Hour).Format("2006-01-02")
 
-		w, err := suite.makeRequest("GET", fmt.Sprintf("/api/v1/rooms/%d/availability?start_date=%s&end_date=%s", roomID, startDate, endDate), nil, "")
+		w, err := suite.makeRequest("GET", fmt.Sprintf("/api/v1/rooms/%d/availability?start_date=%s&end_date=%s", roomID, startDate, endDate), nil, clientToken)
 		require.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -465,11 +508,12 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		startTime := time.Now().Add(24 * time.Hour)
 		endTime := startTime.Add(2 * time.Hour)
 
-		bookingBody := map[string]interface{}{
-			"room_id":    roomID,
-			"start_time": startTime.Format(time.RFC3339),
-			"end_time":   endTime.Format(time.RFC3339),
-		}
+		// Get user ID from context (would come from JWT in real app)
+		var client domain.User
+		suite.db.Where("email = ?", "client@test.com").First(&client)
+
+		bookingBody, err := suite.createBookingBody(roomID, client.ID, startTime, endTime)
+		require.NoError(t, err)
 
 		w, err := suite.makeRequest("POST", "/api/v1/bookings", bookingBody, clientToken)
 		require.NoError(t, err)
@@ -481,7 +525,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		assert.True(t, resp.Success)
 
 		// Safely extract booking ID
-		if idVal, ok := resp.Data["id"]; ok {
+		if idVal, ok := resp.DataMap()["id"]; ok {
 			bookingID = int64(idVal.(float64))
 		}
 
@@ -531,7 +575,7 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
-		ownerToken = resp.Data["token"].(string)
+		ownerToken = resp.DataMap()["token"].(string)
 
 		// Verify the studio owner so they can create studios
 		suite.verifyStudioOwner(t, "newowner@test.com")
@@ -558,13 +602,13 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract studio ID from nested structure
-		if studioData, ok := resp.Data["studio"].(map[string]interface{}); ok {
+		if studioData, ok := resp.DataMap()["studio"].(map[string]interface{}); ok {
 			if idVal, ok := studioData["id"]; ok && idVal != nil {
 				studioID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Studio data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			studioID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Studio creation succeeded but no ID returned")
@@ -587,13 +631,13 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract room ID from nested structure
-		if roomData, ok := resp.Data["room"].(map[string]interface{}); ok {
+		if roomData, ok := resp.DataMap()["room"].(map[string]interface{}); ok {
 			if idVal, ok := roomData["id"]; ok && idVal != nil {
 				roomID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Room data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			roomID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Room creation succeeded but no ID returned")
@@ -609,13 +653,17 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		clientToken = resp.Data["token"].(string)
+		clientToken = resp.DataMap()["token"].(string)
 
-		bookingBody := map[string]interface{}{
-			"room_id":    roomID,
-			"start_time": time.Now().Add(24 * time.Hour).Format(time.RFC3339),
-			"end_time":   time.Now().Add(26 * time.Hour).Format(time.RFC3339),
-		}
+		// Get client user for ID
+		var client domain.User
+		suite.db.Where("email = ?", "client3@test.com").First(&client)
+
+		startTime := time.Now().Add(24 * time.Hour)
+		endTime := time.Now().Add(26 * time.Hour)
+		bookingBody, err := suite.createBookingBody(roomID, client.ID, startTime, endTime)
+		require.NoError(t, err)
+
 		w, err = suite.makeRequest("POST", "/api/v1/bookings", bookingBody, clientToken)
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
@@ -624,7 +672,7 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 			logErrorResponse(t, resp, "Booking creation failed")
 			t.FailNow()
 		}
-		if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			bookingID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Booking creation succeeded but no ID returned")
@@ -698,7 +746,7 @@ func TestFlow4_AdminOperations(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.Data["token"].(string)
+		ownerToken = resp.DataMap()["token"].(string)
 
 		// Verify the studio owner so they can create studios
 		suite.verifyStudioOwner(t, "pendingowner@test.com")
@@ -720,13 +768,13 @@ func TestFlow4_AdminOperations(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract studio ID from nested structure
-		if studioData, ok := resp.Data["studio"].(map[string]interface{}); ok {
+		if studioData, ok := resp.DataMap()["studio"].(map[string]interface{}); ok {
 			if idVal, ok := studioData["id"]; ok && idVal != nil {
 				studioID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Studio data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			studioID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Studio creation succeeded but no ID returned")
@@ -802,7 +850,7 @@ func TestFlow5_EquipmentManagement(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.Data["token"].(string)
+		ownerToken = resp.DataMap()["token"].(string)
 
 		// Verify the studio owner so they can create studios
 		suite.verifyStudioOwner(t, "equipowner@test.com")
@@ -824,13 +872,13 @@ func TestFlow5_EquipmentManagement(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract studio ID from nested structure
-		if studioData, ok := resp.Data["studio"].(map[string]interface{}); ok {
+		if studioData, ok := resp.DataMap()["studio"].(map[string]interface{}); ok {
 			if idVal, ok := studioData["id"]; ok && idVal != nil {
 				studioID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Studio data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			studioID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Studio creation succeeded but no ID returned")
@@ -853,13 +901,13 @@ func TestFlow5_EquipmentManagement(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract room ID from nested structure
-		if roomData, ok := resp.Data["room"].(map[string]interface{}); ok {
+		if roomData, ok := resp.DataMap()["room"].(map[string]interface{}); ok {
 			if idVal, ok := roomData["id"]; ok && idVal != nil {
 				roomID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Room data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			roomID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Room creation succeeded but no ID returned")
@@ -885,7 +933,7 @@ func TestFlow5_EquipmentManagement(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
 
-		if idVal, ok := resp.Data["id"]; ok {
+		if idVal, ok := resp.DataMap()["id"]; ok {
 			equipmentID = int64(idVal.(float64))
 		}
 
@@ -963,7 +1011,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		clientToken = resp.Data["token"].(string)
+		clientToken = resp.DataMap()["token"].(string)
 
 		// Create owner
 		ownerBody := map[string]interface{}{
@@ -978,7 +1026,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.Data["token"].(string)
+		ownerToken = resp.DataMap()["token"].(string)
 
 		// Verify the studio owner so they can create studios
 		suite.verifyStudioOwner(t, "reviewowner@test.com")
@@ -1004,13 +1052,13 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract studio ID from nested structure
-		if studioData, ok := resp.Data["studio"].(map[string]interface{}); ok {
+		if studioData, ok := resp.DataMap()["studio"].(map[string]interface{}); ok {
 			if idVal, ok := studioData["id"]; ok && idVal != nil {
 				studioID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Studio data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			studioID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Studio creation succeeded but no ID returned")
@@ -1034,24 +1082,27 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 			t.FailNow()
 		}
 		// Extract room ID from nested structure
-		if roomData, ok := resp.Data["room"].(map[string]interface{}); ok {
+		if roomData, ok := resp.DataMap()["room"].(map[string]interface{}); ok {
 			if idVal, ok := roomData["id"]; ok && idVal != nil {
 				roomID = int64(idVal.(float64))
 			} else {
 				t.Fatal("Room data exists but no ID field")
 			}
-		} else if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		} else if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			roomID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Room creation succeeded but no ID returned")
 		}
 
-		// Create completed booking
-		bookingBody := map[string]interface{}{
-			"room_id":    roomID,
-			"start_time": time.Now().Add(-48 * time.Hour).Format(time.RFC3339),
-			"end_time":   time.Now().Add(-46 * time.Hour).Format(time.RFC3339),
-		}
+		// Create booking (must be in future initially)
+		var client domain.User
+		suite.db.Where("email = ?", "reviewclient@test.com").First(&client)
+
+		startTime := time.Now().Add(24 * time.Hour)
+		endTime := time.Now().Add(26 * time.Hour)
+		bookingBody, err := suite.createBookingBody(roomID, client.ID, startTime, endTime)
+		require.NoError(t, err)
+
 		w, err = suite.makeRequest("POST", "/api/v1/bookings", bookingBody, clientToken)
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
@@ -1060,18 +1111,20 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 			logErrorResponse(t, resp, "Booking creation failed")
 			t.FailNow()
 		}
-		if idVal, ok := resp.Data["id"]; ok && idVal != nil {
+		if idVal, ok := resp.DataMap()["id"]; ok && idVal != nil {
 			bookingID = int64(idVal.(float64))
 		} else {
 			t.Fatal("Booking creation succeeded but no ID returned")
 		}
 
-		// Mark booking as completed
-		statusBody := map[string]interface{}{
-			"status": "completed",
-		}
-		w, err = suite.makeRequest("PATCH", fmt.Sprintf("/api/v1/bookings/%d/status", bookingID), statusBody, ownerToken)
-		require.NoError(t, err)
+		// Manually update booking to be in the past and completed (for review testing)
+		pastStart := time.Now().Add(-48 * time.Hour)
+		pastEnd := time.Now().Add(-46 * time.Hour)
+		suite.db.Model(&domain.Booking{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
+			"start_time": pastStart,
+			"end_time":   pastEnd,
+			"status":     domain.BookingCompleted,
+		})
 	})
 
 	t.Run("POST /reviews", func(t *testing.T) {
@@ -1094,7 +1147,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, w.Code)
 		assert.True(t, resp.Success)
 
-		if idVal, ok := resp.Data["id"]; ok {
+		if idVal, ok := resp.DataMap()["id"]; ok {
 			reviewID = int64(idVal.(float64))
 		}
 
