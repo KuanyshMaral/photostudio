@@ -4,6 +4,7 @@ import (
 	"log"
 	"photostudio/internal/database"
 	"photostudio/internal/domain"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,6 +25,16 @@ func main() {
 		&domain.Booking{},
 		&domain.Review{},
 	)
+
+	// Clean previous data (safe for dev)
+	log.Println("Cleaning old data...")
+	db.Exec("DELETE FROM reviews")
+	db.Exec("DELETE FROM bookings")
+	db.Exec("DELETE FROM equipment")
+	db.Exec("DELETE FROM rooms")
+	db.Exec("DELETE FROM studios")
+	db.Exec("DELETE FROM studio_owners")
+	db.Exec("DELETE FROM users")
 
 	// ================= ADMIN =================
 	adminPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
@@ -47,6 +58,34 @@ func main() {
 	}
 	db.Create(&client)
 	log.Println("✅ Client created")
+
+	// BOOKING
+	const (
+		clientID = 2 // usually the first client after admin
+		roomID   = 1 // usually the first room
+	)
+
+	// Example time: tomorrow 14:00–16:00
+	start := time.Now().Truncate(24 * time.Hour).Add(24*time.Hour + 14*time.Hour)
+	end := start.Add(2 * time.Hour)
+
+	booking := domain.Booking{
+		RoomID:        roomID,
+		StudioID:      1, // usually first studio
+		UserID:        clientID,
+		StartTime:     start,
+		EndTime:       end,
+		TotalPrice:    16000, // example price
+		Status:        domain.BookingPending,
+		PaymentStatus: domain.PaymentUnpaid,
+		Notes:         "Test booking for demo",
+	}
+
+	if err := db.Create(&booking).Error; err != nil {
+		log.Fatalf("Failed to create booking: %v", err)
+	}
+
+	log.Println("✅ Booking created successfully!")
 
 	// ================= OWNER =================
 	ownerPassword, _ := bcrypt.GenerateFromPassword([]byte("owner123"), bcrypt.DefaultCost)
