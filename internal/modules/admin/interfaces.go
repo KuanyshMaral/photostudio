@@ -3,9 +3,10 @@ package admin
 import (
 	"context"
 
-	"gorm.io/gorm"
 	"photostudio/internal/domain"
 	"photostudio/internal/repository"
+
+	"gorm.io/gorm"
 )
 
 type UserRepository interface {
@@ -29,4 +30,9 @@ type ReviewRepository interface {
 	GetByID(ctx context.Context, id int64) (*domain.Review, error)
 	Update(ctx context.Context, r *domain.Review) error
 	DB() *gorm.DB
+}
+
+type NotificationSender interface {
+	NotifyVerificationApproved(ctx context.Context, ownerUserID, studioID int64) error
+	NotifyVerificationRejected(ctx context.Context, ownerUserID, studioID int64, reason string) error
 }

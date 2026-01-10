@@ -26,3 +26,9 @@ type RoomRepository interface {
 	GetPriceByID(ctx context.Context, id int64) (float64, error)
 	GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) ([]byte, error)
 }
+
+type NotificationSender interface {
+	NotifyBookingCreated(ctx context.Context, ownerUserID, bookingID, studioID, roomID int64, start time.Time) error
+	NotifyBookingConfirmed(ctx context.Context, clientUserID, bookingID, studioID int64) error
+	NotifyBookingCancelled(ctx context.Context, clientUserID, bookingID, studioID int64, reason string) error
+}

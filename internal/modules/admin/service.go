@@ -16,6 +16,7 @@ type Service struct {
 	studioRepo  StudioRepository
 	bookingRepo BookingRepository
 	reviewRepo  ReviewRepository
+	notifs      NotificationSender
 }
 
 func NewService(
@@ -23,12 +24,14 @@ func NewService(
 	studioRepo StudioRepository,
 	bookingRepo BookingRepository,
 	reviewRepo ReviewRepository,
+	notifs NotificationSender,
 ) *Service {
 	return &Service{
 		userRepo:    userRepo,
 		studioRepo:  studioRepo,
 		bookingRepo: bookingRepo,
 		reviewRepo:  reviewRepo,
+		notifs:      notifs,
 	}
 }
 
@@ -87,6 +90,10 @@ func (s *Service) VerifyStudio(ctx context.Context, studioID, adminID int64, not
 		return nil, err
 	}
 
+	if s.notifs != nil {
+		_ = s.notifs.NotifyVerificationApproved(ctx, owner.ID, studio.ID)
+	}
+
 	// TODO later: studio_owner.AdminNotes/VerifiedBy/VerifiedAt
 	_ = adminID
 	_ = notes
@@ -112,6 +119,10 @@ func (s *Service) RejectStudio(ctx context.Context, studioID, adminID int64, rea
 	owner.StudioStatus = domain.StatusRejected
 	if err := s.userRepo.Update(ctx, owner); err != nil {
 		return nil, err
+	}
+
+	if s.notifs != nil {
+		_ = s.notifs.NotifyVerificationRejected(ctx, studio.OwnerID, studio.ID, reason)
 	}
 
 	// TODO later: studio_owner.RejectedReason/VerifiedBy
