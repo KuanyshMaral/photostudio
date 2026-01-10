@@ -14,6 +14,7 @@ type Studio struct {
 	OwnerID      int64        `json:"owner_id"`
 	Name         string       `json:"name" validate:"required"`
 	Description  string       `json:"description,omitempty"`
+	Photos       []string     `json:"photos" gorm:"type:text[]"`
 	Address      string       `json:"address" validate:"required"`
 	District     string       `json:"district,omitempty"`
 	City         string       `json:"city" validate:"required"`

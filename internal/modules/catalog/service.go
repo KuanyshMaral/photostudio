@@ -163,3 +163,19 @@ func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req Cr
 
 	return equipment, nil
 }
+
+func (s *Service) AddStudioPhotos(ctx context.Context, studioID int64, urls []string) error {
+	studio, err := s.studioRepo.GetByID(ctx, studioID)
+	if err != nil {
+		return err
+	}
+
+	// Append new URLs to existing (handle nil case)
+	if studio.Photos == nil {
+		studio.Photos = urls
+	} else {
+		studio.Photos = append(studio.Photos, urls...)
+	}
+
+	return s.studioRepo.Update(ctx, studio)
+}

@@ -2,9 +2,13 @@ package catalog
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"photostudio/internal/pkg/response"
 	"strconv"
+	"time"
 
 	"photostudio/internal/domain"
 	"photostudio/internal/repository"
@@ -282,7 +286,58 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 	})
 }
 
-/* ---------- ROOM HANDLERS ---------- */
+/* ---------- PHOTO HANDLERS ---------- */
+
+func (h *Handler) UploadStudioPhotos(c *gin.Context) {
+	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_FORM", "Failed to parse form")
+		return
+	}
+
+	files := form.File["photos"]
+	if len(files) == 0 {
+		response.Error(c, http.StatusBadRequest, "NO_FILES", "No photos uploaded")
+		return
+	}
+
+	uploadDir := fmt.Sprintf("./uploads/studios/%d", studioID)
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		response.Error(c, http.StatusInternalServerError, "STORAGE_ERROR", "Failed to create directory")
+		return
+	}
+
+	var urls []string
+	for _, file := range files {
+		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
+		path := filepath.Join(uploadDir, filename)
+
+		if err := c.SaveUploadedFile(file, path); err != nil {
+			response.Error(c, http.StatusInternalServerError, "SAVE_FAILED", "Failed to save photo")
+			return
+		}
+
+		url := fmt.Sprintf("/static/studios/%d/%s", studioID, filename)
+		urls = append(urls, url)
+	}
+
+	if err := h.service.AddStudioPhotos(c.Request.Context(), studioID, urls); err != nil {
+		if errors.Is(err, ErrForbidden) {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "DB_ERROR", "Failed to save photo URLs")
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"uploaded_urls": urls})
+}
 
 /* ---------- ROOM HANDLERS ---------- */
 
