@@ -234,9 +234,7 @@ WHERE user_id = ?
 	}
 	return cnt > 0, nil
 }
-func (r *BookingRepository) DB() *gorm.DB {
-	return r.db
-}
+
 func (r *BookingRepository) GetByStudioID(ctx context.Context, studioID int64) ([]domain.Booking, error) {
 	var rows []bookingModel
 
@@ -254,6 +252,7 @@ func (r *BookingRepository) GetByStudioID(ctx context.Context, studioID int64) (
 	}
 	return out, nil
 }
+
 func (r *BookingRepository) IsBookingOwnedByUser(ctx context.Context, bookingID, ownerID int64) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).
@@ -277,4 +276,8 @@ func (r *BookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID i
 	}
 
 	return toDomainBooking(m), nil
+}
+
+func (r *BookingRepository) DB() *gorm.DB {
+	return r.db
 }

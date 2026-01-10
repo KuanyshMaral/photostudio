@@ -287,47 +287,71 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 }
 
 /* ---------- PHOTO HANDLERS ---------- */
-
 func (h *Handler) UploadStudioPhotos(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	// 1. Extract studio ID from URL param
+	studioIDStr := c.Param("id")
+	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
 		return
 	}
 
-	form, err := c.MultipartForm()
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "INVALID_FORM", "Failed to parse form")
+	// 2. Extract authenticated user ID from JWT context (set by middleware)
+	userIDVal, exists := c.Get("user_id")
+	if !exists {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		return
+	}
+	userID, ok := userIDVal.(int64)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "CONTEXT_ERROR", "Invalid user ID in context")
 		return
 	}
 
-	files := form.File["photos"]
+	// 3. Optional: early role check (if you want to restrict to studio owners only)
+	roleVal, _ := c.Get("role")
+	if roleVal != string(domain.RoleStudioOwner) {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Only studio owners can upload photos")
+		return
+	}
+
+	// 4. Parse multipart form (max 10MB total)
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_FORM", "Failed to parse multipart form")
+		return
+	}
+
+	files := c.Request.MultipartForm.File["photos"]
 	if len(files) == 0 {
 		response.Error(c, http.StatusBadRequest, "NO_FILES", "No photos uploaded")
 		return
 	}
 
+	// 5. Prepare upload directory
 	uploadDir := fmt.Sprintf("./uploads/studios/%d", studioID)
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		response.Error(c, http.StatusInternalServerError, "STORAGE_ERROR", "Failed to create directory")
 		return
 	}
 
+	// 6. Save files and collect URLs
 	var urls []string
 	for _, file := range files {
 		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
-		path := filepath.Join(uploadDir, filename)
+		savePath := filepath.Join(uploadDir, filename)
 
-		if err := c.SaveUploadedFile(file, path); err != nil {
+		if err := c.SaveUploadedFile(file, savePath); err != nil {
 			response.Error(c, http.StatusInternalServerError, "SAVE_FAILED", "Failed to save photo")
 			return
 		}
 
+		// Public URL (served by Gin static)
 		url := fmt.Sprintf("/static/studios/%d/%s", studioID, filename)
 		urls = append(urls, url)
 	}
 
-	if err := h.service.AddStudioPhotos(c.Request.Context(), studioID, urls); err != nil {
+	// 7. Call service with BOTH userID and studioID (ownership check inside service)
+	if err := h.service.AddStudioPhotos(c.Request.Context(), userID, studioID, urls); err != nil {
 		if errors.Is(err, ErrForbidden) {
 			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
 			return
@@ -336,7 +360,11 @@ func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"uploaded_urls": urls})
+	// 8. Success response
+	response.Success(c, http.StatusOK, gin.H{
+		"message":       "Photos uploaded successfully",
+		"uploaded_urls": urls,
+	})
 }
 
 /* ---------- ROOM HANDLERS ---------- */

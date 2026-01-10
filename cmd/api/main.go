@@ -128,6 +128,7 @@ func main() {
 			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
 			studios.POST("/:id/photos", ownershipChecker.CheckStudioOwnership(), catalogHandler.UploadStudioPhotos)
+			studios.GET("/:id/bookings", ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
 		}
 
 		// Admin routes (require admin role)

@@ -164,18 +164,15 @@ func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req Cr
 	return equipment, nil
 }
 
-func (s *Service) AddStudioPhotos(ctx context.Context, studioID int64, urls []string) error {
+func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, urls []string) error {
 	studio, err := s.studioRepo.GetByID(ctx, studioID)
 	if err != nil {
 		return err
 	}
-
-	// Append new URLs to existing (handle nil case)
-	if studio.Photos == nil {
-		studio.Photos = urls
-	} else {
-		studio.Photos = append(studio.Photos, urls...)
+	if studio.OwnerID != userID {
+		return ErrForbidden
 	}
 
-	return s.studioRepo.Update(ctx, studio)
+	// Use the repository method — it handles array concatenation safely
+	return s.studioRepo.AddPhotos(ctx, studioID, urls)
 }
