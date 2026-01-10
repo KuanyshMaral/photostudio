@@ -122,10 +122,10 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		studios := protected.Group("/studios")
 		{
 			studios.GET("/my", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.GetMyStudios)
-			studios.GET("/:id/bookings", middleware.RequireRole(string(domain.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
 			studios.POST("", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.CreateStudio)
 			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
+			studios.GET("/:id/bookings", middleware.RequireRole(string(domain.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
 		}
 
 		// Equipment route (only AddEquipment exists)

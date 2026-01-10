@@ -75,14 +75,15 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+
 	notificationRepo := repository.NewNotificationRepository(db)
-	// Ownership checker (for catalog module)
-	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
+
 
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
 	// Ownership checker (for catalog module)
+	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
@@ -113,10 +114,11 @@ func main() {
 
 	// Public routes
 	authHandler.RegisterPublicRoutes(v1)
+	catalogHandler.RegisterRoutes(v1) // only GET endpoints
 
 	// Public reviews (list only)
 	reviewHandler.RegisterRoutes(v1, nil)
-	catalogHandler.RegisterRoutes(v1) // only GET endpoints
+
 	// Protected routes
 	protected := v1.Group("")
 	protected.Use(middleware.JWTAuth(jwtService))
@@ -134,6 +136,8 @@ func main() {
 			studios.POST("", catalogHandler.CreateStudio)
 			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
+			studios.POST("/:id/photos", ownershipChecker.CheckStudioOwnership(), catalogHandler.UploadStudioPhotos)
+			studios.GET("/:id/bookings", ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
 		}
 
 		// Admin routes (require admin role)
@@ -143,6 +147,14 @@ func main() {
 			adminHandler.RegisterRoutes(adminGroup)
 		}
 
+		// Owner routes (for GetMyStudios)
+		ownerGroup := protected.Group("/studios")
+		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
+		}
+
+		// Booking routes
 		bookings := protected.Group("/bookings")
 		{
 			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)

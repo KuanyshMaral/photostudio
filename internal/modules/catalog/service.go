@@ -163,3 +163,16 @@ func (s *Service) AddEquipment(ctx context.Context, userID, roomID int64, req Cr
 
 	return equipment, nil
 }
+
+func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, urls []string) error {
+	studio, err := s.studioRepo.GetByID(ctx, studioID)
+	if err != nil {
+		return err
+	}
+	if studio.OwnerID != userID {
+		return ErrForbidden
+	}
+
+	// Use the repository method — it handles array concatenation safely
+	return s.studioRepo.AddPhotos(ctx, studioID, urls)
+}

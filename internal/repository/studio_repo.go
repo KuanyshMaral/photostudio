@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"photostudio/internal/pkg/utils"
 
 	"photostudio/internal/domain"
 
@@ -113,6 +114,30 @@ func (r *StudioRepository) GetByOwnerID(ctx context.Context, ownerID int64) ([]d
 // Create creates a new studio
 func (r *StudioRepository) Create(ctx context.Context, studio *domain.Studio) error {
 	return r.db.WithContext(ctx).Create(studio).Error
+}
+
+// AddPhotos appends new URLs to the studio's photos array (works on SQLite & PostgreSQL)
+func (r *StudioRepository) AddPhotos(ctx context.Context, id int64, newURLs []string) error {
+	var studio domain.Studio
+
+	// Load current
+	if err := r.db.WithContext(ctx).
+		Where("id = ?", id).
+		First(&studio).Error; err != nil {
+		return err
+	}
+
+	// Convert current DB string to slice
+	current := utils.StringToPhotos(studio.Photos)
+
+	// Append new URLs
+	updated := append(current, newURLs...)
+
+	// Convert back to JSON string
+	studio.Photos = utils.PhotosToString(updated)
+
+	// Save
+	return r.db.WithContext(ctx).Save(&studio).Error
 }
 
 // Update updates an existing studio
