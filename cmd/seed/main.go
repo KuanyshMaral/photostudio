@@ -11,6 +11,17 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Стандартный рабочий график
+const defaultWorkingHours = `{
+    "monday": {"open": "09:00", "close": "21:00"},
+    "tuesday": {"open": "09:00", "close": "21:00"},
+    "wednesday": {"open": "09:00", "close": "21:00"},
+    "thursday": {"open": "09:00", "close": "21:00"},
+    "friday": {"open": "09:00", "close": "21:00"},
+    "saturday": {"open": "10:00", "close": "20:00"},
+    "sunday": {"open": "10:00", "close": "18:00"}
+}`
+
 func main() {
 	// Use modern approach: create a new source and rand instance
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -84,6 +95,43 @@ func main() {
 	for i := range studioOwners {
 		db.Create(&studioOwners[i])
 	}
+
+	// В секции создания owners добавить PENDING owner:
+	pendingOwner := domain.User{
+		Email:         "pending@studio.kz",
+		PasswordHash:  hashPassword("pending123"),
+		Name:          "Pending Owner", // Using Name field instead of FirstName/LastName
+		Phone:         "+77779999999",
+		Role:          domain.RoleStudioOwner,
+		StudioStatus:  domain.StatusPending, // ВАЖНО: pending!
+		EmailVerified: true,
+	}
+	db.Create(&pendingOwner)
+	fmt.Println("Created pending owner:", pendingOwner.Email)
+	// Создать StudioOwner запись
+	pendingStudioOwner := domain.StudioOwner{
+		UserID:      pendingOwner.ID,
+		CompanyName: "Новая Студия",
+		BIN:         "999999999999",
+	}
+	db.Create(&pendingStudioOwner)
+	// Создать студию для этого pending owner
+	pendingStudio := domain.Studio{
+		OwnerID:     pendingOwner.ID,
+		Name:        "Студия на модерации",
+		Description: "Новая студия ожидает проверки администратором",
+		Address:     "ул. Новая 1",
+		City:        "Almaty",
+		District:    "Алмалинский",
+		Phone:       "+77779999999",
+		Email:       "pending@studio.kz",
+	}
+	db.Create(&pendingStudio)
+	// Set working hours using raw SQL since WorkingHours field has gorm:"-"
+	db.Exec("UPDATE studios SET working_hours = ? WHERE id = ?",
+		`{"monday":{"open":"10:00","close":"20:00"},"tuesday":{"open":"10:00","close":"20:00"},"wednesday":{"open":"10:00","close":"20:00"},"thursday":{"open":"10:00","close":"20:00"},"friday":{"open":"10:00","close":"20:00"},"saturday":{"open":"11:00","close":"18:00"},"sunday":{"open":"11:00","close":"18:00"}}`,
+		pendingStudio.ID)
+	fmt.Println("Created pending studio:", pendingStudio.Name)
 
 	// ================= CLIENTS =================
 	clients := []domain.User{}
@@ -171,6 +219,12 @@ func main() {
 		db.Create(&studios[i])
 	}
 	log.Printf("  ✅ %d Studios created", len(studios))
+
+	// Set working hours for all studios
+	for i := range studios {
+		db.Exec("UPDATE studios SET working_hours = ? WHERE id = ?", defaultWorkingHours, studios[i].ID)
+	}
+	log.Println("  ✅ Working hours set for all studios")
 
 	// ================= ROOMS =================
 	log.Println("🏠 Creating rooms...")

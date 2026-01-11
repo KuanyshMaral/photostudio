@@ -81,13 +81,6 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 		Notes:         req.Notes,
 	}
 
-	if s.notifs != nil {
-		ownerID, _, err := s.bookings.GetStudioOwnerForBooking(ctx, b.ID)
-		if err == nil && ownerID > 0 {
-			_ = s.notifs.NotifyBookingCreated(ctx, ownerID, b.ID, b.StudioID, b.RoomID, b.StartTime)
-		}
-	}
-
 	if err := s.bookings.Create(ctx, b); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			if pgErr.Code == "23505" && pgErr.ConstraintName == "idx_no_overbooking" {
@@ -95,6 +88,14 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 			}
 		}
 		return nil, err
+	}
+
+	// уведомление владельцу студии о новом бронировании (после Create, когда b.ID уже известен)
+	if s.notifs != nil {
+		ownerID, _, err := s.bookings.GetStudioOwnerForBooking(ctx, b.ID)
+		if err == nil && ownerID > 0 {
+			_ = s.notifs.NotifyBookingCreated(ctx, ownerID, b.ID, b.StudioID, b.RoomID, b.StartTime)
+		}
 	}
 
 	return b, nil
@@ -107,12 +108,29 @@ func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr
 		return nil, ErrValidation
 	}
 	day = time.Date(day.Year(), day.Month(), day.Day(), 0, 0, 0, 0, time.UTC)
-
 	whRaw, err := s.rooms.GetStudioWorkingHoursByRoomID(ctx, roomID)
 	if err != nil {
 		return nil, err
 	}
+	// ДОБАВИТЬ: Fallback если working_hours пустой
+	if len(whRaw) == 0 {
+		// Дефолтный график: 09:00-21:00
+		open := time.Date(day.Year(), day.Month(), day.Day(), 9, 0, 0, 0, time.UTC)
+		close := time.Date(day.Year(), day.Month(), day.Day(), 21, 0, 0, 0, time.UTC)
 
+		busyRepo, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, open, close)
+		if err != nil {
+			return nil, err
+		}
+
+		busy := make([]TimeSlot, 0, len(busyRepo))
+		for _, b := range busyRepo {
+			busy = append(busy, TimeSlot{Start: b.Start, End: b.End})
+		}
+
+		return subtractBusy(open, close, busy), nil
+	}
+	// Остальной код без изменений...
 	open, close, ok, err := extractOpenCloseUTC(whRaw, day)
 	if err != nil {
 		return nil, err
@@ -120,17 +138,14 @@ func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr
 	if !ok || !close.After(open) {
 		return []TimeSlot{}, nil
 	}
-
 	busyRepo, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, open, close)
 	if err != nil {
 		return nil, err
 	}
-
 	busy := make([]TimeSlot, 0, len(busyRepo))
 	for _, b := range busyRepo {
 		busy = append(busy, TimeSlot{Start: b.Start, End: b.End})
 	}
-
 	return subtractBusy(open, close, busy), nil
 }
 
