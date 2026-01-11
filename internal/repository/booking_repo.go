@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"photostudio/internal/domain"
@@ -82,14 +83,25 @@ func toBookingModel(b *domain.Booking) bookingModel {
 	}
 }
 
-func (r *BookingRepository) Create(ctx context.Context, b *domain.Booking) error {
-	m := toBookingModel(b)
-	tx := r.db.WithContext(ctx).Create(&m)
-	if tx.Error != nil {
-		return tx.Error
+func (r *BookingRepository) Create(ctx context.Context, booking *domain.Booking) error {
+	// Проверяем пересечение времени (работает на обоих БД)
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&domain.Booking{}).
+		Where("room_id = ?", booking.RoomID).
+		Where("status NOT IN ('cancelled', 'rejected')").
+		Where("start_time < ? AND end_time > ?", booking.EndTime, booking.StartTime).
+		Count(&count).Error
+
+	if err != nil {
+		return err
 	}
-	*b = *toDomainBooking(m)
-	return nil
+
+	if count > 0 {
+		return errors.New("time slot is already booked")
+	}
+
+	return r.db.WithContext(ctx).Create(booking).Error
 }
 
 func (r *BookingRepository) GetByID(ctx context.Context, id int64) (*domain.Booking, error) {
@@ -101,18 +113,22 @@ func (r *BookingRepository) GetByID(ctx context.Context, id int64) (*domain.Book
 	return toDomainBooking(m), nil
 }
 
+// CheckAvailability - Fixed for SQLite compatibility (Problem #B3)
+// Uses standard time overlap check instead of PostgreSQL-specific tstzrange
 func (r *BookingRepository) CheckAvailability(ctx context.Context, roomID int64, start, end time.Time) (bool, error) {
 	var cnt int64
-	q := `
-SELECT COUNT(1)
-FROM bookings
-WHERE room_id = ?
-  AND status NOT IN ('cancelled')
-  AND tstzrange(start_time, end_time, '[)') && tstzrange(?, ?, '[)')
-`
-	tx := r.db.WithContext(ctx).Raw(q, roomID, start, end).Scan(&cnt)
-	if tx.Error != nil {
-		return false, tx.Error
+
+	// SQLite-compatible time overlap check
+	// Two time ranges overlap if: start1 < end2 AND end1 > start2
+	err := r.db.WithContext(ctx).
+		Model(&bookingModel{}).
+		Where("room_id = ?", roomID).
+		Where("status NOT IN ('cancelled')").
+		Where("start_time < ? AND end_time > ?", end, start).
+		Count(&cnt).Error
+
+	if err != nil {
+		return false, err
 	}
 	return cnt == 0, nil
 }
@@ -122,19 +138,22 @@ type BusySlot struct {
 	End   time.Time `gorm:"column:end"`
 }
 
+// GetBusySlotsForRoom - Fixed for SQLite compatibility (Problem #B3)
 func (r *BookingRepository) GetBusySlotsForRoom(ctx context.Context, roomID int64, from, to time.Time) ([]BusySlot, error) {
 	var rows []BusySlot
-	q := `
-SELECT start_time AS start, end_time AS end
-FROM bookings
-WHERE room_id = ?
-  AND status NOT IN ('cancelled')
-  AND tstzrange(start_time, end_time, '[)') && tstzrange(?, ?, '[)')
-ORDER BY start_time
-`
-	tx := r.db.WithContext(ctx).Raw(q, roomID, from, to).Scan(&rows)
-	if tx.Error != nil {
-		return nil, tx.Error
+
+	// SQLite-compatible query
+	err := r.db.WithContext(ctx).
+		Model(&bookingModel{}).
+		Select("start_time AS start, end_time AS end").
+		Where("room_id = ?", roomID).
+		Where("status NOT IN ('cancelled')").
+		Where("start_time < ? AND end_time > ?", to, from).
+		Order("start_time").
+		Scan(&rows).Error
+
+	if err != nil {
+		return nil, err
 	}
 	return rows, nil
 }

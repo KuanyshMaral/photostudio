@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"photostudio/internal/pkg/utils"
+	"time"
 
 	"photostudio/internal/domain"
 
@@ -44,32 +45,34 @@ func (r *StudioRepository) GetAll(
 		q = q.Where("city = ?", f.City)
 	}
 
-	// If we need to filter by price or room type, join with rooms table
+	// Use subquery instead of JOIN for SQLite compatibility
+	// This fixes Problem #B2: SQLite doesn't support complex JOINs well
 	if f.MinPrice > 0 || f.MaxPrice > 0 || f.RoomType != "" {
-		q = q.Joins("JOIN rooms ON rooms.studio_id = studios.id AND rooms.is_active = true")
+		subQuery := r.db.Model(&domain.Room{}).
+			Select("studio_id").
+			Where("is_active = true")
+
+		if f.MinPrice > 0 {
+			subQuery = subQuery.Where("price_per_hour_min >= ?", f.MinPrice)
+		}
+
+		if f.MaxPrice > 0 {
+			subQuery = subQuery.Where("price_per_hour_min <= ?", f.MaxPrice)
+		}
+
+		if f.RoomType != "" {
+			subQuery = subQuery.Where("room_type = ?", f.RoomType)
+		}
+
+		q = q.Where("id IN (?)", subQuery)
 	}
 
-	// Filter by minimum price
-	if f.MinPrice > 0 {
-		q = q.Where("rooms.price_per_hour_min >= ?", f.MinPrice)
-	}
+	// IMPORTANT: Clone query before counting to avoid Count modifying the query
+	countQuery := q.Session(&gorm.Session{})
+	countQuery.Count(&total)
 
-	// Filter by maximum price
-	if f.MaxPrice > 0 {
-		q = q.Where("rooms.price_per_hour_min <= ?", f.MaxPrice)
-	}
-
-	// Filter by room type
-	if f.RoomType != "" {
-		q = q.Where("rooms.room_type = ?", f.RoomType)
-	}
-
-	// Count total before pagination
-	q.Count(&total)
-
-	// Apply pagination and load relations
+	// Apply pagination and load relations to original query
 	err := q.
-		Distinct("studios.*").
 		Preload("Rooms", "is_active = true").
 		Preload("Rooms.Equipment").
 		Limit(f.Limit).
@@ -150,7 +153,7 @@ func (r *StudioRepository) Delete(ctx context.Context, id int64) error {
 	return r.db.WithContext(ctx).
 		Model(&domain.Studio{}).
 		Where("id = ?", id).
-		Update("deleted_at", gorm.Expr("NOW()")).Error
+		Update("deleted_at", time.Now()).Error
 }
 
 func (r *StudioRepository) DB() *gorm.DB {
