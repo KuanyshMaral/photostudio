@@ -1,0 +1,2 @@
+ALTER TABLE studios
+DROP COLUMN IF EXISTS photos;
