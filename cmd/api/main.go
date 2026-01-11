@@ -78,7 +78,6 @@ func main() {
 
 	notificationRepo := repository.NewNotificationRepository(db)
 
-
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
@@ -95,7 +94,7 @@ func main() {
 	notificationService := notification.NewService(notificationRepo)
 	notificationHandler := notification.NewHandler(notificationService)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, nil)
+	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
