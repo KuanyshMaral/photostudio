@@ -20,6 +20,6 @@ type Notification struct {
 	Title     string           `json:"title"`
 	Message   string           `json:"message,omitempty"`
 	IsRead    bool             `json:"is_read"`
-	Data      any              `json:"data,omitempty"`
+	Data      any              `json:"data,omitempty" gorm:"serializer:json"`
 	CreatedAt time.Time        `json:"created_at"`
 }
