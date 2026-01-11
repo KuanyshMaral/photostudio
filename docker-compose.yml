@@ -1,29 +1,37 @@
-version: '3.8'
+version: "3.8"
 
 services:
-#  postgres:
-#    image: postgres:15-alpine
-#    container_name: studiobooking-postgres
-#    environment:
-#      POSTGRES_USER: postgres
-#      POSTGRES_PASSWORD: postgres
-#      POSTGRES_DB: studiobooking
-#    ports:
-#      - "5444:5432"
-#    volumes:
-#      - postgres_data:/var/lib/postgresql/data
-#    restart: unless-stopped
+  postgres:
+    image: postgres:15-alpine
+    container_name: photostudio_db
+    environment:
+      POSTGRES_USER: photostudio
+      POSTGRES_PASSWORD: photostudio123
+      POSTGRES_DB: photostudio
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U photostudio -d photostudio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build: .
+    container_name: photostudio_api
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "3001:3001"
     environment:
-      - DATABASE_URL=studio.db
+      - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
       - JWT_SECRET=docker_dev_secret_change_in_production
       - PORT=3001
       - ENV=development
     volumes:
-      - ./studio.db:/app/studio.db
       - ./uploads:/app/uploads
 
 volumes:

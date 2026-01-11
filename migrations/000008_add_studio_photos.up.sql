@@ -1,0 +1,2 @@
+ALTER TABLE studios
+    ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'::jsonb;
