@@ -4,35 +4,25 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"photostudio/internal/database"
-	"photostudio/internal/domain"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	_ "gorm.io/gorm"
+	"photostudio/internal/database"
+	"photostudio/internal/domain"
 )
 
-// Стандартный рабочий график
-const defaultWorkingHours = `{
-    "monday": {"open": "09:00", "close": "21:00"},
-    "tuesday": {"open": "09:00", "close": "21:00"},
-    "wednesday": {"open": "09:00", "close": "21:00"},
-    "thursday": {"open": "09:00", "close": "21:00"},
-    "friday": {"open": "09:00", "close": "21:00"},
-    "saturday": {"open": "10:00", "close": "20:00"},
-    "sunday": {"open": "10:00", "close": "18:00"}
-}`
-
 func main() {
-	// Use modern approach: create a new source and rand instance
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rand.Seed(time.Now().UnixNano())
 
 	db, err := database.Connect("studio.db")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("DB connection failed:", err)
 	}
 
-	// Auto migrate all models
-	db.AutoMigrate(
+	// AutoMigrate to ensure schema is up to date
+	log.Println("Running AutoMigrate...")
+	if err := db.AutoMigrate(
 		&domain.User{},
 		&domain.StudioOwner{},
 		&domain.Studio{},
@@ -41,10 +31,13 @@ func main() {
 		&domain.Booking{},
 		&domain.Review{},
 		&domain.Notification{},
-	)
+	); err != nil {
+		log.Fatal("AutoMigrate failed:", err)
+	}
 
-	// Clear existing data (optional - for clean seed)
-	log.Println("🗑️  Clearing existing data...")
+	// Cleanup old data (in safe order to avoid foreign key errors)
+	log.Println("Cleaning old data...")
+	db.Exec("DELETE FROM notifications")
 	db.Exec("DELETE FROM reviews")
 	db.Exec("DELETE FROM bookings")
 	db.Exec("DELETE FROM equipment")
@@ -53,325 +46,163 @@ func main() {
 	db.Exec("DELETE FROM studio_owners")
 	db.Exec("DELETE FROM users")
 
-	log.Println("👤 Creating users...")
+	// ================== USERS ==================
+	log.Println("Creating users...")
 
-	// Helper function to hash passwords
-	hashPassword := func(password string) string {
-		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		return string(hash)
-	}
-
-	// ================= ADMIN =================
+	// Admin
+	adminHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 	admin := domain.User{
-		Email:         "admin@studiobooking.kz",
-		PasswordHash:  hashPassword("admin123"),
+		Email:         "admin@photostudio.kz",
+		PasswordHash:  string(adminHash),
 		Role:          domain.RoleAdmin,
-		Name:          "Администратор Системы",
-		Phone:         "+7 727 100 0000",
+		Name:          "Администратор",
 		EmailVerified: true,
 	}
 	db.Create(&admin)
-	log.Println("  ✅ Admin created")
+	log.Println("Admin created: admin@photostudio.kz / admin123")
 
-	// ================= STUDIO OWNERS =================
-	owners := []domain.User{
-		{Email: "owner1@studio.kz", PasswordHash: hashPassword("owner123"), Role: domain.RoleStudioOwner, Name: "Алексей Петров", Phone: "+7 727 111 1111", StudioStatus: domain.StatusVerified, EmailVerified: true},
-		{Email: "owner2@studio.kz", PasswordHash: hashPassword("owner123"), Role: domain.RoleStudioOwner, Name: "Мария Иванова", Phone: "+7 727 222 2222", StudioStatus: domain.StatusVerified, EmailVerified: true},
-		{Email: "owner3@studio.kz", PasswordHash: hashPassword("owner123"), Role: domain.RoleStudioOwner, Name: "Дмитрий Сидоров", Phone: "+7 727 333 3333", StudioStatus: domain.StatusPending, EmailVerified: true},
-		{Email: "owner4@studio.kz", PasswordHash: hashPassword("owner123"), Role: domain.RoleStudioOwner, Name: "Елена Козлова", Phone: "+7 727 444 4444", StudioStatus: domain.StatusVerified, EmailVerified: true},
-	}
-	for i := range owners {
-		db.Create(&owners[i])
-	}
-	log.Printf("  ✅ %d Studio owners created", len(owners))
-
-	// Create StudioOwner details for verified owners
-	studioOwners := []domain.StudioOwner{
-		{UserID: owners[0].ID, CompanyName: "Light Studio Pro LLC", BIN: "123456789001", ContactPerson: "Алексей Петров"},
-		{UserID: owners[1].ID, CompanyName: "Creative Space LLP", BIN: "123456789002", ContactPerson: "Мария Иванова"},
-		{UserID: owners[2].ID, CompanyName: "Fashion Studio Inc", BIN: "123456789003", ContactPerson: "Дмитрий Сидоров"},
-		{UserID: owners[3].ID, CompanyName: "Portrait Lab LLP", BIN: "123456789004", ContactPerson: "Елена Козлова"},
-	}
-	for i := range studioOwners {
-		db.Create(&studioOwners[i])
-	}
-
-	// В секции создания owners добавить PENDING owner:
-	pendingOwner := domain.User{
-		Email:         "pending@studio.kz",
-		PasswordHash:  hashPassword("pending123"),
-		Name:          "Pending Owner", // Using Name field instead of FirstName/LastName
-		Phone:         "+77779999999",
-		Role:          domain.RoleStudioOwner,
-		StudioStatus:  domain.StatusPending, // ВАЖНО: pending!
-		EmailVerified: true,
-	}
-	db.Create(&pendingOwner)
-	fmt.Println("Created pending owner:", pendingOwner.Email)
-	// Создать StudioOwner запись
-	pendingStudioOwner := domain.StudioOwner{
-		UserID:      pendingOwner.ID,
-		CompanyName: "Новая Студия",
-		BIN:         "999999999999",
-	}
-	db.Create(&pendingStudioOwner)
-	// Создать студию для этого pending owner
-	pendingStudio := domain.Studio{
-		OwnerID:     pendingOwner.ID,
-		Name:        "Студия на модерации",
-		Description: "Новая студия ожидает проверки администратором",
-		Address:     "ул. Новая 1",
-		City:        "Almaty",
-		District:    "Алмалинский",
-		Phone:       "+77779999999",
-		Email:       "pending@studio.kz",
-	}
-	db.Create(&pendingStudio)
-	// Set working hours using raw SQL since WorkingHours field has gorm:"-"
-	db.Exec("UPDATE studios SET working_hours = ? WHERE id = ?",
-		`{"monday":{"open":"10:00","close":"20:00"},"tuesday":{"open":"10:00","close":"20:00"},"wednesday":{"open":"10:00","close":"20:00"},"thursday":{"open":"10:00","close":"20:00"},"friday":{"open":"10:00","close":"20:00"},"saturday":{"open":"11:00","close":"18:00"},"sunday":{"open":"11:00","close":"18:00"}}`,
-		pendingStudio.ID)
-	fmt.Println("Created pending studio:", pendingStudio.Name)
-
-	// ================= CLIENTS =================
+	// Clients (3 users)
 	clients := []domain.User{}
-	clientNames := []string{
-		"Анна Смирнова", "Иван Кузнецов", "Ольга Попова", "Сергей Волков",
-		"Наталья Соколова", "Андрей Лебедев", "Екатерина Морозова", "Павел Новиков",
-		"Татьяна Павлова", "Михаил Семёнов",
-	}
-
-	for i := 1; i <= 10; i++ {
+	clientEmails := []string{"asel@mail.kz", "bekzat@gmail.com", "dina@yandex.kz"}
+	for i, email := range clientEmails {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("client123"), bcrypt.DefaultCost)
 		client := domain.User{
-			Email:         fmt.Sprintf("client%d@test.com", i),
-			PasswordHash:  hashPassword("client123"),
+			Email:         email,
+			PasswordHash:  string(hash),
 			Role:          domain.RoleClient,
-			Name:          clientNames[i-1],
-			Phone:         fmt.Sprintf("+7 777 %03d %02d%02d", rng.Intn(1000), rng.Intn(100), rng.Intn(100)),
+			Name:          fmt.Sprintf("Клиент %d", i+1),
+			Phone:         fmt.Sprintf("+7 777 123 45%02d", i+67),
 			EmailVerified: true,
 		}
 		db.Create(&client)
 		clients = append(clients, client)
 	}
-	log.Printf("  ✅ %d Clients created", len(clients))
 
-	// ================= STUDIOS =================
-	log.Println("🏢 Creating studios...")
-	studios := []domain.Studio{
-		{
-			OwnerID:      owners[0].ID,
-			Name:         "Light Studio Pro",
-			Description:  "Профессиональная фотостудия с современным оборудованием. Три зала различной стилистики для любых видов съёмок.",
-			Address:      "ул. Абая, 150",
-			City:         "Алматы",
-			District:     "Алмалинский",
-			Rating:       4.8,
-			TotalReviews: 0, // Will be updated after reviews
-			Phone:        "+7 727 123 4567",
-		},
-		{
-			OwnerID:      owners[0].ID,
-			Name:         "Creative Space",
-			Description:  "Креативное пространство для фотосессий и видеосъёмок. Лофт стиль, высокие потолки, естественный свет.",
-			Address:      "пр. Достык, 89",
-			City:         "Алматы",
-			District:     "Медеуский",
-			Rating:       4.5,
-			TotalReviews: 0,
-			Phone:        "+7 727 234 5678",
-		},
-		{
-			OwnerID:      owners[1].ID,
-			Name:         "Fashion Studio",
-			Description:  "Специализируемся на fashion съёмках. Профессиональный свет Broncolor, циклорама, гримёрка.",
-			Address:      "ул. Сатпаева, 22",
-			City:         "Алматы",
-			District:     "Бостандыкский",
-			Rating:       4.9,
-			TotalReviews: 0,
-			Phone:        "+7 727 345 6789",
-		},
-		{
-			OwnerID:      owners[3].ID,
-			Name:         "Portrait Lab",
-			Description:  "Уютная студия для портретной съёмки. Естественный свет, минималистичный интерьер.",
-			Address:      "ул. Жандосова, 55",
-			City:         "Алматы",
-			District:     "Ауэзовский",
-			Rating:       4.6,
-			TotalReviews: 0,
-			Phone:        "+7 727 456 7890",
-		},
-		{
-			OwnerID:      owners[3].ID,
-			Name:         "Commercial Studio",
-			Description:  "Большая студия для коммерческих съёмок. Циклорама 6x4м, профессиональное оборудование.",
-			Address:      "ул. Розыбакиева, 100",
-			City:         "Алматы",
-			District:     "Алмалинский",
-			Rating:       4.7,
-			TotalReviews: 0,
-			Phone:        "+7 727 567 8901",
-		},
+	// Studio Owners (3 users)
+	owners := []domain.User{}
+	ownerEmails := []string{"aidar@lightpro.kz", "gulnaz@creativespace.kz", "yerlan@fashionstudio.kz"}
+	for i, email := range ownerEmails {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("owner123"), bcrypt.DefaultCost)
+		owner := domain.User{
+			Email:         email,
+			PasswordHash:  string(hash),
+			Role:          domain.RoleStudioOwner,
+			Name:          fmt.Sprintf("Владелец %d", i+1),
+			StudioStatus:  "verified", // or "pending" for one
+			EmailVerified: true,
+		}
+		db.Create(&owner)
+		owners = append(owners, owner)
+
+		// StudioOwner details
+		db.Create(&domain.StudioOwner{
+			UserID:      owner.ID,
+			CompanyName: fmt.Sprintf("Studio Company %d", i+1),
+			BIN:         fmt.Sprintf("1234567890%02d", i+12),
+		})
 	}
 
-	for i := range studios {
-		db.Create(&studios[i])
+	// ================== STUDIOS ==================
+	log.Println("Creating studios...")
+	studios := make([]domain.Studio, 0, 5)
+	for i := 0; i < 5; i++ {
+		owner := owners[i%len(owners)]
+		studio := domain.Studio{
+			OwnerID:      owner.ID,
+			Name:         fmt.Sprintf("Studio %d Pro", i+1),
+			Description:  "Профессиональная студия с современным оборудованием",
+			Address:      fmt.Sprintf("ул. Тестовая %d", i+100),
+			District:     "Центральный",
+			City:         "Алматы",
+			Rating:       4.0 + rand.Float64()*1.0,
+			TotalReviews: rand.Intn(100),
+			Phone:        fmt.Sprintf("+7 727 000 00%02d", i),
+			Photos:       fmt.Sprintf("[\"/static/studios/test%d.jpg\"]", i),
+			WorkingHours: map[string]domain.DaySchedule{
+				"monday": {Open: "09:00", Close: "22:00"},
+				// add other days if needed
+			},
+		}
+		db.Create(&studio)
+		studios = append(studios, studio)
 	}
-	log.Printf("  ✅ %d Studios created", len(studios))
 
-	// Set working hours for all studios
-	for i := range studios {
-		db.Exec("UPDATE studios SET working_hours = ? WHERE id = ?", defaultWorkingHours, studios[i].ID)
-	}
-	log.Println("  ✅ Working hours set for all studios")
-
-	// ================= ROOMS =================
-	log.Println("🏠 Creating rooms...")
-	roomTypes := []domain.RoomType{domain.RoomFashion, domain.RoomPortrait, domain.RoomCreative, domain.RoomCommercial}
-	roomNames := []string{"Белый зал", "Чёрный зал", "Лофт зал", "Циклорама", "Natural Light"}
-	roomDescriptions := []string{
-		"Просторный зал с профессиональным освещением и белым фоном",
-		"Зал с драматичным освещением и чёрным фоном для контрастных съёмок",
-		"Индустриальный лофт с кирпичными стенами и высокими потолками",
-		"Зал с циклорамой для съёмки продукции и портретов",
-		"Студия с большими окнами и естественным освещением",
-	}
-
-	var rooms []domain.Room
+	// ================== ROOMS ==================
+	log.Println("Creating rooms...")
 	for _, studio := range studios {
-		numRooms := 3
-		for j := 0; j < numRooms; j++ {
+		for j := 1; j <= 3; j++ {
 			room := domain.Room{
 				StudioID:        studio.ID,
-				Name:            roomNames[rng.Intn(len(roomNames))],
-				Description:     roomDescriptions[rng.Intn(len(roomDescriptions))],
-				AreaSqm:         int(float64(30 + rng.Intn(50))),
-				Capacity:        5 + rng.Intn(10),
-				RoomType:        roomTypes[rng.Intn(len(roomTypes))],
-				PricePerHourMin: float64(5000 + rng.Intn(10000)),
+				Name:            fmt.Sprintf("Зал %d", j),
+				Description:     "Комфортный зал для съёмок",
+				AreaSqm:         40 + rand.Intn(40),
+				Capacity:        5 + rand.Intn(10),
+				RoomType:        domain.ValidRoomTypes()[rand.Intn(len(domain.ValidRoomTypes()))],
+				PricePerHourMin: 5000 + float64(rand.Intn(10000)),
 				IsActive:        true,
 			}
 			db.Create(&room)
-			rooms = append(rooms, room)
 		}
 	}
-	log.Printf("  ✅ %d Rooms created", len(rooms))
 
-	// ================= BOOKINGS =================
-	log.Println("📅 Creating bookings...")
-	statuses := []domain.BookingStatus{domain.BookingPending, domain.BookingConfirmed, domain.BookingCompleted}
-	paymentStatuses := []domain.PaymentStatus{domain.PaymentUnpaid, domain.PaymentPaid}
+	// ================== BOOKINGS ==================
+	log.Println("Creating bookings...")
+	for i := 0; i < 10; i++ {
+		studio := studios[rand.Intn(len(studios))]
+		client := clients[rand.Intn(len(clients))]
+		roomID := int64(rand.Intn(3)+1) + studio.ID*3 // approximate room ID for studio
 
-	var bookings []domain.Booking
-	for i := 0; i < 50; i++ {
-		daysOffset := rng.Intn(60) - 30 // от -30 до +30 дней
-		startHour := 10 + rng.Intn(8)   // 10:00 - 17:00
-		duration := 1 + rng.Intn(3)     // 1-3 hours
+		days := rand.Intn(30) - 15 // -15 to +15 days
+		startHour := 9 + rand.Intn(12)
+		duration := 1 + rand.Intn(3)
 
-		startTime := time.Now().AddDate(0, 0, daysOffset).Truncate(24 * time.Hour).Add(time.Duration(startHour) * time.Hour)
-		endTime := startTime.Add(time.Duration(duration) * time.Hour)
-
-		room := rooms[rng.Intn(len(rooms))]
-		client := clients[rng.Intn(len(clients))]
-
-		status := statuses[rng.Intn(len(statuses))]
-		paymentStatus := paymentStatuses[rng.Intn(len(paymentStatuses))]
-
-		// For past bookings - mark as completed and paid
-		if daysOffset < 0 {
-			status = domain.BookingCompleted
-			paymentStatus = domain.PaymentPaid
-		}
-
-		// Get studio ID from room
-		var studioID int64
-		db.Model(&domain.Room{}).Select("studio_id").Where("id = ?", room.ID).Scan(&studioID)
+		start := time.Now().AddDate(0, 0, days).Truncate(24 * time.Hour).Add(time.Duration(startHour) * time.Hour)
+		end := start.Add(time.Duration(duration) * time.Hour)
 
 		booking := domain.Booking{
-			RoomID:        room.ID,
-			StudioID:      studioID,
+			RoomID:        roomID,
+			StudioID:      studio.ID,
 			UserID:        client.ID,
-			StartTime:     startTime,
-			EndTime:       endTime,
-			TotalPrice:    room.PricePerHourMin * float64(duration),
-			Status:        status,
-			PaymentStatus: paymentStatus,
+			StartTime:     start,
+			EndTime:       end,
+			TotalPrice:    float64(duration) * 5000, // approximate price
+			Status:        domain.BookingStatus([]string{"pending", "confirmed", "completed"}[rand.Intn(3)]),
+			PaymentStatus: domain.PaymentStatus([]string{"unpaid", "paid"}[rand.Intn(2)]),
+			Notes:         fmt.Sprintf("Бронирование %d", i+1),
 		}
 		db.Create(&booking)
-		bookings = append(bookings, booking)
-	}
-	log.Printf("  ✅ %d Bookings created", len(bookings))
-
-	// ================= REVIEWS =================
-	log.Println("⭐ Creating reviews...")
-	comments := []string{
-		"Отличная студия! Рекомендую всем фотографам.",
-		"Хорошее освещение, удобная локация. Вернусь ещё.",
-		"Профессиональное оборудование, вежливый персонал.",
-		"Немного тесновато, но в целом неплохо для портретов.",
-		"Супер! Лучшая студия в городе.",
-		"Цена соответствует качеству. Доволен.",
-		"Чисто, аккуратно, всё работает. 5 звёзд.",
-		"Хорошее место для начинающих фотографов.",
-		"Отличный сервис и профессиональный подход.",
-		"Современное оборудование, приятная атмосфера.",
 	}
 
-	var reviews []domain.Review
-	for i := 0; i < 30; i++ {
-		studio := studios[rng.Intn(len(studios))]
-		client := clients[rng.Intn(len(clients))]
-		rating := 3 + rng.Intn(3) // 3-5
+	// ================== REVIEWS ==================
+	log.Println("Creating reviews...")
+	for i := 0; i < 5; i++ {
+		studio := studios[rand.Intn(len(studios))]
+		client := clients[rand.Intn(len(clients))]
 
 		review := domain.Review{
-			StudioID:   studio.ID,
-			UserID:     client.ID,
-			Rating:     rating,
-			Comment:    comments[rng.Intn(len(comments))],
-			IsVerified: true,
-			IsHidden:   false,
+			StudioID: studio.ID,
+			UserID:   client.ID,
+			Rating:   3 + rand.Intn(3),
+			Comment:  fmt.Sprintf("Отличная студия! Рекомендую %d", i+1),
 		}
 		db.Create(&review)
-		reviews = append(reviews, review)
-
-		// Update studio rating and review count
-		db.Exec("UPDATE studios SET total_reviews = total_reviews + 1 WHERE id = ?", studio.ID)
 	}
-	log.Printf("  ✅ %d Reviews created", len(reviews))
 
-	// Update studio ratings based on reviews
-	for _, studio := range studios {
-		var avgRating float64
-		db.Model(&domain.Review{}).Where("studio_id = ?", studio.ID).Select("AVG(rating)").Scan(&avgRating)
-		if avgRating > 0 {
-			db.Model(&domain.Studio{}).Where("id = ?", studio.ID).Update("rating", avgRating)
-		}
+	// ================== NOTIFICATIONS ==================
+	log.Println("Creating notifications...")
+	for _, owner := range owners {
+		db.Create(&domain.Notification{
+			UserID:  owner.ID,
+			Type:    domain.NotifVerificationApproved,
+			Title:   "Студия верифицирована",
+			Message: "Ваша студия готова к работе!",
+			IsRead:  rand.Intn(2) == 0,
+		})
 	}
-	log.Println("  ✅ Studio ratings updated")
 
-	// ================= NOTIFICATIONS =================
-	// Note: Notifications are skipped in seed data to avoid GORM serialization issues
-	// They will be created automatically by the system when events occur
-	log.Println("🔔 Skipping notifications (created by system events)")
-
-	log.Println("\n🎉 SEED COMPLETED SUCCESSFULLY!")
-	log.Println("\n📊 Summary:")
-	log.Printf("  • Users: %d (1 admin + %d owners + %d clients)", 1+len(owners)+len(clients), len(owners), len(clients))
-	log.Printf("  • Studios: %d", len(studios))
-	log.Printf("  • Rooms: %d", len(rooms))
-	log.Printf("  • Bookings: %d", len(bookings))
-	log.Printf("  • Reviews: %d", len(reviews))
-	log.Println("\n🔑 Test Accounts:")
-	log.Println("  Admin:")
-	log.Println("    Email: admin@studiobooking.kz")
-	log.Println("    Password: admin123")
-	log.Println("\n  Studio Owners:")
-	log.Println("    Email: owner1@studio.kz")
-	log.Println("    Email: owner2@studio.kz")
-	log.Println("    Password: owner123")
-	log.Println("\n  Clients:")
-	log.Println("    Email: client1@test.com")
-	log.Println("    Email: client2@test.com")
-	log.Println("    Password: client123")
+	log.Println("🎉 Seed completed!")
+	log.Println("Test accounts:")
+	log.Println("Admin: admin@photostudio.kz / admin123")
+	log.Println("Clients: client1@test.com ... client3@test.com / client123")
+	log.Println("Owners: owner1@studio.kz ... owner3@studio.kz / owner123")
 }

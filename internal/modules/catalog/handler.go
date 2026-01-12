@@ -287,6 +287,8 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 }
 
 /* ---------- PHOTO HANDLERS ---------- */
+
+//UploadStudioPhotos handler for uploading studio photos
 func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 	// 1. Extract studio ID from URL param
 	studioIDStr := c.Param("id")
