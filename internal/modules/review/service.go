@@ -29,34 +29,42 @@ func NewService(reviews *repository.ReviewRepository, bookings BookingGate, stud
 }
 
 func (s *Service) Create(ctx context.Context, userID int64, req CreateReviewRequest) (*domain.Review, error) {
-	if userID <= 0 || req.StudioID <= 0 || req.Rating < 1 || req.Rating > 5 {
-		return nil, ErrInvalidRequest
-	}
-
-	ok, err := s.bookings.HasCompletedBookingForStudio(ctx, userID, req.StudioID)
+	// 1. Проверяем completed booking
+	hasCompleted, err := s.bookings.HasCompletedBookingForStudio(ctx, userID, req.StudioID)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
-		return nil, ErrReviewNotAllowed
+	if !hasCompleted {
+		return nil, errors.New("you must have a completed booking to leave a review")
 	}
 
-	rv := &domain.Review{
-		StudioID:  req.StudioID,
-		UserID:    userID,
-		BookingID: req.BookingID,
-		Rating:    req.Rating,
-		Comment:   req.Comment,
-		Photos:    req.Photos,
-	}
-
-	if err := s.reviews.Create(ctx, rv); err != nil {
-		if isUniqueViolation(err) {
-			return nil, ErrConflict
-		}
+	// 2. Проверяем что отзыв ещё не оставлен
+	exists, err := s.reviews.ExistsByUserAndStudio(ctx, userID, req.StudioID)
+	if err != nil {
 		return nil, err
 	}
-	return rv, nil
+	if exists {
+		return nil, errors.New("you have already reviewed this studio")
+	}
+
+	// 3. Валидация рейтинга
+	if req.Rating < 1 || req.Rating > 5 {
+		return nil, errors.New("rating must be between 1 and 5")
+	}
+
+	// 4. Создаём отзыв
+	review := &domain.Review{
+		UserID:   userID,
+		StudioID: req.StudioID,
+		Rating:   req.Rating,
+		Comment:  req.Comment,
+	}
+
+	if err := s.reviews.Create(ctx, review); err != nil {
+		return nil, err
+	}
+
+	return review, nil
 }
 
 func (s *Service) GetByStudio(ctx context.Context, studioID int64, limit, offset int) ([]domain.Review, error) {

@@ -156,3 +156,12 @@ func (r *ReviewRepository) Update(ctx context.Context, rv *domain.Review) error 
 		Updates(&m)
 	return tx.Error
 }
+
+func (r *ReviewRepository) ExistsByUserAndStudio(ctx context.Context, userID, studioID int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&reviewModel{}).
+		Where("user_id = ? AND studio_id = ?", userID, studioID).
+		Count(&count).Error
+	return count > 0, err
+}

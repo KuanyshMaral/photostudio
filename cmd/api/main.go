@@ -78,7 +78,6 @@ func main() {
 
 	notificationRepo := repository.NewNotificationRepository(db)
 
-
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
@@ -158,6 +157,14 @@ func main() {
 		bookings := protected.Group("/bookings")
 		{
 			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
+		}
+
+		bookingGroup := protected.Group("/bookings")
+		{
+			bookingGroup.PATCH("/:id/confirm", bookingHandler.ConfirmBooking)
+			bookingGroup.PATCH("/:id/cancel", bookingHandler.CancelBooking)
+			bookingGroup.PATCH("/:id/complete", bookingHandler.CompleteBooking)
+			bookingGroup.PATCH("/:id/mark-paid", bookingHandler.MarkBookingPaid)
 		}
 
 		// You can uncomment when ready

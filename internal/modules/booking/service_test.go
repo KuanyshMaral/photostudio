@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"photostudio/internal/domain"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"photostudio/internal/domain"
 )
 
 // Mock repositories
@@ -56,6 +57,27 @@ func (m *MockBookingRepository) GetByID(ctx context.Context, id int64) (*domain.
 	return args.Get(0).(*domain.Booking), args.Error(1)
 }
 
+func (m *MockBookingRepository) GetByStudioID(ctx context.Context, studioID int64) ([]domain.Booking, error) {
+	args := m.Called(ctx, studioID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]domain.Booking), args.Error(1)
+}
+
+func (m *MockBookingRepository) IsBookingOwnedByUser(ctx context.Context, bookingID, ownerID int64) (bool, error) {
+	args := m.Called(ctx, bookingID, ownerID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *MockBookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID int64, status domain.PaymentStatus) (*domain.Booking, error) {
+	args := m.Called(ctx, bookingID, status)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.Booking), args.Error(1)
+}
+
 type MockRoomRepository struct {
 	mock.Mock
 }
@@ -75,6 +97,25 @@ func (m *MockRoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, 
 	return args.Get(0).([]byte), args.Error(1)
 }
 
+type MockNotificationSender struct {
+	mock.Mock
+}
+
+func (m *MockNotificationSender) NotifyBookingCreated(ctx context.Context, ownerUserID, bookingID, studioID, roomID int64, start time.Time) error {
+	args := m.Called(ctx, ownerUserID, bookingID, studioID, roomID, start)
+	return args.Error(0)
+}
+
+func (m *MockNotificationSender) NotifyBookingConfirmed(ctx context.Context, clientUserID, bookingID, studioID int64) error {
+	args := m.Called(ctx, clientUserID, bookingID, studioID)
+	return args.Error(0)
+}
+
+func (m *MockNotificationSender) NotifyBookingCancelled(ctx context.Context, clientUserID, bookingID, studioID int64, reason string) error {
+	args := m.Called(ctx, clientUserID, bookingID, studioID, reason)
+	return args.Error(0)
+}
+
 func TestService_CreateBooking_Success(t *testing.T) {
 	mockBookings := new(MockBookingRepository)
 	mockRooms := new(MockRoomRepository)
@@ -85,8 +126,12 @@ func TestService_CreateBooking_Success(t *testing.T) {
 	end := start.Add(2 * time.Hour)
 	mockBookings.On("CheckAvailability", mock.Anything, int64(10), start, end).Return(true, nil)
 	mockBookings.On("Create", mock.Anything, mock.Anything).Return(nil)
+	// Mock for notification call
+	mockBookings.On("GetStudioOwnerForBooking", mock.Anything, int64(999)).Return(int64(1), "pending", nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	mockNotifs.On("NotifyBookingCreated", mock.Anything, int64(1), int64(999), int64(5), int64(10), mock.Anything).Return(nil)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	req := CreateBookingRequest{
 		RoomID:    10,
@@ -112,7 +157,8 @@ func TestService_CreateBooking_SlotUnavailable(t *testing.T) {
 	mockRooms.On("GetPriceByID", mock.Anything, int64(10)).Return(15000.0, nil)
 	mockBookings.On("CheckAvailability", mock.Anything, int64(10), mock.Anything, mock.Anything).Return(false, nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	req := CreateBookingRequest{
 		RoomID:    10,
@@ -147,7 +193,8 @@ func TestService_GetRoomAvailability_WithBusySlots(t *testing.T) {
 	}
 	mockBookings.On("GetBusySlotsForRoom", mock.Anything, int64(10), mock.Anything, mock.Anything).Return(busy, nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	slots, err := service.GetRoomAvailability(context.Background(), 10, "2026-12-30")
 
@@ -166,7 +213,8 @@ func TestService_GetRoomAvailability_WithBusySlots(t *testing.T) {
 func TestCreateBooking_ValidationError(t *testing.T) {
 	mockBookings := new(MockBookingRepository)
 	mockRooms := new(MockRoomRepository)
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	// end_time раньше start_time
 	start := time.Date(2026, 12, 31, 14, 0, 0, 0, time.UTC)
@@ -200,7 +248,8 @@ func TestCreateBooking_Overbooking(t *testing.T) {
 	// Room is NOT available (already booked)
 	mockBookings.On("CheckAvailability", mock.Anything, int64(10), start, end).Return(false, nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	req := CreateBookingRequest{
 		RoomID:    10,
@@ -235,7 +284,8 @@ func TestGetRoomAvailability_Success(t *testing.T) {
 	// No busy slots - fully available
 	mockBookings.On("GetBusySlotsForRoom", mock.Anything, int64(10), mock.Anything, mock.Anything).Return([]repository.BusySlot{}, nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	slots, err := service.GetRoomAvailability(context.Background(), 10, "2026-12-30")
 
@@ -252,16 +302,29 @@ func TestUpdateBookingStatus_Success(t *testing.T) {
 
 	bookingID := int64(123)
 	ownerUserID := int64(999)
+	clientUserID := int64(888)
 
 	// Mock: Booking exists and belongs to this owner
 	mockBookings.On("GetStudioOwnerForBooking", mock.Anything, bookingID).Return(ownerUserID, "pending", nil)
-	mockBookings.On("UpdateStatus", mock.Anything, bookingID, "confirmed").Return(nil)
+	// First GetByID for notification
 	mockBookings.On("GetByID", mock.Anything, bookingID).Return(&domain.Booking{
-		ID:     bookingID,
-		Status: domain.BookingConfirmed,
-	}, nil)
+		ID:       bookingID,
+		UserID:   clientUserID,
+		StudioID: int64(5),
+		Status:   domain.BookingPending,
+	}, nil).Once()
+	mockBookings.On("UpdateStatus", mock.Anything, bookingID, "confirmed").Return(nil)
+	// Second GetByID for final return
+	mockBookings.On("GetByID", mock.Anything, bookingID).Return(&domain.Booking{
+		ID:       bookingID,
+		UserID:   clientUserID,
+		StudioID: int64(5),
+		Status:   domain.BookingConfirmed,
+	}, nil).Once()
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	mockNotifs.On("NotifyBookingConfirmed", mock.Anything, clientUserID, bookingID, int64(5)).Return(nil)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	result, err := service.UpdateBookingStatus(context.Background(), bookingID, ownerUserID, string(domain.RoleStudioOwner), "confirmed")
 
@@ -283,7 +346,8 @@ func TestUpdateBookingStatus_Forbidden(t *testing.T) {
 	// Mock: Booking belongs to realOwnerUserID, not unauthorizedUserID
 	mockBookings.On("GetStudioOwnerForBooking", mock.Anything, bookingID).Return(realOwnerUserID, "pending", nil)
 
-	service := NewService(mockBookings, mockRooms)
+	mockNotifs := new(MockNotificationSender)
+	service := NewService(mockBookings, mockRooms, mockNotifs)
 
 	// Unauthorized user tries to update
 	_, err := service.UpdateBookingStatus(context.Background(), bookingID, unauthorizedUserID, string(domain.RoleStudioOwner), "confirmed")
