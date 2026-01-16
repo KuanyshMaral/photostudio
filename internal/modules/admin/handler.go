@@ -21,21 +21,28 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) RegisterRoutes(admin *gin.RouterGroup) {
 	// studios moderation
 	admin.GET("/studios/pending", h.GetPendingStudios)
-	admin.POST("/studios/:id/verify", h.VerifyStudio)
+	admin.POST("/studios/:id/approve", h.ApproveStudio)
 	admin.POST("/studios/:id/reject", h.RejectStudio)
 
 	// statistics
-	admin.GET("/statistics", h.GetStatistics)
+	admin.GET("/stats", h.GetStats)
 
 	// users moderation
 	admin.GET("/users", h.GetUsers)
-	admin.POST("/users/:id/block", h.BlockUser)
-	admin.POST("/users/:id/unblock", h.UnblockUser)
+	admin.PATCH("/users/:id/ban", h.BanUser)
+	admin.PATCH("/users/:id/unban", h.UnbanUser)
 
 	// reviews moderation
 	admin.GET("/reviews", h.GetReviews)
 	admin.POST("/reviews/:id/hide", h.HideReview)
 	admin.POST("/reviews/:id/show", h.ShowReview)
+
+	// Aliases для обратной совместимости
+	admin.POST("/studios/:id/verify", h.ApproveStudio)
+	admin.GET("/statistics", h.GetStats)
+	admin.POST("/users/:id/block", h.BanUser)
+	admin.POST("/users/:id/unblock", h.UnbanUser)
+
 }
 
 func (h *Handler) GetPendingStudios(c *gin.Context) {
@@ -47,20 +54,42 @@ func (h *Handler) GetPendingStudios(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
 	limit := parseIntDefault(c.Query("limit"), 20)
 
-	log.Printf("admin action: GetPendingStudios page=%d limit=%d", page, limit)
-
-	studios, total, err := h.service.GetPendingStudios(c.Request.Context(), page, limit)
+	owners, total, err := h.service.GetPendingStudioOwners(c.Request.Context(), page, limit)
 	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		response.Error(c, http.StatusInternalServerError, "FETCH_ERROR", err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusOK, StudioListResponse{
-		Studios: studios,
-		Total:   total,
-		Page:    page,
-		Limit:   limit,
+	response.Success(c, http.StatusOK, gin.H{
+		"pending_studios": owners,
+		"count":           total,
 	})
+}
+
+func (h *Handler) ApproveStudio(c *gin.Context) {
+	if !isAdmin(c) {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Admin access required")
+		return
+	}
+
+	adminID := c.GetInt64("user_id")
+	if adminID == 0 {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	studioOwnerID, err := parseIDParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio owner ID")
+		return
+	}
+
+	if err := h.service.ApproveStudioOwner(c.Request.Context(), studioOwnerID, adminID); err != nil {
+		response.Error(c, http.StatusBadRequest, "APPROVE_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Studio verified successfully"})
 }
 
 func (h *Handler) VerifyStudio(c *gin.Context) {
@@ -110,27 +139,24 @@ func (h *Handler) RejectStudio(c *gin.Context) {
 		return
 	}
 
-	studioID, err := parseIDParam(c, "id")
+	studioOwnerID, err := parseIDParam(c, "id")
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio owner ID")
 		return
 	}
 
 	var req RejectStudioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", "Reason is required")
 		return
 	}
 
-	log.Printf("admin action: RejectStudio admin_id=%d studio_id=%d reason=%q", adminID, studioID, req.Reason)
-
-	studio, err := h.service.RejectStudio(c.Request.Context(), studioID, adminID, req.Reason)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+	if err := h.service.RejectStudioOwner(c.Request.Context(), studioOwnerID, adminID, req.Reason); err != nil {
+		response.Error(c, http.StatusBadRequest, "REJECT_ERROR", err.Error())
 		return
 	}
 
-	response.Success(c, http.StatusOK, studio)
+	response.Success(c, http.StatusOK, gin.H{"message": "Application rejected"})
 }
 
 func (h *Handler) GetStatistics(c *gin.Context) {
@@ -142,6 +168,21 @@ func (h *Handler) GetStatistics(c *gin.Context) {
 	log.Printf("admin action: GetStatistics")
 
 	stats, err := h.service.GetStatistics(c.Request.Context())
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, stats)
+}
+
+func (h *Handler) GetStats(c *gin.Context) {
+	if !isAdmin(c) {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Admin access required")
+		return
+	}
+
+	stats, err := h.service.GetPlatformStats(c.Request.Context())
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -202,6 +243,52 @@ func (h *Handler) UnblockUser(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, u)
+}
+
+func (h *Handler) BanUser(c *gin.Context) {
+	if !isAdmin(c) {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Admin access required")
+		return
+	}
+
+	userID, err := parseIDParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
+		return
+	}
+
+	var req BlockUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", "Reason is required")
+		return
+	}
+
+	if err := h.service.BanUser(c.Request.Context(), userID, req.Reason); err != nil {
+		response.Error(c, http.StatusBadRequest, "BAN_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "User banned"})
+}
+
+func (h *Handler) UnbanUser(c *gin.Context) {
+	if !isAdmin(c) {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Admin access required")
+		return
+	}
+
+	userID, err := parseIDParam(c, "id")
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
+		return
+	}
+
+	if err := h.service.UnbanUser(c.Request.Context(), userID); err != nil {
+		response.Error(c, http.StatusBadRequest, "UNBAN_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "User unbanned"})
 }
 
 func (h *Handler) GetUsers(c *gin.Context) {

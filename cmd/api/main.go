@@ -74,7 +74,7 @@ func main() {
 	equipmentRepo := repository.NewEquipmentRepository(db)
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
-	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+	studioOwnerRepo := repository.NewOwnerRepository(db)
 
 	notificationRepo := repository.NewNotificationRepository(db)
 
@@ -100,7 +100,7 @@ func main() {
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, notificationService)
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, notificationService)
 	adminHandler := admin.NewHandler(adminService)
 
 	// Router setup
@@ -158,15 +158,7 @@ func main() {
 		{
 			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
 		}
-
-		bookingGroup := protected.Group("/bookings")
-		{
-			bookingGroup.PATCH("/:id/confirm", bookingHandler.ConfirmBooking)
-			bookingGroup.PATCH("/:id/cancel", bookingHandler.CancelBooking)
-			bookingGroup.PATCH("/:id/complete", bookingHandler.CompleteBooking)
-			bookingGroup.PATCH("/:id/mark-paid", bookingHandler.MarkBookingPaid)
-		}
-
+		
 		// You can uncomment when ready
 		rooms := protected.Group("/rooms")
 		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)

@@ -36,3 +36,10 @@ type NotificationSender interface {
 	NotifyVerificationApproved(ctx context.Context, ownerUserID, studioID int64) error
 	NotifyVerificationRejected(ctx context.Context, ownerUserID, studioID int64, reason string) error
 }
+
+type StudioOwnerRepository interface {
+	FindByID(ctx context.Context, id int64) (*domain.StudioOwner, error)
+	Update(ctx context.Context, owner *domain.StudioOwner) error
+	FindPendingPaginated(ctx context.Context, offset, limit int) ([]domain.PendingStudioOwnerRow, int64, error)
+	DB() *gorm.DB
+}
