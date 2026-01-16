@@ -3,6 +3,7 @@ package booking
 import (
 	"errors"
 	"net/http"
+	"photostudio/internal/domain"
 	"photostudio/internal/pkg/response"
 	"strconv"
 
@@ -28,6 +29,12 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 
 	// Task 3.3 (requires auth middleware that sets user_id and role in context)
 	rg.PATCH("/bookings/:id/status", h.UpdateBookingStatus)
+
+	// Task 3.1: Booking Status Workflow endpoints
+	rg.PATCH("/bookings/:id/confirm", h.ConfirmBooking)
+	rg.PATCH("/bookings/:id/cancel", h.CancelBooking)
+	rg.PATCH("/bookings/:id/complete", h.CompleteBooking)
+	rg.PATCH("/bookings/:id/mark-paid", h.MarkBookingPaid)
 }
 
 func (h *Handler) CreateBooking(c *gin.Context) {
@@ -88,6 +95,7 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 }
 
 // GetRoomAvailability Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD
+// Now returns booked slots in addition to available slots
 func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || roomID <= 0 {
@@ -107,7 +115,7 @@ func (h *Handler) GetRoomAvailability(c *gin.Context) {
 		return
 	}
 
-	slots, err := h.service.GetRoomAvailability(c.Request.Context(), roomID, date)
+	availability, err := h.service.GetAvailability(c.Request.Context(), roomID, date)
 	if err != nil {
 		code := "INTERNAL_ERROR"
 		msg := "Failed to get availability"
@@ -123,11 +131,7 @@ func (h *Handler) GetRoomAvailability(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"room_id":         roomID,
-			"date":            date,
-			"available_slots": slots,
-		},
+		"data":    availability,
 	})
 }
 
@@ -323,4 +327,115 @@ func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 			},
 		},
 	})
+}
+
+// ConfirmBooking PATCH /api/v1/bookings/:id/confirm (only studio owner)
+func (h *Handler) ConfirmBooking(c *gin.Context) {
+	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	userID := c.GetInt64("user_id")
+
+	// Проверяем что пользователь — владелец студии
+	isOwner, err := h.service.IsBookingStudioOwner(c.Request.Context(), userID, bookingID)
+	if err != nil || !isOwner {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Only studio owner can confirm")
+		return
+	}
+
+	if err := h.service.UpdateStatus(c.Request.Context(), bookingID, "confirmed"); err != nil {
+		response.Error(c, http.StatusBadRequest, "UPDATE_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Booking confirmed"})
+}
+
+// CancelBooking PATCH /api/v1/bookings/:id/cancel (client or owner)
+func (h *Handler) CancelBooking(c *gin.Context) {
+	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	userID := c.GetInt64("user_id")
+
+	booking, err := h.service.GetByID(c.Request.Context(), bookingID)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "Booking not found")
+		return
+	}
+
+	// Проверяем права: либо владелец брони, либо владелец студии
+	if booking.UserID != userID {
+		isOwner, _ := h.service.IsBookingStudioOwner(c.Request.Context(), userID, bookingID)
+		if !isOwner {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "Cannot cancel this booking")
+			return
+		}
+	}
+
+	// Нельзя отменить уже завершённую бронь
+	if booking.Status == "completed" {
+		response.Error(c, http.StatusBadRequest, "INVALID_STATUS", "Cannot cancel completed booking")
+		return
+	}
+
+	h.service.UpdateStatus(c.Request.Context(), bookingID, "cancelled")
+	response.Success(c, http.StatusOK, gin.H{"message": "Booking cancelled"})
+}
+
+// CompleteBooking PATCH /api/v1/bookings/:id/complete (only owner)
+// Аналогично confirm, но меняем на "completed"
+// Дополнительная проверка: статус должен быть "confirmed"
+func (h *Handler) CompleteBooking(c *gin.Context) {
+	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	userID := c.GetInt64("user_id")
+
+	// Проверяем что пользователь — владелец студии
+	isOwner, err := h.service.IsBookingStudioOwner(c.Request.Context(), userID, bookingID)
+	if err != nil || !isOwner {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Only studio owner can complete")
+		return
+	}
+
+	// Дополнительная проверка: статус должен быть "confirmed"
+	booking, err := h.service.GetByID(c.Request.Context(), bookingID)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "Booking not found")
+		return
+	}
+
+	if booking.Status != "confirmed" {
+		response.Error(c, http.StatusBadRequest, "INVALID_STATUS", "Can only complete confirmed bookings")
+		return
+	}
+
+	if err := h.service.UpdateStatus(c.Request.Context(), bookingID, "completed"); err != nil {
+		response.Error(c, http.StatusBadRequest, "UPDATE_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Booking completed"})
+}
+
+// MarkBookingPaid PATCH /api/v1/bookings/:id/mark-paid (only owner)
+func (h *Handler) MarkBookingPaid(c *gin.Context) {
+	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		return
+	}
+
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Missing auth")
+		return
+	}
+
+	b, err := h.service.UpdatePaymentStatus(c.Request.Context(), bookingID, userID, domain.PaymentPaid)
+	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You cannot update this booking")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to update payment status")
+		return
+	}
+
+	response.Success(c, http.StatusOK, b)
 }
