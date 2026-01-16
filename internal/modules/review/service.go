@@ -54,10 +54,12 @@ func (s *Service) Create(ctx context.Context, userID int64, req CreateReviewRequ
 
 	// 4. Создаём отзыв
 	review := &domain.Review{
-		UserID:   userID,
-		StudioID: req.StudioID,
-		Rating:   req.Rating,
-		Comment:  req.Comment,
+		UserID:    userID,
+		StudioID:  req.StudioID,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
+		Photos:    req.Photos,
+		BookingID: req.BookingID,
 	}
 
 	if err := s.reviews.Create(ctx, review); err != nil {
