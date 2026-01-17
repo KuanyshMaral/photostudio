@@ -145,6 +145,29 @@ func (m *MockReviewRepository) Update(_ context.Context, _ *domain.Review) error
 	return nil
 }
 
+/* -------- StudioOwnerRepository -------- */
+
+type MockStudioOwnerRepository struct {
+	mock.Mock
+	db *gorm.DB
+}
+
+func (m *MockStudioOwnerRepository) DB() *gorm.DB {
+	return m.db
+}
+
+func (m *MockStudioOwnerRepository) FindByID(_ context.Context, _ int64) (*domain.StudioOwner, error) {
+	return nil, nil
+}
+
+func (m *MockStudioOwnerRepository) Update(_ context.Context, _ *domain.StudioOwner) error {
+	return nil
+}
+
+func (m *MockStudioOwnerRepository) FindPendingPaginated(_ context.Context, _ int, _ int) ([]domain.PendingStudioOwnerRow, int64, error) {
+	return nil, 0, nil
+}
+
 /* ==================== SQLITE TEST DB ==================== */
 
 func testDB(t *testing.T) *gorm.DB {
@@ -162,6 +185,7 @@ func testDB(t *testing.T) *gorm.DB {
 		&domain.Studio{},
 		&domain.Booking{},
 		&domain.Review{},
+		&domain.StudioOwner{},
 	)
 
 	return db
@@ -196,6 +220,8 @@ func TestVerifyStudio_Success(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
+		&MockStudioOwnerRepository{},
+		nil,
 	)
 
 	res, err := service.VerifyStudio(ctx, 1, 100, "OK")
@@ -218,6 +244,8 @@ func TestVerifyStudio_NotFound(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
+		&MockStudioOwnerRepository{},
+		nil,
 	)
 
 	res, err := service.VerifyStudio(ctx, 999, 1, "OK")
@@ -253,6 +281,8 @@ func TestRejectStudio_Success(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
+		&MockStudioOwnerRepository{},
+		nil,
 	)
 
 	res, err := service.RejectStudio(ctx, 1, 1, "Invalid docs")
@@ -272,7 +302,7 @@ func TestGetStatistics_Success(t *testing.T) {
 	mockBooking := &MockBookingRepository{db: db}
 	mockReview := new(MockReviewRepository)
 
-	service := NewService(mockUser, mockStudio, mockBooking, mockReview)
+	service := NewService(mockUser, mockStudio, mockBooking, mockReview, &MockStudioOwnerRepository{db: db}, nil)
 
 	stats, err := service.GetStatistics(ctx)
 

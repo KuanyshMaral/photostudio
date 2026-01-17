@@ -12,11 +12,12 @@ import (
 )
 
 type Service struct {
-	userRepo    UserRepository
-	studioRepo  StudioRepository
-	bookingRepo BookingRepository
-	reviewRepo  ReviewRepository
-	notifs      NotificationSender
+	userRepo        UserRepository
+	studioRepo      StudioRepository
+	bookingRepo     BookingRepository
+	reviewRepo      ReviewRepository
+	studioOwnerRepo StudioOwnerRepository
+	notifs          NotificationSender
 }
 
 func NewService(
@@ -24,18 +25,123 @@ func NewService(
 	studioRepo StudioRepository,
 	bookingRepo BookingRepository,
 	reviewRepo ReviewRepository,
+	studioOwnerRepo StudioOwnerRepository,
 	notifs NotificationSender,
 ) *Service {
 	return &Service{
-		userRepo:    userRepo,
-		studioRepo:  studioRepo,
-		bookingRepo: bookingRepo,
-		reviewRepo:  reviewRepo,
-		notifs:      notifs,
+		userRepo:        userRepo,
+		studioRepo:      studioRepo,
+		bookingRepo:     bookingRepo,
+		reviewRepo:      reviewRepo,
+		studioOwnerRepo: studioOwnerRepo,
+		notifs:          notifs,
 	}
 }
 
 // -------------------- Studios --------------------
+
+func (s *Service) GetPendingStudioOwners(ctx context.Context, page, limit int) ([]PendingStudioDTO, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	rows, total, err := s.studioOwnerRepo.FindPendingPaginated(ctx, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	out := make([]PendingStudioDTO, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, PendingStudioDTO{
+			ID:          r.ID,
+			UserID:      r.UserID,
+			BIN:         r.BIN,
+			CompanyName: r.CompanyName,
+			Status:      r.Status,
+			CreatedAt:   r.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	return out, total, nil
+}
+
+func (s *Service) ApproveStudioOwner(ctx context.Context, studioOwnerID, adminID int64) error {
+	owner, err := s.studioOwnerRepo.FindByID(ctx, studioOwnerID)
+	if err != nil {
+		return errors.New("studio owner not found")
+	}
+
+	u, err := s.userRepo.GetByID(ctx, owner.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if u.StudioStatus != domain.StatusPending {
+		return errors.New("can only approve pending applications")
+	}
+
+	now := time.Now()
+	u.StudioStatus = domain.StatusVerified
+	if err := s.userRepo.Update(ctx, u); err != nil {
+		return err
+	}
+
+	owner.VerifiedAt = &now
+	owner.VerifiedBy = &adminID
+	owner.RejectedReason = ""
+	if err := s.studioOwnerRepo.Update(ctx, owner); err != nil {
+		return err
+	}
+
+	// уведомления (если реализованы)
+	if s.notifs != nil {
+		_ = s.notifs.NotifyVerificationApproved(ctx, owner.UserID, 0)
+	}
+
+	return nil
+}
+
+func (s *Service) RejectStudioOwner(ctx context.Context, studioOwnerID, adminID int64, reason string) error {
+	if strings.TrimSpace(reason) == "" {
+		return errors.New("reason is required")
+	}
+
+	owner, err := s.studioOwnerRepo.FindByID(ctx, studioOwnerID)
+	if err != nil {
+		return errors.New("studio owner not found")
+	}
+
+	u, err := s.userRepo.GetByID(ctx, owner.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if u.StudioStatus != domain.StatusPending {
+		return errors.New("can only reject pending applications")
+	}
+
+	u.StudioStatus = domain.StatusRejected
+	if err := s.userRepo.Update(ctx, u); err != nil {
+		return err
+	}
+
+	owner.VerifiedAt = nil
+	owner.VerifiedBy = &adminID
+	owner.RejectedReason = reason
+	if err := s.studioOwnerRepo.Update(ctx, owner); err != nil {
+		return err
+	}
+
+	if s.notifs != nil {
+		_ = s.notifs.NotifyVerificationRejected(ctx, owner.UserID, 0, reason)
+	}
+
+	return nil
+}
 
 // GetPendingStudios returns studios with status "pending"
 func (s *Service) GetPendingStudios(ctx context.Context, page, limit int) ([]domain.Studio, int, error) {
@@ -133,6 +239,49 @@ func (s *Service) RejectStudio(ctx context.Context, studioID, adminID int64, rea
 
 // -------------------- Statistics --------------------
 
+func (s *Service) GetPlatformStats(ctx context.Context) (map[string]interface{}, error) {
+	stats := make(map[string]interface{})
+
+	var totalUsers int64
+	if err := s.userRepo.DB().WithContext(ctx).Table("users").Count(&totalUsers).Error; err != nil {
+		return nil, err
+	}
+	stats["total_users"] = totalUsers
+
+	var totalStudios int64
+	if err := s.studioRepo.DB().WithContext(ctx).Table("studios").Where("deleted_at IS NULL").Count(&totalStudios).Error; err != nil {
+		return nil, err
+	}
+	stats["total_studios"] = totalStudios
+
+	var totalBookings int64
+	if err := s.bookingRepo.DB().WithContext(ctx).Table("bookings").Count(&totalBookings).Error; err != nil {
+		return nil, err
+	}
+	stats["total_bookings"] = totalBookings
+
+	var pendingStudios int64
+	if err := s.userRepo.DB().WithContext(ctx).Table("users").Where("studio_status = ?", domain.StatusPending).Count(&pendingStudios).Error; err != nil {
+		return nil, err
+	}
+	stats["pending_studios"] = pendingStudios
+
+	now := time.Now()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+	monthEnd := monthStart.AddDate(0, 1, 0)
+
+	var completedThisMonth int64
+	if err := s.bookingRepo.DB().WithContext(ctx).
+		Table("bookings").
+		Where("status = ? AND updated_at >= ? AND updated_at < ?", domain.BookingCompleted, monthStart, monthEnd).
+		Count(&completedThisMonth).Error; err != nil {
+		return nil, err
+	}
+	stats["completed_bookings_this_month"] = completedThisMonth
+
+	return stats, nil
+}
+
 func (s *Service) GetStatistics(ctx context.Context) (*StatisticsResponse, error) {
 	var totalUsers int64
 	if err := s.userRepo.DB().WithContext(ctx).Table("users").Count(&totalUsers).Error; err != nil {
@@ -162,20 +311,20 @@ func (s *Service) GetStatistics(ctx context.Context) (*StatisticsResponse, error
 	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	end := start.Add(24 * time.Hour)
 
-	var todayBookings int64
+	var completedBookingsThisMonth int64
 	if err := s.bookingRepo.DB().WithContext(ctx).
 		Table("bookings").
 		Where("created_at >= ? AND created_at < ?", start, end).
-		Count(&todayBookings).Error; err != nil {
+		Count(&completedBookingsThisMonth).Error; err != nil {
 		return nil, err
 	}
 
 	return &StatisticsResponse{
-		TotalUsers:     int(totalUsers),
-		TotalStudios:   int(totalStudios),
-		TotalBookings:  int(totalBookings),
-		PendingStudios: int(pendingStudios),
-		TodayBookings:  int(todayBookings),
+		TotalUsers:                 int(totalUsers),
+		TotalStudios:               int(totalStudios),
+		TotalBookings:              int(totalBookings),
+		PendingStudios:             int(pendingStudios),
+		CompletedBookingsThisMonth: int(completedBookingsThisMonth),
 	}, nil
 }
 
@@ -185,6 +334,37 @@ func (s *Service) GetStatistics(ctx context.Context) (*StatisticsResponse, error
 // Поэтому блокировку делаем через StudioStatus = blocked.
 // Это логично для studio_owner, но для client тоже сработает как "global disable flag".
 // Позже можно выделить отдельное поле is_blocked.
+
+func (s *Service) BanUser(ctx context.Context, userID int64, reason string) error {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if u.Role == domain.RoleAdmin {
+		return errors.New("cannot ban admin users")
+	}
+
+	u.StudioStatus = domain.StatusBlocked
+	if err := s.userRepo.Update(ctx, u); err != nil {
+		return err
+	}
+
+	_ = reason // в БД нет поля для сохранения причины — позже можно добавить
+	return nil
+}
+
+func (s *Service) UnbanUser(ctx context.Context, userID int64) error {
+	u, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if u.StudioStatus == domain.StatusBlocked {
+		u.StudioStatus = domain.StatusVerified
+	}
+	return s.userRepo.Update(ctx, u)
+}
 
 func (s *Service) BlockUser(ctx context.Context, userID int64, reason string) (*domain.User, error) {
 	u, err := s.userRepo.GetByID(ctx, userID)

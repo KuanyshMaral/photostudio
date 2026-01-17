@@ -95,7 +95,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	equipmentRepo := repository.NewEquipmentRepository(db)
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
-	studioOwnerRepo := repository.NewStudioOwnerRepository(db)
+	studioOwnerRepo := repository.NewOwnerRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
 
 	// Setup services
@@ -115,7 +115,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 	notificationService := notification.NewService(notificationRepo)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, notificationService)
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, notificationService)
 	adminHandler := admin.NewHandler(adminService)
 
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
