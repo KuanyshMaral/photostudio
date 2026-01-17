@@ -54,3 +54,15 @@ type UpdateStudioRequest struct {
 	WorkingHours domain.WorkingHours `gorm:"type:jsonb" json:"working_hours,omitempty"`
 	District     string              `json:"district,omitempty"`
 }
+
+type UpdateRoomRequest struct {
+	Name            *string   `json:"name,omitempty"`
+	Description     *string   `json:"description,omitempty"`
+	AreaSqm         *int      `json:"area_sqm,omitempty"`
+	Capacity        *int      `json:"capacity,omitempty"`
+	RoomType        *string   `json:"room_type,omitempty"`
+	PricePerHourMin *float64  `json:"price_per_hour_min,omitempty"`
+	PricePerHourMax *float64  `json:"price_per_hour_max,omitempty"`
+	Amenities       *[]string `json:"amenities,omitempty"`
+	Photos          *[]string `json:"photos,omitempty"`
+}

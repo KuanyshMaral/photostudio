@@ -158,12 +158,15 @@ func main() {
 		{
 			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
 		}
-		
+
 		// You can uncomment when ready
 		rooms := protected.Group("/rooms")
 		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
 		rooms.GET("", catalogHandler.GetRooms)        // GET /api/v1/rooms
 		rooms.GET("/:id", catalogHandler.GetRoomByID) // GET /api/v1/rooms/:id
+		rooms.PUT("/:id", ownershipChecker.CheckRoomOwnership(), catalogHandler.UpdateRoom)
+		rooms.DELETE("/:id", ownershipChecker.CheckRoomOwnership(), catalogHandler.DeleteRoom)
+
 	}
 
 	// Static files for uploads

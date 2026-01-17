@@ -2,21 +2,24 @@ package repository
 
 import (
 	"context"
-	"photostudio/internal/pkg/utils"
 	"time"
 
 	"photostudio/internal/domain"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
 type StudioFilters struct {
-	City     string
-	MinPrice float64
-	MaxPrice float64
-	RoomType string
-	Limit    int
-	Offset   int
+	City      string
+	MinPrice  float64
+	MaxPrice  float64
+	RoomType  string
+	Limit     int
+	Offset    int
+	Search    string
+	SortBy    string
+	SortOrder string
 }
 
 type StudioRepository struct {
@@ -66,6 +69,35 @@ func (r *StudioRepository) GetAll(
 
 		q = q.Where("id IN (?)", subQuery)
 	}
+	// Search by name
+	if f.Search != "" {
+		s := strings.ToLower(strings.TrimSpace(f.Search))
+		if s != "" {
+			q = q.Where("LOWER(name) LIKE ?", "%"+s+"%")
+		}
+	}
+
+	// Sorting (whitelist)
+	sortBy := strings.ToLower(strings.TrimSpace(f.SortBy))
+	sortOrder := strings.ToLower(strings.TrimSpace(f.SortOrder))
+	if sortOrder != "asc" && sortOrder != "desc" {
+		sortOrder = "desc"
+	}
+
+	orderExpr := "rating"
+	switch sortBy {
+	case "rating", "":
+		orderExpr = "rating"
+	case "name":
+		orderExpr = "name"
+	case "price":
+		// min room price per studio (works in SQLite + Postgres)
+		orderExpr = "(SELECT MIN(price_per_hour_min) FROM rooms WHERE rooms.studio_id = studios.id AND is_active = true)"
+	default:
+		orderExpr = "rating"
+	}
+
+	q = q.Order(orderExpr + " " + strings.ToUpper(sortOrder))
 
 	// IMPORTANT: Clone query before counting to avoid Count modifying the query
 	countQuery := q.Session(&gorm.Session{})
@@ -123,21 +155,15 @@ func (r *StudioRepository) Create(ctx context.Context, studio *domain.Studio) er
 func (r *StudioRepository) AddPhotos(ctx context.Context, id int64, newURLs []string) error {
 	var studio domain.Studio
 
-	// Load current
+	// Load current studio
 	if err := r.db.WithContext(ctx).
 		Where("id = ?", id).
 		First(&studio).Error; err != nil {
 		return err
 	}
 
-	// Convert current DB string to slice
-	current := utils.StringToPhotos(studio.Photos)
-
-	// Append new URLs
-	updated := append(current, newURLs...)
-
-	// Convert back to JSON string
-	studio.Photos = utils.PhotosToString(updated)
+	// Photos is now []string — append directly
+	studio.Photos = append(studio.Photos, newURLs...)
 
 	// Save
 	return r.db.WithContext(ctx).Save(&studio).Error

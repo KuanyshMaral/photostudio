@@ -87,6 +87,53 @@ func (s *Service) UpdateStudio(ctx context.Context, userID, studioID int64, req 
 func (s *Service) GetStudiosByOwner(ctx context.Context, ownerID int64) ([]domain.Studio, error) {
 	return s.studioRepo.GetByOwnerID(ctx, ownerID)
 }
+func (s *Service) UpdateRoom(ctx context.Context, roomID int64, req UpdateRoomRequest) (*domain.Room, error) {
+	room, err := s.roomRepo.GetByID(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Name != nil {
+		room.Name = *req.Name
+	}
+	if req.Description != nil {
+		room.Description = *req.Description
+	}
+	if req.AreaSqm != nil && *req.AreaSqm > 0 {
+		room.AreaSqm = *req.AreaSqm
+	}
+	if req.Capacity != nil && *req.Capacity > 0 {
+		room.Capacity = *req.Capacity
+	}
+	if req.RoomType != nil {
+		rt, err := domain.ParseRoomType(*req.RoomType)
+		if err != nil {
+			return nil, ErrInvalidRoomType
+		}
+		room.RoomType = rt
+	}
+	if req.PricePerHourMin != nil && *req.PricePerHourMin >= 0 {
+		room.PricePerHourMin = *req.PricePerHourMin
+	}
+	if req.PricePerHourMax != nil {
+		room.PricePerHourMax = req.PricePerHourMax
+	}
+	if req.Amenities != nil {
+		room.Amenities = *req.Amenities
+	}
+	if req.Photos != nil {
+		room.Photos = *req.Photos
+	}
+
+	if err := s.roomRepo.Update(ctx, room); err != nil {
+		return nil, err
+	}
+	return room, nil
+}
+
+func (s *Service) DeleteRoom(ctx context.Context, roomID int64) error {
+	return s.roomRepo.SetActive(ctx, roomID, false)
+}
 
 /* ---------- ROOMS ---------- */
 
@@ -173,6 +220,15 @@ func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, u
 		return ErrForbidden
 	}
 
-	// Use the repository method — it handles array concatenation safely
+	// LIMIT
+	existing := len(studio.Photos)
+	space := 10 - existing
+	if space <= 0 {
+		return errors.New("photo limit reached (max 10)")
+	}
+	if len(urls) > space {
+		urls = urls[:space]
+	}
+
 	return s.studioRepo.AddPhotos(ctx, studioID, urls)
 }
