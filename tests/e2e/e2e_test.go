@@ -1187,6 +1187,129 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		log.Printf("✅ POST /reviews/:id/response - SUCCESS")
 	})
 }
+func TestCatalog_FilteringStudios(t *testing.T) {
+	suite := setupTestSuite(t)
+	defer suite.testCleanup()
+
+	// Создаём owners напрямую в БД (для foreign key OwnerID)
+	owner1 := domain.User{
+		Email:         "filter_owner1@test.com",
+		PasswordHash:  "$2a$10$dummy",
+		Role:          domain.RoleStudioOwner,
+		Name:          "Owner1",
+		EmailVerified: true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+	owner2 := domain.User{
+		Email:         "filter_owner2@test.com",
+		PasswordHash:  "$2a$10$dummy",
+		Role:          domain.RoleStudioOwner,
+		Name:          "Owner2",
+		EmailVerified: true,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+
+	require.NoError(t, suite.db.Create(&owner1).Error)
+	require.NoError(t, suite.db.Create(&owner2).Error)
+
+	// Студии
+	s1 := domain.Studio{
+		OwnerID:   owner1.ID,
+		Name:      "Loft Алматы",
+		City:      "Алматы",
+		Address:   "Addr 1",
+		Rating:    4.9,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	s2 := domain.Studio{
+		OwnerID:   owner2.ID,
+		Name:      "Portrait Astana",
+		City:      "Астана",
+		Address:   "Addr 2",
+		Rating:    4.0,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+	s3 := domain.Studio{
+		OwnerID:   owner1.ID,
+		Name:      "Cheap Алматы",
+		City:      "Алматы",
+		Address:   "Addr 3",
+		Rating:    3.0,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	require.NoError(t, suite.db.Create(&s1).Error)
+	require.NoError(t, suite.db.Create(&s2).Error)
+	require.NoError(t, suite.db.Create(&s3).Error)
+
+	// Комнаты (цены/тип/active)
+	r1 := domain.Room{
+		StudioID:        s1.ID,
+		Name:            "Room1",
+		AreaSqm:         10,
+		Capacity:        2,
+		RoomType:        domain.RoomFashion,
+		PricePerHourMin: 12000,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	r2 := domain.Room{
+		StudioID:        s2.ID,
+		Name:            "Room2",
+		AreaSqm:         10,
+		Capacity:        2,
+		RoomType:        domain.RoomPortrait,
+		PricePerHourMin: 8000,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+	r3 := domain.Room{
+		StudioID:        s3.ID,
+		Name:            "Room3",
+		AreaSqm:         10,
+		Capacity:        2,
+		RoomType:        domain.RoomCreative,
+		PricePerHourMin: 4000,
+		IsActive:        true,
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	}
+
+	require.NoError(t, suite.db.Create(&r1).Error)
+	require.NoError(t, suite.db.Create(&r2).Error)
+	require.NoError(t, suite.db.Create(&r3).Error)
+
+	// Запрос: city=Алматы + min_price=5000 + search=loft -> должна остаться только "Loft Алматы"
+	w, err := suite.makeRequest(
+		"GET",
+		"/api/v1/studios?city=Алматы&min_price=5000&search=loft&sort_by=rating&sort_order=desc&page=1&limit=20",
+		nil,
+		"",
+	)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	resp, err := parseResponse(w)
+	require.NoError(t, err)
+	require.True(t, resp.Success)
+
+	data := resp.DataMap()
+	require.NotNil(t, data)
+
+	studiosRaw, ok := data["studios"].([]interface{})
+	require.True(t, ok)
+	require.Len(t, studiosRaw, 1)
+
+	st0 := studiosRaw[0].(map[string]interface{})
+	require.Equal(t, "Loft Алматы", st0["name"])
+}
 
 // =============================================================================
 // Main Test Runner

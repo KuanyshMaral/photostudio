@@ -6,10 +6,11 @@ import (
 	"math/rand"
 	"time"
 
-	"golang.org/x/crypto/bcrypt"
-	_ "gorm.io/gorm"
 	"photostudio/internal/database"
 	"photostudio/internal/domain"
+
+	"golang.org/x/crypto/bcrypt"
+	_ "gorm.io/gorm"
 )
 
 func main() {
@@ -117,7 +118,7 @@ func main() {
 			Rating:       4.0 + rand.Float64()*1.0,
 			TotalReviews: rand.Intn(100),
 			Phone:        fmt.Sprintf("+7 727 000 00%02d", i),
-			Photos:       fmt.Sprintf("[\"/static/studios/test%d.jpg\"]", i),
+			Photos:       []string{fmt.Sprintf("/static/studios/test%d.jpg", i)},
 			WorkingHours: map[string]domain.DaySchedule{
 				"monday": {Open: "09:00", Close: "22:00"},
 				// add other days if needed

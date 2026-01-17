@@ -83,6 +83,12 @@ func (r *RoomRepository) GetPriceByID(ctx context.Context, roomID int64) (float6
 	}
 	return price, nil
 }
+func (r *RoomRepository) SetActive(ctx context.Context, id int64, active bool) error {
+	return r.db.WithContext(ctx).
+		Table("rooms").
+		Where("id = ?", id).
+		Update("is_active", active).Error
+}
 
 func (r *RoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) ([]byte, error) {
 	var raw []byte

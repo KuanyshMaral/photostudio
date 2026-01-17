@@ -12,6 +12,7 @@ import (
 
 	"photostudio/internal/domain"
 	"photostudio/internal/repository"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -38,6 +39,10 @@ func (h *Handler) GetStudios(c *gin.Context) {
 	// Parse query parameters
 	f.City = c.Query("city")
 	f.RoomType = c.Query("room_type")
+	// Search + sorting
+	f.Search = c.Query("search")
+	f.SortBy = c.DefaultQuery("sort_by", "rating")
+	f.SortOrder = c.DefaultQuery("sort_order", "desc")
 
 	if minPrice := c.Query("min_price"); minPrice != "" {
 		if val, err := strconv.ParseFloat(minPrice, 64); err == nil {
@@ -285,6 +290,46 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 		"message": "Studio updated successfully",
 	})
 }
+func (h *Handler) UpdateRoom(c *gin.Context) {
+	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
+		return
+	}
+
+	var req UpdateRoomRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	room, err := h.service.UpdateRoom(c.Request.Context(), roomID, req)
+	if err != nil {
+		if errors.Is(err, ErrInvalidRoomType) {
+			response.Error(c, http.StatusBadRequest, "INVALID_ROOM_TYPE", err.Error())
+			return
+		}
+		handleError(c, err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"room": room})
+}
+
+func (h *Handler) DeleteRoom(c *gin.Context) {
+	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
+		return
+	}
+
+	if err := h.service.DeleteRoom(c.Request.Context(), roomID); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"deleted": true})
+}
 
 /* ---------- PHOTO HANDLERS ---------- */
 
@@ -298,74 +343,93 @@ func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 		return
 	}
 
-	// 2. Extract authenticated user ID from JWT context (set by middleware)
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
-		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
-		return
-	}
-	userID, ok := userIDVal.(int64)
+	// 2. Get userID from context (set by JWT middleware)
+	v, ok := c.Get("user_id")
 	if !ok {
-		response.Error(c, http.StatusInternalServerError, "CONTEXT_ERROR", "Invalid user ID in context")
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Missing user_id in context")
 		return
 	}
 
-	// 3. Optional: early role check (if you want to restrict to studio owners only)
-	roleVal, _ := c.Get("role")
-	if roleVal != string(domain.RoleStudioOwner) {
-		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Only studio owners can upload photos")
+	var userID int64
+	switch t := v.(type) {
+	case int64:
+		userID = t
+	case int:
+		userID = int64(t)
+	case float64:
+		userID = int64(t)
+	default:
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user_id type in context")
 		return
 	}
 
-	// 4. Parse multipart form (max 10MB total)
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil {
-		response.Error(c, http.StatusBadRequest, "INVALID_FORM", "Failed to parse multipart form")
+	// 3. Parse multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_FORM", "Invalid multipart form")
 		return
 	}
 
-	files := c.Request.MultipartForm.File["photos"]
+	files := form.File["photos"]
 	if len(files) == 0 {
-		response.Error(c, http.StatusBadRequest, "NO_FILES", "No photos uploaded")
+		response.Error(c, http.StatusBadRequest, "NO_FILES", "No files provided")
 		return
 	}
 
-	// 5. Prepare upload directory
+	// Cut request to max 10 files (final limit is enforced in service too)
+	if len(files) > 10 {
+		files = files[:10]
+	}
+
+	// 4. Create upload dir
 	uploadDir := fmt.Sprintf("./uploads/studios/%d", studioID)
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		response.Error(c, http.StatusInternalServerError, "STORAGE_ERROR", "Failed to create directory")
+		response.Error(c, http.StatusInternalServerError, "UPLOAD_DIR_ERROR", err.Error())
 		return
 	}
 
-	// 6. Save files and collect URLs
-	var urls []string
+	var uploadedURLs []string
 	for _, file := range files {
-		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
-		savePath := filepath.Join(uploadDir, filename)
+		// size limit 5MB
+		if file.Size > 5*1024*1024 {
+			continue
+		}
+
+		// extension whitelist: jpg, png, webp
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+		if ext == ".jpeg" {
+			ext = ".jpg"
+		}
+		if ext != ".jpg" && ext != ".png" && ext != ".webp" {
+			continue
+		}
+
+		// Generate unique name
+		newName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+		savePath := filepath.Join(uploadDir, newName)
 
 		if err := c.SaveUploadedFile(file, savePath); err != nil {
-			response.Error(c, http.StatusInternalServerError, "SAVE_FAILED", "Failed to save photo")
-			return
+			continue
 		}
 
-		// Public URL (served by Gin static)
-		url := fmt.Sprintf("/static/studios/%d/%s", studioID, filename)
-		urls = append(urls, url)
+		url := fmt.Sprintf("/static/studios/%d/%s", studioID, newName)
+		uploadedURLs = append(uploadedURLs, url)
 	}
 
-	// 7. Call service with BOTH userID and studioID (ownership check inside service)
-	if err := h.service.AddStudioPhotos(c.Request.Context(), userID, studioID, urls); err != nil {
-		if errors.Is(err, ErrForbidden) {
-			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
-			return
-		}
-		response.Error(c, http.StatusInternalServerError, "DB_ERROR", "Failed to save photo URLs")
+	if len(uploadedURLs) == 0 {
+		response.Error(c, http.StatusBadRequest, "NO_VALID_FILES", "No valid files uploaded")
 		return
 	}
 
-	// 8. Success response
+	// 5. Save URLs in DB (service enforces max 10 total and ownership)
+	if err := h.service.AddStudioPhotos(c.Request.Context(), userID, studioID, uploadedURLs); err != nil {
+		response.Error(c, http.StatusBadRequest, "PHOTO_UPLOAD_ERROR", err.Error())
+		return
+	}
+
 	response.Success(c, http.StatusOK, gin.H{
-		"message":       "Photos uploaded successfully",
-		"uploaded_urls": urls,
+		"uploaded": len(uploadedURLs),
+		"urls":     uploadedURLs,
 	})
 }
 
@@ -619,6 +683,7 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	{
 		studios.GET("", h.GetStudios)        // GET /api/v1/studios?city=...&room_type=...
 		studios.GET("/:id", h.GetStudioByID) // GET /api/v1/studios/:id
+
 	}
 
 	r.GET("/room-types", h.GetRoomTypes)
