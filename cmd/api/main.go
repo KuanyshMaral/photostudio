@@ -17,6 +17,7 @@ import (
 	"photostudio/internal/modules/auth"
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
+	"photostudio/internal/modules/chat"
 	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
@@ -54,6 +55,9 @@ func main() {
 		&domain.Booking{},
 		&domain.Review{},
 		&domain.Notification{},
+		&domain.Conversation{},
+		&domain.Message{},
+		&domain.BlockedUser{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -77,6 +81,7 @@ func main() {
 	studioOwnerRepo := repository.NewOwnerRepository(db)
 
 	notificationRepo := repository.NewNotificationRepository(db)
+	chatRepo := repository.NewChatRepository(db)
 
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
@@ -102,6 +107,9 @@ func main() {
 
 	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, notificationService)
 	adminHandler := admin.NewHandler(adminService)
+
+	chatService := chat.NewService(chatRepo, userRepo, studioRepo, bookingRepo, notificationService)
+	chatHandler := chat.NewHandler(chatService)
 
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
@@ -129,6 +137,8 @@ func main() {
 		// Protected reviews (create, respond)
 		reviewHandler.RegisterRoutes(nil, protected)
 		notificationHandler.RegisterRoutes(protected)
+
+		chatHandler.RegisterRoutes(protected)
 
 		studios := protected.Group("/studios")
 		{
