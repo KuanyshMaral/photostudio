@@ -11,6 +11,7 @@ const (
 	NotifVerificationApproved NotificationType = "verification_approved"
 	NotifVerificationRejected NotificationType = "verification_rejected"
 	NotifNewReview            NotificationType = "new_review"
+	NotifNewMessage           NotificationType = "new_message"
 )
 
 type Notification struct {

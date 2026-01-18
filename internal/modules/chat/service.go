@@ -269,3 +269,111 @@ func (s *Service) BlockUser(ctx context.Context, blockerID, blockedID int64, rea
 func (s *Service) UnblockUser(ctx context.Context, blockerID, blockedID int64) error {
 	return s.chatRepo.UnblockUser(ctx, blockerID, blockedID)
 }
+
+// ============================================================
+// IMAGE MESSAGES
+// ============================================================
+
+// SendImageMessage создаёт сообщение с изображением
+func (s *Service) SendImageMessage(
+	ctx context.Context,
+	senderID int64,
+	conversationID int64,
+	imageURL string,
+) (*domain.Message, error) {
+	conv, err := s.chatRepo.GetConversationByID(ctx, conversationID)
+	if err != nil || conv == nil {
+		return nil, ErrConversationNotFound
+	}
+
+	if conv.ParticipantA != senderID && conv.ParticipantB != senderID {
+		return nil, ErrNotParticipant
+	}
+
+	recipientID := conv.ParticipantA
+	if recipientID == senderID {
+		recipientID = conv.ParticipantB
+	}
+
+	blocked, _ := s.chatRepo.IsBlocked(ctx, senderID, recipientID)
+	if blocked {
+		return nil, ErrBlocked
+	}
+
+	msg := &domain.Message{
+		ConversationID: conversationID,
+		SenderID:       senderID,
+		Content:        "[Изображение]",
+		MessageType:    domain.MessageTypeImage,
+		AttachmentURL:  &imageURL,
+	}
+
+	if err := s.chatRepo.CreateMessage(ctx, msg); err != nil {
+		return nil, fmt.Errorf("failed to create message: %w", err)
+	}
+
+	_ = s.chatRepo.UpdateLastMessageAt(ctx, conversationID)
+
+	sender, _ := s.userRepo.GetByID(ctx, senderID)
+	msg.Sender = sender
+
+	return msg, nil
+}
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+// NotifyIfOffline создаёт уведомление если получатель offline
+//
+// Вызывается из Handler после попытки отправки через WebSocket
+// Если WebSocket не доставил — создаём notification
+func (s *Service) NotifyIfOffline(
+	ctx context.Context,
+	recipientID int64,
+	conversation *domain.Conversation,
+	message *domain.Message,
+) error {
+	// Получаем информацию об отправителе
+	sender, err := s.userRepo.GetByID(ctx, message.SenderID)
+	if err != nil {
+		return err
+	}
+
+	// Формируем preview сообщения
+	preview := message.Content
+	if len(preview) > 50 {
+		preview = preview[:50] + "..."
+	}
+
+	// Для изображений — специальный текст
+	if message.MessageType == domain.MessageTypeImage {
+		preview = "📷 Изображение"
+	}
+
+	// Создаём уведомление
+	title := fmt.Sprintf("Сообщение от %s", sender.Name)
+	body := preview
+
+	return s.notifService.Create(
+		ctx,
+		recipientID,
+		domain.NotifNewMessage,
+		title,
+		body,
+		map[string]any{
+			"conversation_id": conversation.ID,
+			"message_id":      message.ID,
+			"sender_id":       message.SenderID,
+			"sender_name":     sender.Name,
+		},
+	)
+}
+
+// GetRecipientID возвращает ID получателя для диалога
+func (s *Service) GetRecipientID(conversation *domain.Conversation, senderID int64) int64 {
+	if conversation.ParticipantA == senderID {
+		return conversation.ParticipantB
+	}
+	return conversation.ParticipantA
+}
