@@ -111,6 +111,9 @@ func main() {
 	chatService := chat.NewService(chatRepo, userRepo, studioRepo, bookingRepo, notificationService)
 	chatHandler := chat.NewHandler(chatService)
 
+	chatHub := chat.NewHub()
+	chatWSHandler := chat.NewWSHandler(chatHub, jwtService, chatService)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(gin.Recovery())
@@ -178,6 +181,8 @@ func main() {
 		rooms.DELETE("/:id", ownershipChecker.CheckRoomOwnership(), catalogHandler.DeleteRoom)
 
 	}
+	// Chat WebSocket route (public, auth via query param)
+	r.GET("/ws/chat", chatWSHandler.HandleWebSocket)
 
 	// Static files for uploads
 	r.Static("/static", "./uploads")
