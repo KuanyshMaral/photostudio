@@ -5,6 +5,7 @@ import (
 	"os"
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
+	"photostudio/internal/modules/favorite"
 	"strings"
 	"time"
 
@@ -58,6 +59,7 @@ func main() {
 		&domain.Conversation{},
 		&domain.Message{},
 		&domain.BlockedUser{},
+		&domain.Favorite{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -82,7 +84,7 @@ func main() {
 
 	notificationRepo := repository.NewNotificationRepository(db)
 	chatRepo := repository.NewChatRepository(db)
-
+	favoriteRepo := repository.NewFavoriteRepository(db)
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
@@ -110,7 +112,7 @@ func main() {
 
 	chatService := chat.NewService(chatRepo, userRepo, studioRepo, bookingRepo, notificationService)
 	chatHandler := chat.NewHandler(chatService)
-
+	favoriteHandler := favorite.NewHandler(favoriteRepo)
 	chatHub := chat.NewHub()
 	chatWSHandler := chat.NewWSHandler(chatHub, jwtService, chatService)
 
@@ -142,7 +144,7 @@ func main() {
 		notificationHandler.RegisterRoutes(protected)
 
 		chatHandler.RegisterRoutes(protected)
-
+		favoriteHandler.RegisterRoutes(protected)
 		studios := protected.Group("/studios")
 		{
 			studios.POST("", catalogHandler.CreateStudio)
