@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"photostudio/internal/modules/auth"
 	"time"
 
 	"photostudio/internal/domain"
@@ -299,4 +300,91 @@ func (r *BookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID i
 
 func (r *BookingRepository) DB() *gorm.DB {
 	return r.db
+}
+
+// GetStatsByUserID возвращает статистику бронирований пользователя
+func (r *BookingRepository) GetStatsByUserID(userID int64) (*auth.BookingStats, error) {
+	stats := &auth.BookingStats{}
+	now := time.Now()
+
+	if err := r.db.Model(&domain.Booking{}).
+		Where("user_id = ?", userID).
+		Count(&stats.Total).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.db.Model(&domain.Booking{}).
+		Where("user_id = ? AND status = ? AND start_time > ?", userID, domain.BookingStatus("confirmed"), now).
+		Count(&stats.Upcoming).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.db.Model(&domain.Booking{}).
+		Where("user_id = ? AND status = ?", userID, domain.BookingStatus("completed")).
+		Count(&stats.Completed).Error; err != nil {
+		return nil, err
+	}
+
+	if err := r.db.Model(&domain.Booking{}).
+		Where("user_id = ? AND status = ?", userID, domain.BookingStatus("cancelled")).
+		Count(&stats.Cancelled).Error; err != nil {
+		return nil, err
+	}
+
+	return stats, nil
+}
+
+// GetRecentByUserID возвращает последние N бронирований пользователя (с JOIN названиями)
+func (r *BookingRepository) GetRecentByUserID(userID int64, limit int) ([]auth.RecentBookingRow, error) {
+	if limit <= 0 {
+		limit = 3
+	}
+
+	rows := make([]auth.RecentBookingRow, 0, limit)
+
+	// ВАЖНО: названия таблиц подстрой если у тебя они другие.
+	// Обычно: bookings, rooms, studios
+	err := r.db.Table("bookings b").
+		Select(`
+            b.id as id,
+            s.name as studio_name,
+            r.name as room_name,
+            b.start_time as start_time,
+            b.status as status
+        `).
+		Joins("JOIN rooms r ON r.id = b.room_id").
+		Joins("JOIN studios s ON s.id = b.studio_id").
+		Where("b.user_id = ?", userID).
+		Order("b.created_at DESC").
+		Limit(limit).
+		Scan(&rows).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+// CancelWithReason отменяет бронирование с сохранением причины
+// Block 9: Обязательная причина отмены
+func (r *BookingRepository) CancelWithReason(ctx context.Context, bookingID int64, reason string) error {
+	now := time.Now()
+	return r.db.WithContext(ctx).
+		Model(&domain.Booking{}).
+		Where("id = ?", bookingID).
+		Updates(map[string]interface{}{
+			"status":              string(domain.BookingCancelled),
+			"cancellation_reason": reason,
+			"cancelled_at":        &now,
+		}).Error
+}
+
+// UpdateDeposit обновляет сумму предоплаты
+// Block 10: Управление предоплатой
+func (r *BookingRepository) UpdateDeposit(ctx context.Context, bookingID int64, amount float64) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.Booking{}).
+		Where("id = ?", bookingID).
+		Update("deposit_amount", amount).Error
 }
