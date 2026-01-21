@@ -6,6 +6,7 @@ import (
 	"photostudio/internal/domain"
 	"photostudio/internal/pkg/response"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -23,6 +24,8 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 
 	// Task 3.1
 	rg.GET("/rooms/:id/availability", h.GetRoomAvailability)
+
+	rg.GET("/rooms/:id/busy-slots", h.GetBusySlots)
 
 	// Task 3.2 (requires auth middleware that sets user_id in context)
 	rg.GET("/users/me/bookings", h.GetMyBookings)
@@ -92,6 +95,68 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 			},
 		},
 	})
+}
+
+type BusySlot struct {
+	Start string `json:"start"` // "10:00"
+	End   string `json:"end"`   // "12:00"
+}
+
+type BusySlotsResponse struct {
+	Date      string     `json:"date"`
+	RoomID    int64      `json:"room_id"`
+	BusySlots []BusySlot `json:"busy_slots"`
+	OpenTime  string     `json:"open_time"`
+	CloseTime string     `json:"close_time"`
+}
+
+func (h *Handler) GetBusySlots(c *gin.Context) {
+	roomIDStr := c.Param("id")
+	roomID, err := strconv.ParseInt(roomIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid room id"})
+		return
+	}
+
+	dateStr := c.Query("date")
+	if dateStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "date is required"})
+		return
+	}
+
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid date format, use YYYY-MM-DD"})
+		return
+	}
+
+	startOfDay := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.Local)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+
+	// Берём занятые слоты через уже существующую логику репозитория
+	rows, err := h.service.GetBusySlots(c.Request.Context(), roomID, startOfDay, endOfDay)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to get busy slots"})
+		return
+	}
+
+	busy := make([]BusySlot, 0, len(rows))
+	for _, s := range rows {
+		busy = append(busy, BusySlot{
+			Start: s.Start.Format("15:04"),
+			End:   s.End.Format("15:04"),
+		})
+	}
+
+	resp := BusySlotsResponse{
+		Date:      dateStr,
+		RoomID:    roomID,
+		BusySlots: busy,
+		OpenTime:  "09:00",
+		CloseTime: "21:00",
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": resp})
 }
 
 // GetRoomAvailability Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD

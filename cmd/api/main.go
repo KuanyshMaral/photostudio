@@ -93,7 +93,7 @@ func main() {
 
 	// Module services & handlers
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
-	authHandler := auth.NewHandler(authService)
+	authHandler := auth.NewHandler(authService, bookingRepo)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)

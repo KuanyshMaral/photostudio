@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"photostudio/internal/repository"
 	"sort"
 	"time"
 
@@ -100,6 +101,19 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 
 	return b, nil
 
+}
+
+func (s *Service) GetBusySlots(ctx context.Context, roomID int64, from, to time.Time) ([]repository.BusySlot, error) {
+	rows, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]repository.BusySlot, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, repository.BusySlot{Start: r.Start, End: r.End})
+	}
+	return out, nil
 }
 
 func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr string) ([]TimeSlot, error) {

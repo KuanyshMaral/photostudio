@@ -8,18 +8,23 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"photostudio/internal/pkg/response"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Handler manages all HTTP interactions for authentication
 type Handler struct {
-	service *Service
+	service       *Service
+	bookingReader BookingStatsReader
 }
 
 // NewHandler creates a new auth handler with injected service
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, bookingReader BookingStatsReader) *Handler {
+	return &Handler{
+		service:       service,
+		bookingReader: bookingReader,
+	}
 }
 
 func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
@@ -134,28 +139,62 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 // GetMe — GET /users/me (protected)
+// GetMe — GET /users/me (protected)
 func (h *Handler) GetMe(c *gin.Context) {
-	userID, _ := c.Get("user_id")
+	userIDAny, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userID := userIDAny.(int64)
 
-	fmt.Println("User id: ", userID)
-
-	user, err := h.service.GetCurrentUser(c.Request.Context(), userID.(int64))
+	user, err := h.service.GetCurrentUser(c.Request.Context(), userID)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, "USER_NOT_FOUND", "User not found")
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
 
+	includeStats := c.Query("include_stats") == "true"
+
+	profile := UserProfileResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		Name:      user.Name,
+		Phone:     user.Phone,
+		Role:      string(user.Role),
+		AvatarURL: user.AvatarURL,
+		CreatedAt: user.CreatedAt.Format("2006-01-02"),
+	}
+
+	if includeStats && h.bookingReader != nil {
+		stats, err := h.bookingReader.GetStatsByUserID(userID)
+		if err == nil && stats != nil {
+			profile.Stats = &UserStats{
+				TotalBookings:     int(stats.Total),
+				UpcomingBookings:  int(stats.Upcoming),
+				CompletedBookings: int(stats.Completed),
+				CancelledBookings: int(stats.Cancelled),
+			}
+		}
+
+		recent, err := h.bookingReader.GetRecentByUserID(userID, 3)
+		if err == nil {
+			profile.RecentBookings = make([]RecentBooking, 0, len(recent))
+			for _, r := range recent {
+				profile.RecentBookings = append(profile.RecentBookings, RecentBooking{
+					ID:         r.ID,
+					StudioName: r.StudioName,
+					RoomName:   r.RoomName,
+					Date:       r.StartTime.Format("02.01.2006"),
+					Status:     r.Status,
+				})
+			}
+		}
+	}
+
+	// Сохраняем стиль проекта (response.Success)
 	response.Success(c, http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":             user.ID,
-			"email":          user.Email,
-			"name":           user.Name,
-			"phone":          user.Phone,
-			"role":           user.Role,
-			"email_verified": user.EmailVerified,
-			"studio_status":  user.StudioStatus,
-			"created_at":     user.CreatedAt,
-		},
+		"user": profile,
 	})
 }
 

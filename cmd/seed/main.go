@@ -11,6 +11,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 	_ "gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func main() {
@@ -172,6 +173,142 @@ func main() {
 			Notes:         fmt.Sprintf("Бронирование %d", i+1),
 		}
 		db.Create(&booking)
+	}
+
+	// ================== DEMO USER BOOKINGS (for stats) ==================
+	log.Println("Creating demo user booking history (user_id=1)...")
+
+	// 1) Ensure demo user exists with id=1
+	demoUser := domain.User{
+		ID:            1,
+		Email:         "demo@studiobooking.kz",
+		PasswordHash:  "$2a$10$dummyhashdummyhashdummyhashdummyhashdummyhash", // replace if you have real one
+		Name:          "Алексей Петров",
+		Role:          domain.RoleClient,
+		EmailVerified: true,
+		CreatedAt:     time.Date(2025, 6, 15, 10, 0, 0, 0, time.Local),
+		UpdatedAt:     time.Now(),
+	}
+
+	// Upsert by primary key ID
+	db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"email", "password_hash", "name", "role", "email_verified", "created_at", "updated_at"}),
+	}).Create(&demoUser)
+
+	// 2) Delete previous demo bookings
+	db.Where("user_id = ?", demoUser.ID).Delete(&domain.Booking{})
+
+	// 3) Pick real rooms from DB (avoid fake roomID math)
+	var rooms []domain.Room
+	if err := db.Order("id ASC").Limit(3).Find(&rooms).Error; err != nil || len(rooms) == 0 {
+		log.Println("⚠️ No rooms found for demo bookings. Skipping demo booking history.")
+	} else {
+		// helper to choose room safely (repeat if меньше 3)
+		getRoom := func(idx int) domain.Room {
+			return rooms[idx%len(rooms)]
+		}
+
+		// Dates like in assignment example relative to *today*
+		// Past completed (3)
+		completed1Room := getRoom(0)
+		completed2Room := getRoom(1)
+		completed3Room := getRoom(0)
+
+		// Future confirmed (2) + future pending (1)
+		confirmed1Room := getRoom(0)
+		confirmed2Room := getRoom(2)
+		pendingRoom := getRoom(1)
+
+		// Cancelled (1)
+		cancelledRoom := getRoom(0)
+
+		// Helper to create booking quickly
+		create := func(room domain.Room, start, end time.Time, status domain.BookingStatus, total float64, createdAt time.Time) {
+			b := domain.Booking{
+				RoomID:        room.ID,
+				StudioID:      room.StudioID,
+				UserID:        demoUser.ID,
+				StartTime:     start,
+				EndTime:       end,
+				TotalPrice:    total,
+				Status:        status,
+				PaymentStatus: domain.PaymentStatus("paid"),
+				Notes:         "Demo booking",
+				CreatedAt:     createdAt,
+				UpdatedAt:     createdAt,
+			}
+			db.Create(&b)
+		}
+
+		// === Completed (3) in the past ===
+		create(
+			completed1Room,
+			time.Date(2026, 1, 5, 10, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 5, 14, 0, 0, 0, time.Local),
+			domain.BookingStatus("completed"),
+			20000,
+			time.Date(2026, 1, 4, 12, 0, 0, 0, time.Local),
+		)
+
+		create(
+			completed2Room,
+			time.Date(2026, 1, 10, 12, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 10, 16, 0, 0, 0, time.Local),
+			domain.BookingStatus("completed"),
+			24000,
+			time.Date(2026, 1, 9, 15, 0, 0, 0, time.Local),
+		)
+
+		create(
+			completed3Room,
+			time.Date(2026, 1, 15, 9, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 15, 12, 0, 0, 0, time.Local),
+			domain.BookingStatus("completed"),
+			15000,
+			time.Date(2026, 1, 14, 10, 0, 0, 0, time.Local),
+		)
+
+		// === Upcoming confirmed (2) ===
+		create(
+			confirmed1Room,
+			time.Date(2026, 1, 25, 10, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 25, 14, 0, 0, 0, time.Local),
+			domain.BookingStatus("confirmed"),
+			20000,
+			time.Date(2026, 1, 19, 12, 0, 0, 0, time.Local),
+		)
+
+		create(
+			confirmed2Room,
+			time.Date(2026, 1, 28, 14, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 28, 18, 0, 0, 0, time.Local),
+			domain.BookingStatus("confirmed"),
+			28000,
+			time.Date(2026, 1, 19, 14, 0, 0, 0, time.Local),
+		)
+
+		// === Pending (1) ===
+		create(
+			pendingRoom,
+			time.Date(2026, 1, 22, 11, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 22, 15, 0, 0, 0, time.Local),
+			domain.BookingStatus("pending"),
+			24000,
+			time.Date(2026, 1, 19, 9, 0, 0, 0, time.Local),
+		)
+
+		// === Cancelled (1) ===
+		create(
+			cancelledRoom,
+			time.Date(2026, 1, 8, 10, 0, 0, 0, time.Local),
+			time.Date(2026, 1, 8, 12, 0, 0, 0, time.Local),
+			domain.BookingStatus("cancelled"),
+			10000,
+			time.Date(2026, 1, 7, 10, 0, 0, 0, time.Local),
+		)
+
+		log.Println("✅ Demo booking history created (total=7, upcoming=2, completed=3, cancelled=1)")
 	}
 
 	// ================== REVIEWS ==================
