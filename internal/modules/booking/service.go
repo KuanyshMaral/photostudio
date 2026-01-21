@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"photostudio/internal/repository"
 	"sort"
 	"time"
 
@@ -100,6 +101,19 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 
 	return b, nil
 
+}
+
+func (s *Service) GetBusySlots(ctx context.Context, roomID int64, from, to time.Time) ([]repository.BusySlot, error) {
+	rows, err := s.bookings.GetBusySlotsForRoom(ctx, roomID, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]repository.BusySlot, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, repository.BusySlot{Start: r.Start, End: r.End})
+	}
+	return out, nil
 }
 
 func (s *Service) GetRoomAvailability(ctx context.Context, roomID int64, dateStr string) ([]TimeSlot, error) {
@@ -428,5 +442,66 @@ func (s *Service) UpdateStatus(ctx context.Context, bookingID int64, status stri
 
 // GetByID retrieves a booking by ID
 func (s *Service) GetByID(ctx context.Context, bookingID int64) (*domain.Booking, error) {
+	return s.bookings.GetByID(ctx, bookingID)
+}
+
+// CancelBooking отменяет бронирование с причиной
+// Block 9: Обязательная причина отмены
+func (s *Service) CancelBooking(ctx context.Context, bookingID int64, reason string) (*domain.Booking, error) {
+	booking, err := s.bookings.GetByID(ctx, bookingID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Проверяем, можно ли отменить
+	if booking.Status == domain.BookingCancelled {
+		return nil, ErrInvalidStatusTransition
+	}
+
+	if booking.Status == domain.BookingCompleted {
+		return nil, ErrInvalidStatusTransition
+	}
+
+	// Block 9: Обновляем статус и сохраняем причину
+	if err := s.bookings.CancelWithReason(ctx, bookingID, reason); err != nil {
+		return nil, err
+	}
+
+	// Отправляем уведомление
+	if s.notifs != nil {
+		_ = s.notifs.NotifyBookingCancelled(ctx, booking.UserID, booking.ID, booking.StudioID, reason)
+	}
+
+	// Возвращаем обновлённое бронирование
+	return s.bookings.GetByID(ctx, bookingID)
+}
+
+// UpdateDeposit обновляет предоплату (Block 10)
+func (s *Service) UpdateDeposit(ctx context.Context, bookingID int64, amount float64) (*domain.Booking, error) {
+	booking, err := s.bookings.GetByID(ctx, bookingID)
+	if err != nil {
+		return nil, err
+	}
+
+	if amount < 0 {
+		return nil, ErrValidation
+	}
+
+	if amount > booking.TotalPrice {
+		return nil, ErrValidation
+	}
+
+	// Обновляем deposit
+	if err := s.bookings.UpdateDeposit(ctx, bookingID, amount); err != nil {
+		return nil, err
+	}
+
+	// Если есть предоплата — подтверждаем бронь
+	if amount > 0 && booking.Status == domain.BookingPending {
+		if err := s.bookings.UpdateStatus(ctx, bookingID, string(domain.BookingConfirmed)); err != nil {
+			return nil, err
+		}
+	}
+
 	return s.bookings.GetByID(ctx, bookingID)
 }

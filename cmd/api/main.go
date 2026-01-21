@@ -93,7 +93,7 @@ func main() {
 
 	// Module services & handlers
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
-	authHandler := auth.NewHandler(authService)
+	authHandler := auth.NewHandler(authService, bookingRepo)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
@@ -166,12 +166,6 @@ func main() {
 		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
 		{
 			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
-		}
-
-		// Booking routes
-		bookings := protected.Group("/bookings")
-		{
-			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
 		}
 
 		// You can uncomment when ready
