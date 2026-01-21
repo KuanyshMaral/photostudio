@@ -38,8 +38,12 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.PATCH("/bookings/:id/cancel", h.CancelBooking)
 	rg.PATCH("/bookings/:id/complete", h.CompleteBooking)
 	rg.PATCH("/bookings/:id/mark-paid", h.MarkBookingPaid)
+
+	// Block 10: Deposit management (только для менеджеров)
+	rg.PATCH("/bookings/:id/deposit", h.UpdateDeposit)
 }
 
+// CreateBooking создаёт новое бронирование
 func (h *Handler) CreateBooking(c *gin.Context) {
 	var req CreateBookingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -52,7 +56,6 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 		})
 		return
 	}
-
 	b, err := h.service.CreateBooking(c.Request.Context(), req)
 	if err != nil {
 		switch {
@@ -85,7 +88,6 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 			return
 		}
 	}
-
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -415,9 +417,19 @@ func (h *Handler) ConfirmBooking(c *gin.Context) {
 }
 
 // CancelBooking PATCH /api/v1/bookings/:id/cancel (client or owner)
+// Block 9: Причина обязательна!
 func (h *Handler) CancelBooking(c *gin.Context) {
 	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.GetInt64("user_id")
+	userRole, _ := c.Get("role")
+
+	// Block 9: Причина обязательна
+	var req CancelBookingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR",
+			"Причина отмены обязательна (минимум 10 символов)")
+		return
+	}
 
 	booking, err := h.service.GetByID(c.Request.Context(), bookingID)
 	if err != nil {
@@ -425,8 +437,13 @@ func (h *Handler) CancelBooking(c *gin.Context) {
 		return
 	}
 
-	// Проверяем права: либо владелец брони, либо владелец студии
-	if booking.UserID != userID {
+	// Проверка прав: только владелец или менеджер студии
+	canCancel := booking.UserID == userID ||
+		userRole == "admin" ||
+		userRole == "studio_owner"
+
+	if !canCancel {
+		// Дополнительная проверка: владелец студии
 		isOwner, _ := h.service.IsBookingStudioOwner(c.Request.Context(), userID, bookingID)
 		if !isOwner {
 			response.Error(c, http.StatusForbidden, "FORBIDDEN", "Cannot cancel this booking")
@@ -434,14 +451,25 @@ func (h *Handler) CancelBooking(c *gin.Context) {
 		}
 	}
 
-	// Нельзя отменить уже завершённую бронь
-	if booking.Status == "completed" {
+	// Нельзя отменить уже завершённую бронь или уже отменённую
+	if booking.Status == domain.BookingCompleted {
 		response.Error(c, http.StatusBadRequest, "INVALID_STATUS", "Cannot cancel completed booking")
 		return
 	}
 
-	h.service.UpdateStatus(c.Request.Context(), bookingID, "cancelled")
-	response.Success(c, http.StatusOK, gin.H{"message": "Booking cancelled"})
+	if booking.Status == domain.BookingCancelled {
+		response.Error(c, http.StatusBadRequest, "INVALID_STATUS", "Booking is already cancelled")
+		return
+	}
+
+	// Выполняем отмену с причиной
+	updatedBooking, err := h.service.CancelBooking(c.Request.Context(), bookingID, req.Reason)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "CANCEL_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, ToBookingResponse(updatedBooking, false))
 }
 
 // CompleteBooking PATCH /api/v1/bookings/:id/complete (only owner)
@@ -503,4 +531,42 @@ func (h *Handler) MarkBookingPaid(c *gin.Context) {
 	}
 
 	response.Success(c, http.StatusOK, b)
+}
+
+// UpdateDeposit обновляет предоплату (только для менеджеров)
+// @Summary Обновить предоплату
+// @Tags Booking
+// @Security BearerAuth
+// @Param id path int true "ID бронирования"
+// @Param body body UpdateDepositRequest true "Сумма предоплаты"
+// @Success 200 {object} BookingResponse
+// @Router /bookings/{id}/deposit [patch]
+func (h *Handler) UpdateDeposit(c *gin.Context) {
+	userRole, _ := c.Get("role")
+
+	// Только менеджеры и владельцы
+	if userRole != "admin" && userRole != "studio_owner" {
+		response.Error(c, http.StatusForbidden, "FORBIDDEN", "Access denied")
+		return
+	}
+
+	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		return
+	}
+
+	var req UpdateDepositRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	booking, err := h.service.UpdateDeposit(c.Request.Context(), bookingID, req.DepositAmount)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "UPDATE_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, ToBookingResponse(booking, true))
 }

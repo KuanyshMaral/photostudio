@@ -168,12 +168,6 @@ func main() {
 			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
 		}
 
-		// Booking routes
-		bookings := protected.Group("/bookings")
-		{
-			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
-		}
-
 		// You can uncomment when ready
 		rooms := protected.Group("/rooms")
 		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)

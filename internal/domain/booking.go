@@ -29,8 +29,18 @@ type Booking struct {
 	TotalPrice    float64       `json:"total_price" validate:"required,gte=0"`
 	Status        BookingStatus `json:"status"`
 	PaymentStatus PaymentStatus `json:"payment_status"`
-	Notes         string        `json:"notes,omitempty"`
+	Notes         string        `json:"notes,omitempty" gorm:"type:text"`
 	CreatedAt     time.Time     `json:"created_at"`
 	UpdatedAt     time.Time     `json:"updated_at"`
 	CancelledAt   *time.Time    `json:"cancelled_at,omitempty"`
+
+	// Block 9: Причина отмены (заполняется при cancel)
+	CancellationReason string `json:"cancellation_reason,omitempty" gorm:"type:text"`
+
+	// Block 10: Предоплата (для менеджеров)
+	DepositAmount float64 `json:"deposit_amount,omitempty"`
+
+	// Связи
+	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Room *Room `json:"room,omitempty" gorm:"foreignKey:RoomID"`
 }

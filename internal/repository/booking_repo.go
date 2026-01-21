@@ -365,3 +365,26 @@ func (r *BookingRepository) GetRecentByUserID(userID int64, limit int) ([]auth.R
 
 	return rows, nil
 }
+
+// CancelWithReason отменяет бронирование с сохранением причины
+// Block 9: Обязательная причина отмены
+func (r *BookingRepository) CancelWithReason(ctx context.Context, bookingID int64, reason string) error {
+	now := time.Now()
+	return r.db.WithContext(ctx).
+		Model(&domain.Booking{}).
+		Where("id = ?", bookingID).
+		Updates(map[string]interface{}{
+			"status":              string(domain.BookingCancelled),
+			"cancellation_reason": reason,
+			"cancelled_at":        &now,
+		}).Error
+}
+
+// UpdateDeposit обновляет сумму предоплаты
+// Block 10: Управление предоплатой
+func (r *BookingRepository) UpdateDeposit(ctx context.Context, bookingID int64, amount float64) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.Booking{}).
+		Where("id = ?", bookingID).
+		Update("deposit_amount", amount).Error
+}

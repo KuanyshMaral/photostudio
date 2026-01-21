@@ -19,6 +19,10 @@ type BookingRepository interface {
 	GetByStudioID(ctx context.Context, studioID int64) ([]domain.Booking, error)
 	IsBookingOwnedByUser(ctx context.Context, bookingID, ownerID int64) (bool, error)
 	UpdatePaymentStatus(ctx context.Context, bookingID int64, status domain.PaymentStatus) (*domain.Booking, error)
+	// Block 9: Cancel with reason
+	CancelWithReason(ctx context.Context, bookingID int64, reason string) error
+	// Block 10: Update deposit
+	UpdateDeposit(ctx context.Context, bookingID int64, amount float64) error
 }
 
 // RoomRepository defines the interface for room operations
