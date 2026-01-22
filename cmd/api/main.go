@@ -20,6 +20,7 @@ import (
 	"photostudio/internal/modules/catalog"
 	"photostudio/internal/modules/chat"
 	"photostudio/internal/modules/notification"
+	"photostudio/internal/modules/owner"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
@@ -60,6 +61,11 @@ func main() {
 		&domain.Message{},
 		&domain.BlockedUser{},
 		&domain.Favorite{},
+		&domain.OwnerPIN{},
+		&domain.ProcurementItem{},
+		&domain.MaintenanceItem{},
+		&domain.CompanyProfile{},
+		&domain.PortfolioProject{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -85,6 +91,7 @@ func main() {
 	notificationRepo := repository.NewNotificationRepository(db)
 	chatRepo := repository.NewChatRepository(db)
 	favoriteRepo := repository.NewFavoriteRepository(db)
+	ownerCRMRepo := repository.NewOwnerCRMRepository(db)
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
@@ -115,6 +122,8 @@ func main() {
 	favoriteHandler := favorite.NewHandler(favoriteRepo)
 	chatHub := chat.NewHub()
 	chatWSHandler := chat.NewWSHandler(chatHub, jwtService, chatService)
+
+	ownerHandler := owner.NewHandler(ownerCRMRepo)
 
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
@@ -166,6 +175,14 @@ func main() {
 		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
 		{
 			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
+		}
+
+		// Owner CRM routes (require studio_owner role)
+		ownerCRMGroup := protected.Group("")
+		ownerCRMGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			ownerHandler.RegisterRoutes(ownerCRMGroup)
+			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
 		}
 
 		// You can uncomment when ready
