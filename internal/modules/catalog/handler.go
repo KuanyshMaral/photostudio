@@ -132,6 +132,33 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 	})
 }
 
+// GetStudioWorkingHours handles GET /api/v1/studios/:id/working-hours
+func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
+	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		return
+	}
+
+	status, err := h.service.GetStudioWorkingStatus(c.Request.Context(), studioID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{
+		"is_open":       status.IsOpen,
+		"message":       status.Message,
+		"open_time":     status.OpenTime,
+		"close_time":    status.CloseTime,
+		"working_hours": status.WorkingHours,
+	})
+}
+
 // GetMyStudios — GET /studios/my
 func (h *Handler) GetMyStudios(c *gin.Context) {
 	userID := c.GetInt64("user_id")
@@ -681,8 +708,9 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	// Public routes
 	studios := r.Group("/studios")
 	{
-		studios.GET("", h.GetStudios)        // GET /api/v1/studios?city=...&room_type=...
-		studios.GET("/:id", h.GetStudioByID) // GET /api/v1/studios/:id
+		studios.GET("", h.GetStudios)                              // GET /api/v1/studios?city=...&room_type=...
+		studios.GET("/:id", h.GetStudioByID)                       // GET /api/v1/studios/:id
+		studios.GET("/:id/working-hours", h.GetStudioWorkingHours) // GET /api/v1/studios/:id/working-hours
 
 	}
 

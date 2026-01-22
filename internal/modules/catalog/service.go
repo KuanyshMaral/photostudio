@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"errors"
+	"time"
 
 	"photostudio/internal/domain"
 	"photostudio/internal/repository"
@@ -231,4 +232,72 @@ func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, u
 	}
 
 	return s.studioRepo.AddPhotos(ctx, studioID, urls)
+}
+
+// WorkingStatusResponse представляет статус работы студии
+type WorkingStatusResponse struct {
+	IsOpen       bool                `json:"is_open"`
+	Message      string              `json:"message"`
+	OpenTime     string              `json:"open_time,omitempty"`
+	CloseTime    string              `json:"close_time,omitempty"`
+	WorkingHours domain.WorkingHours `json:"working_hours,omitempty"`
+}
+
+// GetStudioWorkingStatus возвращает статус работы студии (открыта/закрыта)
+func (s *Service) GetStudioWorkingStatus(ctx context.Context, studioID int64) (*WorkingStatusResponse, error) {
+	studio, err := s.studioRepo.GetByID(ctx, studioID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.calculateWorkingStatus(studio), nil
+}
+
+func (s *Service) calculateWorkingStatus(studio *domain.Studio) *WorkingStatusResponse {
+	response := &WorkingStatusResponse{
+		IsOpen:       false,
+		WorkingHours: studio.WorkingHours,
+	}
+
+	// Если нет рабочих часов, считаем закрытым
+	if len(studio.WorkingHours) == 0 {
+		response.Message = "Часы работы не указаны"
+		return response
+	}
+
+	// Получаем текущее время в Алматы (UTC+5 для Казахстана)
+	now := time.Now()
+
+	// Определяем день недели
+	weekday := now.Weekday().String()
+	schedule, exists := studio.WorkingHours[weekday]
+	if !exists {
+		response.Message = "Сегодня выходной"
+		return response
+	}
+
+	// Парсим время открытия и закрытия
+	openTime, err1 := time.Parse("15:04", schedule.Open)
+	closeTime, err2 := time.Parse("15:04", schedule.Close)
+	if err1 != nil || err2 != nil {
+		response.Message = "Ошибка в формате рабочих часов"
+		return response
+	}
+
+	// Проверяем, открыта ли студия сейчас
+	currentTime := now.Format("15:04")
+	currentParsed, _ := time.Parse("15:04", currentTime)
+
+	if currentParsed.After(openTime) && currentParsed.Before(closeTime) {
+		response.IsOpen = true
+		response.Message = "Открыто"
+		response.OpenTime = schedule.Open
+		response.CloseTime = schedule.Close
+	} else {
+		response.Message = "Закрыто"
+		response.OpenTime = schedule.Open
+		response.CloseTime = schedule.Close
+	}
+
+	return response
 }
