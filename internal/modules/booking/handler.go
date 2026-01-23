@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"photostudio/internal/domain"
 	"photostudio/internal/pkg/response"
+	"photostudio/internal/repository"
 	"strconv"
 	"time"
 
@@ -12,7 +13,8 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service          *Service
+	workingHoursRepo repository.StudioWorkingHoursRepository // добавить
 }
 
 func NewHandler(service *Service) *Handler {

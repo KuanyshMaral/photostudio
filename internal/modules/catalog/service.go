@@ -15,17 +15,19 @@ var (
 )
 
 type Service struct {
-	studioRepo    *repository.StudioRepository
-	roomRepo      *repository.RoomRepository
-	equipmentRepo *repository.EquipmentRepository
+	studioRepo             *repository.StudioRepository
+	roomRepo               *repository.RoomRepository
+	equipmentRepo          *repository.EquipmentRepository
+	studioWorkingHoursRepo repository.StudioWorkingHoursRepository
 }
 
 func NewService(
 	studioRepo *repository.StudioRepository,
 	roomRepo *repository.RoomRepository,
 	equipmentRepo *repository.EquipmentRepository,
+	studioWorkingHoursRepo repository.StudioWorkingHoursRepository,
 ) *Service {
-	return &Service{studioRepo, roomRepo, equipmentRepo}
+	return &Service{studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo}
 }
 
 /* ---------- STUDIO ---------- */
@@ -88,6 +90,7 @@ func (s *Service) UpdateStudio(ctx context.Context, userID, studioID int64, req 
 func (s *Service) GetStudiosByOwner(ctx context.Context, ownerID int64) ([]domain.Studio, error) {
 	return s.studioRepo.GetByOwnerID(ctx, ownerID)
 }
+
 func (s *Service) UpdateRoom(ctx context.Context, roomID int64, req UpdateRoomRequest) (*domain.Room, error) {
 	room, err := s.roomRepo.GetByID(ctx, roomID)
 	if err != nil {
@@ -236,11 +239,11 @@ func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, u
 
 // WorkingStatusResponse представляет статус работы студии
 type WorkingStatusResponse struct {
-	IsOpen       bool                `json:"is_open"`
-	Message      string              `json:"message"`
-	OpenTime     string              `json:"open_time,omitempty"`
-	CloseTime    string              `json:"close_time,omitempty"`
-	WorkingHours domain.WorkingHours `json:"working_hours,omitempty"`
+	IsOpen       bool                   `json:"is_open"`
+	Message      string                 `json:"message"`
+	OpenTime     string                 `json:"open_time,omitempty"`
+	CloseTime    string                 `json:"close_time,omitempty"`
+	WorkingHours domain.WorkingHoursMap `json:"working_hours,omitempty"`
 }
 
 // GetStudioWorkingStatus возвращает статус работы студии (открыта/закрыта)
@@ -300,4 +303,89 @@ func (s *Service) calculateWorkingStatus(studio *domain.Studio) *WorkingStatusRe
 	}
 
 	return response
+}
+
+/* ---------- WORKING HOURS NEW ---------- */
+
+// GetStudioWorkingHours возвращает полную информацию о часах работы
+func (s *Service) GetStudioWorkingHours(ctx context.Context, studioID int64) (*WorkingHoursResponse, error) {
+	// Проверяем существование студии, но не используем результат
+	_, err := s.studioRepo.GetByID(ctx, studioID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Получаем структурированные часы работы
+	hours, err := s.studioWorkingHoursRepo.GetHoursForStudio(studioID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Рассчитываем live статус
+	isOpen, statusText, nextOpen := CalculateLiveStatus(hours)
+
+	response := &WorkingHoursResponse{
+		StudioID:     studioID,
+		Hours:        hours,
+		CompactText:  FormatCompactHours(hours),
+		IsOpenNow:    isOpen,
+		StatusText:   statusText,
+		NextOpenTime: nextOpen,
+	}
+
+	return response, nil
+}
+
+// UpdateStudioWorkingHours обновляет часы работы студии
+func (s *Service) UpdateStudioWorkingHours(ctx context.Context, userID, studioID int64, hours []domain.WorkingHours) error {
+	studio, err := s.studioRepo.GetByID(ctx, studioID)
+	if err != nil {
+		return err
+	}
+
+	// Проверка прав
+	if studio.OwnerID != userID {
+		return ErrForbidden
+	}
+
+	// Валидация часов
+	for _, h := range hours {
+		if h.DayOfWeek < 0 || h.DayOfWeek > 6 {
+			return errors.New("invalid day of week")
+		}
+		if h.OpenTime == "" || h.CloseTime == "" {
+			return errors.New("open and close times are required")
+		}
+	}
+
+	// Сохраняем (не нужно преобразовывать в JSON, GORM сериализует автоматически)
+	studioHours := &domain.StudioWorkingHours{
+		StudioID: studioID,
+		Hours:    hours, // напрямую массив WorkingHours
+	}
+
+	return s.studioWorkingHoursRepo.CreateOrUpdate(studioHours)
+}
+
+// GetWorkingHoursForDate возвращает часы работы на конкретную дату
+func (s *Service) GetWorkingHoursForDate(ctx context.Context, studioID int64, date time.Time) (*domain.WorkingHours, error) {
+	hours, err := s.studioWorkingHoursRepo.GetHoursForStudio(studioID)
+	if err != nil {
+		return nil, err
+	}
+
+	dayOfWeek := int(date.Weekday())
+	for _, h := range hours {
+		if h.DayOfWeek == dayOfWeek {
+			return &h, nil
+		}
+	}
+
+	// Дефолтные часы
+	return &domain.WorkingHours{
+		DayOfWeek: dayOfWeek,
+		OpenTime:  "09:00",
+		CloseTime: "21:00",
+		IsClosed:  false,
+	}, nil
 }
