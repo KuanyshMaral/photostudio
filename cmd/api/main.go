@@ -66,6 +66,7 @@ func main() {
 		&domain.MaintenanceItem{},
 		&domain.CompanyProfile{},
 		&domain.PortfolioProject{},
+		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -87,6 +88,7 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewOwnerRepository(db)
+	studioWorkingHoursRepo := repository.NewStudioWorkingHoursRepository(db)
 
 	notificationRepo := repository.NewNotificationRepository(db)
 	chatRepo := repository.NewChatRepository(db)
@@ -102,13 +104,14 @@ func main() {
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
 	authHandler := auth.NewHandler(authService, bookingRepo)
 
-	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
+	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
 	notificationService := notification.NewService(notificationRepo)
 	notificationHandler := notification.NewHandler(notificationService)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService)
+	// В main.go, найдите создание bookingService и обновите:
+	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)

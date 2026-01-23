@@ -34,13 +34,24 @@ type BookingDetails struct {
 }
 
 type Service struct {
-	bookings BookingRepository
-	rooms    RoomRepository
-	notifs   NotificationSender
+	bookings               BookingRepository
+	rooms                  RoomRepository
+	notifs                 NotificationSender
+	studioWorkingHoursRepo repository.StudioWorkingHoursRepository // Добавляем поле
 }
 
-func NewService(bookings BookingRepository, rooms RoomRepository, notifs NotificationSender) *Service {
-	return &Service{bookings: bookings, rooms: rooms, notifs: notifs}
+func NewService(
+	bookings BookingRepository,
+	rooms RoomRepository,
+	notifs NotificationSender,
+	studioWorkingHoursRepo repository.StudioWorkingHoursRepository, // Добавляем параметр
+) *Service {
+	return &Service{
+		bookings:               bookings,
+		rooms:                  rooms,
+		notifs:                 notifs,
+		studioWorkingHoursRepo: studioWorkingHoursRepo, // Инициализируем
+	}
 }
 
 func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (*domain.Booking, error) {
@@ -100,7 +111,6 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 	}
 
 	return b, nil
-
 }
 
 func (s *Service) GetBusySlots(ctx context.Context, roomID int64, from, to time.Time) ([]repository.BusySlot, error) {
@@ -504,4 +514,34 @@ func (s *Service) UpdateDeposit(ctx context.Context, bookingID int64, amount flo
 	}
 
 	return s.bookings.GetByID(ctx, bookingID)
+}
+
+// GetRoomByID получает комнату по ID
+func (s *Service) GetRoomByID(ctx context.Context, roomID int64) (*domain.Room, error) {
+	// Используем поле rooms (RoomRepository)
+	return s.rooms.GetByID(ctx, roomID)
+}
+
+// GetWorkingHoursForDate получает рабочие часы на конкретную дату
+func (s *Service) GetWorkingHoursForDate(ctx context.Context, studioID int64, date time.Time) (*domain.WorkingHours, error) {
+	// Используем studioWorkingHoursRepo
+	hours, err := s.studioWorkingHoursRepo.GetHoursForStudio(studioID)
+	if err != nil {
+		return nil, err
+	}
+
+	dayOfWeek := int(date.Weekday())
+	for _, h := range hours {
+		if h.DayOfWeek == dayOfWeek {
+			return &h, nil
+		}
+	}
+
+	// Дефолтные часы
+	return &domain.WorkingHours{
+		DayOfWeek: dayOfWeek,
+		OpenTime:  "09:00",
+		CloseTime: "21:00",
+		IsClosed:  false,
+	}, nil
 }

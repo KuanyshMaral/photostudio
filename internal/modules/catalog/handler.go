@@ -132,7 +132,7 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 	})
 }
 
-// GetStudioWorkingHours handles GET /api/v1/studios/:id/working-hours
+// GetStudioWorkingHours handles GET /api/v1/studios/:id/working-hours (legacy format)
 func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -157,6 +157,73 @@ func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 		"close_time":    status.CloseTime,
 		"working_hours": status.WorkingHours,
 	})
+}
+
+// GetStudioWorkingHoursV2 handles GET /api/v1/studios/:id/working-hours/v2 (new format with live status)
+// @Summary Получить часы работы студии (новый формат)
+// @Tags Catalog
+// @Param id path int true "ID студии"
+// @Success 200 {object} WorkingHoursResponse
+// @Router /studios/{id}/working-hours/v2 [get]
+func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
+	studioIDStr := c.Param("id")
+	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		return
+	}
+
+	hoursResponse, err := h.service.GetStudioWorkingHours(c.Request.Context(), studioID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.Error(c, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, hoursResponse)
+}
+
+// UpdateStudioWorkingHours handles PUT /api/v1/studios/:id/working-hours
+// @Summary Обновить часы работы студии
+// @Tags Catalog
+// @Security BearerAuth
+// @Param id path int true "ID студии"
+// @Param body body []domain.WorkingHours true "Часы работы"
+// @Success 200 {object} gin.H
+// @Router /studios/{id}/working-hours [put]
+func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
+	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		return
+	}
+
+	var hours []domain.WorkingHours
+	if err := c.ShouldBindJSON(&hours); err != nil {
+		response.Error(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	err = h.service.UpdateStudioWorkingHours(c.Request.Context(), userID, studioID, hours)
+	if err != nil {
+		if errors.Is(err, ErrForbidden) {
+			response.Error(c, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
+			return
+		}
+		response.Error(c, http.StatusBadRequest, "UPDATE_ERROR", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Working hours updated"})
 }
 
 // GetMyStudios — GET /studios/my
@@ -317,6 +384,7 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 		"message": "Studio updated successfully",
 	})
 }
+
 func (h *Handler) UpdateRoom(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -708,27 +776,20 @@ func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
 	// Public routes
 	studios := r.Group("/studios")
 	{
-		studios.GET("", h.GetStudios)                              // GET /api/v1/studios?city=...&room_type=...
-		studios.GET("/:id", h.GetStudioByID)                       // GET /api/v1/studios/:id
-		studios.GET("/:id/working-hours", h.GetStudioWorkingHours) // GET /api/v1/studios/:id/working-hours
-
+		studios.GET("", h.GetStudios)                                   // GET /api/v1/studios?city=...&room_type=...
+		studios.GET("/:id", h.GetStudioByID)                            // GET /api/v1/studios/:id
+		studios.GET("/:id/working-hours", h.GetStudioWorkingHours)      // GET /api/v1/studios/:id/working-hours (legacy)
+		studios.GET("/:id/working-hours/v2", h.GetStudioWorkingHoursV2) // GET /api/v1/studios/:id/working-hours/v2 (new)
 	}
 
 	r.GET("/room-types", h.GetRoomTypes)
-	// Protected routes (require authentication)
-	// Note: Auth middleware should be applied to these in main.go
-	// studios.POST("", h.CreateStudio)              // POST /api/v1/studios
-	// studios.PUT("/:id", h.UpdateStudio)           // PUT /api/v1/studios/:id
-	// studios.POST("/:id/rooms", h.CreateRoom)      // POST /api/v1/studios/:id/rooms
-
-	// Equipment routes
-	// r.POST("/rooms/:id/equipment", h.AddEquipment)  // POST /api/v1/rooms/:id/equipment
 }
 
 // RegisterProtectedRoutes registers protected catalog routes that require authentication
-//func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
-
-//}
+func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
+	// Working hours update (только владелец)
+	r.PUT("/studios/:id/working-hours", h.UpdateStudioWorkingHours)
+}
 
 /* ---------- ERROR HANDLING ---------- */
 

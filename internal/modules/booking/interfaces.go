@@ -1,3 +1,4 @@
+// file: booking/interfaces.go
 package booking
 
 import (
@@ -29,6 +30,8 @@ type BookingRepository interface {
 type RoomRepository interface {
 	GetPriceByID(ctx context.Context, id int64) (float64, error)
 	GetStudioWorkingHoursByRoomID(ctx context.Context, roomID int64) ([]byte, error)
+	// Добавляем метод GetByID
+	GetByID(ctx context.Context, roomID int64) (*domain.Room, error)
 }
 
 type NotificationSender interface {
