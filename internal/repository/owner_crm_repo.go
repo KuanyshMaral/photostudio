@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"photostudio/internal/domain"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -344,4 +345,78 @@ func (r *OwnerCRMRepository) ReorderPortfolio(ctx context.Context, ownerID int64
 		}
 		return nil
 	})
+}
+
+type ClientInfo struct {
+	ID            int64      `json:"id"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	Phone         string     `json:"phone"`
+	TotalBookings int64      `json:"total_bookings"`
+	TotalSpent    float64    `json:"total_spent"`
+	LastBookingAt *time.Time `json:"last_booking_at,omitempty"`
+}
+
+func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, search string, page, perPage int) ([]ClientInfo, int64, error) {
+	if perPage == 0 {
+		perPage = 20
+	}
+	if page == 0 {
+		page = 1
+	}
+	offset := (page - 1) * perPage
+
+	// 1) студии владельца
+	var studioIDs []int64
+	if err := r.db.WithContext(ctx).
+		Table("studios").
+		Where("owner_id = ?", ownerID).
+		Pluck("id", &studioIDs).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(studioIDs) == 0 {
+		return []ClientInfo{}, 0, nil
+	}
+
+	// 2) query
+	query := r.db.WithContext(ctx).
+		Table("users u").
+		Select(`
+			u.id,
+			u.name,
+			u.email,
+			u.phone,
+			COUNT(b.id) as total_bookings,
+			COALESCE(SUM(b.total_price), 0) as total_spent,
+			MAX(b.created_at) as last_booking_at
+		`).
+		Joins("JOIN bookings b ON b.user_id = u.id").
+		Where("b.studio_id IN ?", studioIDs).
+		Group("u.id, u.name, u.email, u.phone")
+
+	// ⚠️ SQLite+PG совместимый поиск
+	if search != "" {
+		query = query.Where(`
+			LOWER(u.name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(u.phone) LIKE LOWER(?)
+		`, "%"+search+"%", "%"+search+"%", "%"+search+"%")
+	}
+
+	// 3) count через subquery
+	var total int64
+	countQ := r.db.WithContext(ctx).Table("(?) as subquery", query).Count(&total)
+	if countQ.Error != nil {
+		return nil, 0, countQ.Error
+	}
+
+	// 4) fetch
+	var clients []ClientInfo
+	if err := query.
+		Order("total_bookings DESC, total_spent DESC").
+		Limit(perPage).
+		Offset(offset).
+		Scan(&clients).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return clients, total, nil
 }

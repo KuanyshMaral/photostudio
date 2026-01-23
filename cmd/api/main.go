@@ -19,6 +19,7 @@ import (
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
 	"photostudio/internal/modules/chat"
+	"photostudio/internal/modules/manager"
 	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/owner"
 	"photostudio/internal/modules/review"
@@ -128,6 +129,8 @@ func main() {
 
 	ownerHandler := owner.NewHandler(ownerCRMRepo)
 
+	managerHandler := manager.NewHandler(bookingRepo, ownerCRMRepo)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(gin.Recovery())
@@ -186,6 +189,12 @@ func main() {
 		{
 			ownerHandler.RegisterRoutes(ownerCRMGroup)
 			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
+		}
+
+		managerGroup := protected.Group("")
+		managerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			managerHandler.RegisterRoutes(managerGroup)
 		}
 
 		// You can uncomment when ready

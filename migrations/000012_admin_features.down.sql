@@ -1,0 +1,8 @@
+ALTER TABLE bookings DROP COLUMN IF EXISTS cancellation_reason;
+ALTER TABLE bookings DROP COLUMN IF EXISTS deposit_amount;
+
+DROP TABLE IF EXISTS ads;
+
+ALTER TABLE studios DROP COLUMN IF EXISTS in_promo_slider;
+ALTER TABLE studios DROP COLUMN IF EXISTS is_gold;
+ALTER TABLE studios DROP COLUMN IF EXISTS is_vip;
