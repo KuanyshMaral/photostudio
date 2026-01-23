@@ -522,3 +522,203 @@ func (s *Service) ShowReview(ctx context.Context, reviewID int64) (*domain.Revie
 func isNotFound(err error) bool {
 	return errors.Is(err, gorm.ErrRecordNotFound)
 }
+
+// -------------------- Analytics --------------------
+
+func (s *Service) GetPlatformAnalytics(ctx context.Context, daysBack int) (*PlatformAnalytics, error) {
+	if daysBack <= 0 {
+		daysBack = 30
+	}
+	a := &PlatformAnalytics{
+		UsersByRole: make(map[string]int64),
+	}
+
+	db := s.bookingRepo.DB().WithContext(ctx)
+
+	// totals
+	db.Table("users").Count(&a.TotalUsers)
+	db.Table("studios").Where("status = 'verified'").Count(&a.TotalStudios)
+
+	var totals struct {
+		Count   int64
+		Revenue float64
+	}
+	db.Table("bookings").
+		Select("COUNT(*) as count, COALESCE(SUM(total_price), 0) as revenue").
+		Where("status IN ('confirmed','completed')").
+		Scan(&totals)
+
+	a.TotalBookings = totals.Count
+	a.TotalRevenue = totals.Revenue
+	a.PlatformCommission = totals.Revenue * 0.10
+
+	// month start (простая логика: 1-е число текущего месяца)
+	now := time.Now()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+
+	db.Table("users").Where("created_at >= ?", monthStart).Count(&a.NewUsersThisMonth)
+	db.Table("studios").Where("created_at >= ?", monthStart).Count(&a.NewStudiosThisMonth)
+
+	var month struct {
+		Count   int64
+		Revenue float64
+	}
+	db.Table("bookings").
+		Select("COUNT(*) as count, COALESCE(SUM(total_price), 0) as revenue").
+		Where("status IN ('confirmed','completed')").
+		Where("created_at >= ?", monthStart).
+		Scan(&month)
+
+	a.BookingsThisMonth = month.Count
+	a.RevenueThisMonth = month.Revenue
+	a.CommissionThisMonth = month.Revenue * 0.10
+
+	// users by role
+	var roles []struct {
+		Role  string
+		Count int64
+	}
+	db.Table("users").
+		Select("role, COUNT(*) as count").
+		Group("role").
+		Scan(&roles)
+	for _, r := range roles {
+		a.UsersByRole[r.Role] = r.Count
+	}
+
+	// bookings by day
+	startDate := time.Now().AddDate(0, 0, -daysBack)
+	var daily []DailyStats
+	db.Table("bookings").
+		Select("DATE(created_at) as date, COUNT(*) as bookings, COALESCE(SUM(total_price), 0) as revenue").
+		Where("status IN ('confirmed','completed')").
+		Where("created_at >= ?", startDate).
+		Group("DATE(created_at)").
+		Order("date ASC").
+		Scan(&daily)
+	a.BookingsByDay = daily
+
+	// top studios
+	var topStudios []StudioRanking
+	db.Table("studios s").
+		Select(`
+			s.id as studio_id,
+			s.name as studio_name,
+			s.city,
+			COUNT(b.id) as bookings,
+			COALESCE(SUM(b.total_price), 0) as revenue,
+			COALESCE(s.rating, 0) as rating,
+			COALESCE(s.is_vip, false) as is_vip,
+			COALESCE(s.is_gold, false) as is_gold
+		`).
+		Joins("LEFT JOIN bookings b ON b.studio_id = s.id AND b.status IN ('confirmed','completed')").
+		Where("s.status = 'verified'").
+		Group("s.id, s.name, s.city, s.rating, s.is_vip, s.is_gold").
+		Order("bookings DESC, revenue DESC").
+		Limit(10).
+		Scan(&topStudios)
+	a.TopStudios = topStudios
+
+	// top cities
+	var cities []CityStats
+	db.Table("studios s").
+		Select(`
+			s.city,
+			COUNT(DISTINCT s.id) as studios,
+			COUNT(b.id) as bookings,
+			COALESCE(SUM(b.total_price), 0) as revenue
+		`).
+		Joins("LEFT JOIN bookings b ON b.studio_id = s.id AND b.status IN ('confirmed','completed')").
+		Where("s.status = 'verified'").
+		Group("s.city").
+		Order("bookings DESC").
+		Limit(10).
+		Scan(&cities)
+	a.TopCities = cities
+
+	return a, nil
+}
+
+// -------------------- VIP / Gold / Promo --------------------
+
+func (s *Service) SetStudioVIP(ctx context.Context, studioID int64, isVIP bool) error {
+	return s.studioRepo.DB().WithContext(ctx).
+		Table("studios").Where("id = ?", studioID).
+		Update("is_vip", isVIP).Error
+}
+
+func (s *Service) SetStudioGold(ctx context.Context, studioID int64, isGold bool) error {
+	return s.studioRepo.DB().WithContext(ctx).
+		Table("studios").Where("id = ?", studioID).
+		Update("is_gold", isGold).Error
+}
+
+func (s *Service) SetStudioPromo(ctx context.Context, studioID int64, inPromo bool) error {
+	return s.studioRepo.DB().WithContext(ctx).
+		Table("studios").Where("id = ?", studioID).
+		Update("in_promo_slider", inPromo).Error
+}
+
+// -------------------- Ads --------------------
+
+func (s *Service) GetAds(ctx context.Context, placement string, activeOnly bool) ([]Ad, error) {
+	db := s.bookingRepo.DB().WithContext(ctx)
+	q := db.Model(&Ad{})
+
+	if placement != "" {
+		q = q.Where("placement = ?", placement)
+	}
+	if activeOnly {
+		now := time.Now()
+		q = q.Where("is_active = true").
+			Where("(start_date IS NULL OR start_date <= ?)", now).
+			Where("(end_date IS NULL OR end_date >= ?)", now)
+	}
+
+	var ads []Ad
+	if err := q.Order("created_at DESC").Find(&ads).Error; err != nil {
+		return nil, err
+	}
+	return ads, nil
+}
+
+func (s *Service) CreateAd(ctx context.Context, ad *Ad) error {
+	return s.bookingRepo.DB().WithContext(ctx).Create(ad).Error
+}
+
+func (s *Service) UpdateAd(ctx context.Context, adID int64, updates map[string]interface{}) error {
+	delete(updates, "id")
+	delete(updates, "created_at")
+
+	return s.bookingRepo.DB().WithContext(ctx).
+		Model(&Ad{}).
+		Where("id = ?", adID).
+		Updates(updates).Error
+}
+
+func (s *Service) DeleteAd(ctx context.Context, adID int64) error {
+	return s.bookingRepo.DB().WithContext(ctx).Delete(&Ad{}, adID).Error
+}
+
+func (s *Service) TrackAdImpression(ctx context.Context, adID int64) error {
+	return s.bookingRepo.DB().WithContext(ctx).
+		Table("ads").
+		Where("id = ?", adID).
+		UpdateColumn("impressions", gorm.Expr("impressions + 1")).Error
+}
+
+func (s *Service) TrackAdClick(ctx context.Context, adID int64) error {
+	return s.bookingRepo.DB().WithContext(ctx).
+		Table("ads").
+		Where("id = ?", adID).
+		UpdateColumn("clicks", gorm.Expr("clicks + 1")).Error
+}
+
+// -------------------- Reviews (delete) --------------------
+
+func (s *Service) DeleteReview(ctx context.Context, reviewID int64) error {
+	return s.reviewRepo.DB().WithContext(ctx).
+		Table("reviews").
+		Where("id = ?", reviewID).
+		Delete(nil).Error
+}

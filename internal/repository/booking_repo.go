@@ -388,3 +388,173 @@ func (r *BookingRepository) UpdateDeposit(ctx context.Context, bookingID int64, 
 		Where("id = ?", bookingID).
 		Update("deposit_amount", amount).Error
 }
+
+// -------------------- Manager Bookings --------------------
+
+type ManagerBookingFilters struct {
+	StudioID   int64
+	RoomID     int64
+	Status     string
+	DateFrom   time.Time
+	DateTo     time.Time
+	ClientName string
+	Page       int
+	PerPage    int
+}
+
+type ManagerBookingRow struct {
+	ID                 int64     `json:"id"`
+	RoomID             int64     `json:"room_id"`
+	RoomName           string    `json:"room_name"`
+	StudioID           int64     `json:"studio_id"`
+	StudioName         string    `json:"studio_name"`
+	ClientID           int64     `json:"client_id"`
+	ClientName         string    `json:"client_name"`
+	ClientPhone        string    `json:"client_phone"`
+	ClientEmail        string    `json:"client_email"`
+	StartTime          time.Time `json:"start_time"`
+	EndTime            time.Time `json:"end_time"`
+	Status             string    `json:"status"`
+	TotalPrice         float64   `json:"total_price"`
+	DepositAmount      float64   `json:"deposit_amount"`
+	Balance            float64   `json:"balance"`
+	Notes              string    `json:"notes,omitempty"`
+	CancellationReason string    `json:"cancellation_reason,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+func (r *BookingRepository) GetManagerBookings(
+	ctx context.Context,
+	ownerID int64,
+	filters ManagerBookingFilters,
+) ([]ManagerBookingRow, int64, error) {
+
+	// 1) получаем студии владельца
+	var studioIDs []int64
+	if err := r.db.WithContext(ctx).
+		Table("studios").
+		Where("owner_id = ?", ownerID).
+		Pluck("id", &studioIDs).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if len(studioIDs) == 0 {
+		return []ManagerBookingRow{}, 0, nil
+	}
+
+	// 2) базовый запрос
+	query := r.db.WithContext(ctx).
+		Table("bookings b").
+		Select(`
+			b.id,
+			b.room_id,
+			r.name as room_name,
+			b.studio_id,
+			s.name as studio_name,
+			b.user_id as client_id,
+			u.name as client_name,
+			u.phone as client_phone,
+			u.email as client_email,
+			b.start_time,
+			b.end_time,
+			b.status,
+			b.total_price,
+			COALESCE(b.deposit_amount, 0) as deposit_amount,
+			b.total_price - COALESCE(b.deposit_amount, 0) as balance,
+			b.notes,
+			b.cancellation_reason,
+			b.created_at
+		`).
+		Joins("JOIN rooms r ON r.id = b.room_id").
+		Joins("JOIN studios s ON s.id = b.studio_id").
+		Joins("JOIN users u ON u.id = b.user_id").
+		Where("b.studio_id IN ?", studioIDs)
+
+	// 3) фильтры
+	if filters.StudioID > 0 {
+		query = query.Where("b.studio_id = ?", filters.StudioID)
+	}
+	if filters.RoomID > 0 {
+		query = query.Where("b.room_id = ?", filters.RoomID)
+	}
+	if filters.Status != "" && filters.Status != "all" {
+		query = query.Where("b.status = ?", filters.Status)
+	}
+	if !filters.DateFrom.IsZero() {
+		query = query.Where("b.start_time >= ?", filters.DateFrom)
+	}
+	if !filters.DateTo.IsZero() {
+		query = query.Where("b.start_time <= ?", filters.DateTo)
+	}
+
+	// ⚠️ чтобы работало и в SQLite, и в Postgres:
+	if filters.ClientName != "" {
+		query = query.Where("LOWER(u.name) LIKE LOWER(?)", "%"+filters.ClientName+"%")
+	}
+
+	// 4) total count
+	var total int64
+	countQuery := query.Session(&gorm.Session{})
+	if err := countQuery.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// 5) pagination
+	if filters.PerPage == 0 {
+		filters.PerPage = 20
+	}
+	if filters.Page == 0 {
+		filters.Page = 1
+	}
+	offset := (filters.Page - 1) * filters.PerPage
+
+	// 6) scan rows
+	var rows []ManagerBookingRow
+	if err := query.
+		Order("b.start_time DESC").
+		Limit(filters.PerPage).
+		Offset(offset).
+		Scan(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return rows, total, nil
+}
+
+func (r *BookingRepository) GetBookingForManager(ctx context.Context, ownerID, bookingID int64) (*ManagerBookingRow, error) {
+	var row ManagerBookingRow
+
+	err := r.db.WithContext(ctx).
+		Table("bookings b").
+		Select(`
+			b.id,
+			b.room_id,
+			r.name as room_name,
+			b.studio_id,
+			s.name as studio_name,
+			b.user_id as client_id,
+			u.name as client_name,
+			u.phone as client_phone,
+			u.email as client_email,
+			b.start_time,
+			b.end_time,
+			b.status,
+			b.total_price,
+			COALESCE(b.deposit_amount, 0) as deposit_amount,
+			b.total_price - COALESCE(b.deposit_amount, 0) as balance,
+			b.notes,
+			b.cancellation_reason,
+			b.created_at
+		`).
+		Joins("JOIN rooms r ON r.id = b.room_id").
+		Joins("JOIN studios s ON s.id = b.studio_id").
+		Joins("JOIN users u ON u.id = b.user_id").
+		Where("b.id = ?", bookingID).
+		Where("s.owner_id = ?", ownerID).
+		First(&row).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
