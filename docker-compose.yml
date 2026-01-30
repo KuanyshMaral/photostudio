@@ -42,7 +42,7 @@ services:
     volumes:
       - ./migrations:/migrations
     env_file:
-      - - .env.docker.example
+     - .env.docker.example
     command: ["-path=/migrations", "-database", "${DATABASE_URL}", "up"]
     restart: "no"
 
