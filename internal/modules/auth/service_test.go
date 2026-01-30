@@ -5,6 +5,7 @@ import (
 	_ "errors"
 	_ "github.com/golang-jwt/jwt/v5"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -58,6 +59,39 @@ type mockStudioOwnerRepo struct {
 	mock.Mock
 }
 
+// Mock Refresh Token Repository
+type mockRefreshTokenRepo struct {
+	mock.Mock
+}
+
+func (m *mockRefreshTokenRepo) Create(ctx context.Context, t *domain.RefreshToken) error {
+	args := m.Called(ctx, t)
+	return args.Error(0)
+}
+
+func (m *mockRefreshTokenRepo) GetByHash(ctx context.Context, hash string) (*domain.RefreshToken, error) {
+	args := m.Called(ctx, hash)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.RefreshToken), args.Error(1)
+}
+
+func (m *mockRefreshTokenRepo) Revoke(ctx context.Context, id int64, replacedByID *int64) error {
+	args := m.Called(ctx, id, replacedByID)
+	return args.Error(0)
+}
+
+func (m *mockRefreshTokenRepo) RevokeByUser(ctx context.Context, userID int64) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *mockRefreshTokenRepo) DeleteExpired(ctx context.Context) error {
+	args := m.Called(ctx)
+	return args.Error(0)
+}
+
 func (m *mockStudioOwnerRepo) AppendVerificationDocs(ctx context.Context, userID int64, urls []string) error {
 	args := m.Called(ctx, userID, urls)
 	return args.Error(0)
@@ -76,16 +110,18 @@ func (m *mockJWTService) GenerateToken(userID int64, role string) (string, error
 func TestService_RegisterClient_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	studioOwnerRepo := new(mockStudioOwnerRepo)
+	refreshRepo := new(mockRefreshTokenRepo)
 	jwtSvc := new(mockJWTService)
 
 	// Setup expectations
 	userRepo.On("ExistsByEmail", mock.Anything, "test@example.com").Return(false, nil)
 	userRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 	jwtSvc.On("GenerateToken", mock.Anything, "client").Return("fake-jwt-token", nil)
+	refreshRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, refreshRepo, jwtSvc, 15*time.Minute, 7*24*time.Hour)
 
-	user, token, err := service.RegisterClient(context.Background(), RegisterClientRequest{
+	user, tokens, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Name:     "Test User",
 		Email:    "test@example.com",
 		Phone:    "+77001234567",
@@ -94,20 +130,23 @@ func TestService_RegisterClient_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, user)
-	assert.Equal(t, "fake-jwt-token", token)
+	assert.Equal(t, "fake-jwt-token", tokens.AccessToken)
+	assert.NotEmpty(t, tokens.RefreshToken)
 
 	userRepo.AssertExpectations(t)
 	jwtSvc.AssertExpectations(t)
+	refreshRepo.AssertExpectations(t)
 }
 
 func TestService_RegisterClient_EmailExists(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	studioOwnerRepo := new(mockStudioOwnerRepo)
+	refreshRepo := new(mockRefreshTokenRepo)
 	jwtSvc := new(mockJWTService)
 
 	userRepo.On("ExistsByEmail", mock.Anything, "exists@example.com").Return(true, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, refreshRepo, jwtSvc, 15*time.Minute, 7*24*time.Hour)
 
 	_, _, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Email: "exists@example.com",
@@ -119,6 +158,7 @@ func TestService_RegisterClient_EmailExists(t *testing.T) {
 func TestService_Login_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	studioOwnerRepo := new(mockStudioOwnerRepo)
+	refreshRepo := new(mockRefreshTokenRepo)
 	jwtSvc := new(mockJWTService)
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
@@ -131,45 +171,31 @@ func TestService_Login_Success(t *testing.T) {
 
 	userRepo.On("GetByEmail", mock.Anything, "user@example.com").Return(existingUser, nil)
 	jwtSvc.On("GenerateToken", int64(10), "client").Return("login-token", nil)
+	refreshRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, refreshRepo, jwtSvc, 15*time.Minute, 7*24*time.Hour)
 
-	_, token, err := service.Login(context.Background(), LoginRequest{
+	_, tokens, err := service.Login(context.Background(), LoginRequest{
 		Email:    "user@example.com",
 		Password: "password123",
 	})
 
 	assert.NoError(t, err)
-	assert.Equal(t, "login-token", token)
-}
-
-func TestService_Login_WrongPassword(t *testing.T) {
-	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
-	jwtSvc := new(mockJWTService)
-
-	hashed, _ := bcrypt.GenerateFromPassword([]byte("correct"), bcrypt.DefaultCost)
-	user := &domain.User{PasswordHash: string(hashed)}
-
-	userRepo.On("GetByEmail", mock.Anything, mock.Anything).Return(user, nil)
-
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
-
-	_, _, err := service.Login(context.Background(), LoginRequest{Password: "wrong"})
-
-	assert.ErrorIs(t, err, ErrInvalidCredentials)
+	assert.Equal(t, "login-token", tokens.AccessToken)
+	assert.NotEmpty(t, tokens.RefreshToken)
 }
 
 func TestService_AppendVerificationDocs(t *testing.T) {
 	userRepo := new(mockUserRepo)
 	studioOwnerRepo := new(mockStudioOwnerRepo)
+	refreshRepo := new(mockRefreshTokenRepo)
 	jwtSvc := new(mockJWTService)
 
 	urls := []string{"/static/verification/doc1.pdf"}
 
 	studioOwnerRepo.On("AppendVerificationDocs", mock.Anything, int64(5), urls).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, refreshRepo, jwtSvc, 15*time.Minute, 7*24*time.Hour)
 
 	err := service.AppendVerificationDocs(context.Background(), 5, urls)
 

@@ -19,13 +19,25 @@ import (
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
 	"photostudio/internal/modules/chat"
-	"photostudio/internal/modules/manager"
 	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/owner"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
 )
+
+func mustDuration(envKey string, defaultVal time.Duration) time.Duration {
+	val := strings.TrimSpace(os.Getenv(envKey))
+	if val == "" {
+		return defaultVal
+	}
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		log.Printf("⚠️ invalid %s=%q, using default %s", envKey, val, defaultVal)
+		return defaultVal
+	}
+	return d
+}
 
 func main() {
 	// Load .env file if it exists (only in local dev)
@@ -68,6 +80,7 @@ func main() {
 		&domain.CompanyProfile{},
 		&domain.PortfolioProject{},
 		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
+		&domain.RefreshToken{},
 	}
 	if strings.HasSuffix(databaseURL, ".db") {
 		log.Println("Running AutoMigrate for local development...")
@@ -90,19 +103,24 @@ func main() {
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewOwnerRepository(db)
 	studioWorkingHoursRepo := repository.NewStudioWorkingHoursRepository(db)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 
 	notificationRepo := repository.NewNotificationRepository(db)
 	chatRepo := repository.NewChatRepository(db)
 	favoriteRepo := repository.NewFavoriteRepository(db)
 	ownerCRMRepo := repository.NewOwnerCRMRepository(db)
+	// Token TTLs (align with MWork requirements)
+	accessTTL := mustDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
+	refreshTTL := mustDuration("REFRESH_TOKEN_TTL", 7*24*time.Hour)
+
 	// Shared services
-	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
+	jwtService := jwtsvc.New(jwtSecret, accessTTL)
 
 	// Ownership checker (for catalog module)
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
-	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
+	authService := auth.NewService(userRepo, studioOwnerRepo, refreshTokenRepo, jwtService, accessTTL, refreshTTL)
 	authHandler := auth.NewHandler(authService, bookingRepo)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
@@ -128,8 +146,6 @@ func main() {
 	chatWSHandler := chat.NewWSHandler(chatHub, jwtService, chatService)
 
 	ownerHandler := owner.NewHandler(ownerCRMRepo)
-
-	managerHandler := manager.NewHandler(bookingRepo, ownerCRMRepo)
 
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
@@ -189,12 +205,6 @@ func main() {
 		{
 			ownerHandler.RegisterRoutes(ownerCRMGroup)
 			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
-		}
-
-		managerGroup := protected.Group("")
-		managerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
-		{
-			managerHandler.RegisterRoutes(managerGroup)
 		}
 
 		// You can uncomment when ready

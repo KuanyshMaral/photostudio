@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	jwtlib "github.com/golang-jwt/jwt/v5"
@@ -30,6 +31,7 @@ func (s *Service) GenerateToken(userID int64, role string) (string, error) {
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwtlib.RegisteredClaims{
+			Subject:   strconv.FormatInt(userID, 10),
 			ExpiresAt: jwtlib.NewNumericDate(time.Now().Add(s.ttl)),
 			IssuedAt:  jwtlib.NewNumericDate(time.Now()),
 		},

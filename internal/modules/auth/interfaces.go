@@ -23,6 +23,15 @@ type StudioOwnerRepositoryInterface interface {
 	AppendVerificationDocs(ctx context.Context, userID int64, urls []string) error
 }
 
+// RefreshTokenRepositoryInterface — storage for refresh tokens
+type RefreshTokenRepositoryInterface interface {
+	Create(ctx context.Context, t *domain.RefreshToken) error
+	GetByHash(ctx context.Context, hash string) (*domain.RefreshToken, error)
+	Revoke(ctx context.Context, id int64, replacedByID *int64) error
+	RevokeByUser(ctx context.Context, userID int64) error
+	DeleteExpired(ctx context.Context) error
+}
+
 // BookingStats — агрегированная статистика
 type BookingStats struct {
 	Total     int64

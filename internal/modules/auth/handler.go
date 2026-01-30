@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"photostudio/internal/pkg/response"
@@ -33,6 +34,8 @@ func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
 		authGroup.POST("/register/client", h.RegisterClient)
 		authGroup.POST("/register/studio", h.RegisterStudioOwner)
 		authGroup.POST("/login", h.Login)
+		authGroup.POST("/refresh", h.Refresh)
+		authGroup.POST("/logout", h.Logout)
 	}
 }
 
@@ -53,7 +56,7 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.service.RegisterClient(c.Request.Context(), req)
+	user, tokens, err := h.service.RegisterClient(c.Request.Context(), req)
 	if err != nil {
 		if err == ErrEmailAlreadyExists {
 			response.Error(c, http.StatusConflict, "EMAIL_EXISTS", "This email is already registered")
@@ -63,6 +66,7 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 		return
 	}
 
+	h.setRefreshCookie(c, tokens.RefreshToken)
 	response.Success(c, http.StatusCreated, gin.H{
 		"user": gin.H{
 			"id":            user.ID,
@@ -72,7 +76,7 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 			"phone":         user.Phone,
 			"studio_status": user.StudioStatus,
 		},
-		"token": token,
+		"tokens": tokens,
 	})
 }
 
@@ -84,7 +88,7 @@ func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.service.RegisterStudioOwner(c.Request.Context(), req)
+	user, tokens, err := h.service.RegisterStudioOwner(c.Request.Context(), req)
 	if err != nil {
 		if err == ErrEmailAlreadyExists {
 			response.Error(c, http.StatusConflict, "EMAIL_EXISTS", "This email is already registered")
@@ -94,6 +98,7 @@ func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 		return
 	}
 
+	h.setRefreshCookie(c, tokens.RefreshToken)
 	response.Success(c, http.StatusCreated, gin.H{
 		"user": gin.H{
 			"id":            user.ID,
@@ -103,7 +108,7 @@ func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 			"phone":         user.Phone,
 			"studio_status": user.StudioStatus,
 		},
-		"token": token,
+		"tokens": tokens,
 	})
 }
 
@@ -115,7 +120,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.service.Login(c.Request.Context(), req)
+	user, tokens, err := h.service.Login(c.Request.Context(), req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
 			response.Error(c, http.StatusUnauthorized, "INVALID_CREDENTIALS", "Email or password is incorrect")
@@ -125,6 +130,7 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
+	h.setRefreshCookie(c, tokens.RefreshToken)
 	response.Success(c, http.StatusOK, gin.H{
 		"user": gin.H{
 			"id":            user.ID,
@@ -134,8 +140,75 @@ func (h *Handler) Login(c *gin.Context) {
 			"phone":         user.Phone,
 			"studio_status": user.StudioStatus,
 		},
-		"token": token,
+		"tokens": tokens,
 	})
+}
+
+// Refresh — POST /auth/refresh
+func (h *Handler) Refresh(c *gin.Context) {
+	refresh, err := c.Cookie("refresh_token")
+	if err != nil || refresh == "" {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Refresh token is missing")
+		return
+	}
+
+	user, tokens, err := h.service.Refresh(c.Request.Context(), refresh)
+	if err != nil {
+		response.Error(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid refresh token")
+		return
+	}
+
+	h.setRefreshCookie(c, tokens.RefreshToken)
+	response.Success(c, http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":            user.ID,
+			"email":         user.Email,
+			"name":          user.Name,
+			"role":          user.Role,
+			"phone":         user.Phone,
+			"studio_status": user.StudioStatus,
+		},
+		"tokens": tokens,
+	})
+}
+
+// Logout — POST /auth/logout
+func (h *Handler) Logout(c *gin.Context) {
+	refresh, _ := c.Cookie("refresh_token")
+	_ = h.service.Logout(c.Request.Context(), refresh)
+
+	// clear cookie
+	h.clearRefreshCookie(c)
+	response.Success(c, http.StatusOK, gin.H{"ok": true})
+}
+
+func (h *Handler) setRefreshCookie(c *gin.Context, token string) {
+	if token == "" {
+		return
+	}
+
+	// Cookie settings
+	secure := os.Getenv("ENV") == "production" || os.Getenv("COOKIE_SECURE") == "true"
+	domain := os.Getenv("COOKIE_DOMAIN")
+	path := "/" // allow refresh from any endpoint
+
+	// Lax is a sane default for SPA + same-site requests; if you do cross-site, use None + Secure.
+	sameSite := http.SameSiteLaxMode
+	if strings.EqualFold(os.Getenv("COOKIE_SAMESITE"), "none") {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
+
+	maxAge := h.service.RefreshTTLSeconds()
+	c.SetCookie("refresh_token", token, maxAge, path, domain, secure, true)
+}
+
+func (h *Handler) clearRefreshCookie(c *gin.Context) {
+	secure := os.Getenv("ENV") == "production" || os.Getenv("COOKIE_SECURE") == "true"
+	domain := os.Getenv("COOKIE_DOMAIN")
+	path := "/"
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("refresh_token", "", -1, path, domain, secure, true)
 }
 
 // GetMe — GET /users/me (protected)

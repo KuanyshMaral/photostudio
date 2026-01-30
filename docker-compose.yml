@@ -1,15 +1,14 @@
-version: "3.8"
 
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: photostudio_db
+    image: postgres:16-alpine
+    container_name: photostudio-postgres
     environment:
       POSTGRES_USER: photostudio
       POSTGRES_PASSWORD: photostudio123
       POSTGRES_DB: photostudio
-    ports:
-      - "5432:5432"
+#  ports:
+#    - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,22 +16,58 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
-  api:
-    build: .
-    container_name: photostudio_api
+  redis:
+    image: redis:7-alpine
+    container_name: photostudio-redis
+    # ports:
+    #   - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:4
+    container_name: photostudio-migrate
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    env_file:
+      - - .env.docker.example
+    command: ["-path=/migrations", "-database", "${DATABASE_URL}", "up"]
+    restart: "no"
+
+  api:
+    build: .
+    container_name: photostudio-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    env_file:
+      - .env.docker.example
     ports:
       - "3001:3001"
-    environment:
-      - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
-      - JWT_SECRET=docker_dev_secret_change_in_production
-      - PORT=3001
-      - ENV=development
     volumes:
       - ./uploads:/app/uploads
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: photostudio-network
