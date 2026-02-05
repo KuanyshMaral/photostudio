@@ -29,6 +29,8 @@ type userModel struct {
 	AvatarURL     *string   `gorm:"column:avatar_url"`
 	EmailVerified bool      `gorm:"column:email_verified"`
 	StudioStatus  *string   `gorm:"column:studio_status"`
+	MworkUserID   *string   `gorm:"column:mwork_user_id"`
+	MworkRole     *string   `gorm:"column:mwork_role"`
 	CreatedAt     time.Time `gorm:"column:created_at"`
 	UpdatedAt     time.Time `gorm:"column:updated_at"`
 }
@@ -36,7 +38,7 @@ type userModel struct {
 func (userModel) TableName() string { return "users" }
 
 func toDomainUser(m userModel) *domain.User {
-	var phone, avatar, status string
+	var phone, avatar, status, mworkUserID, mworkRole string
 	if m.Phone != nil {
 		phone = *m.Phone
 	}
@@ -45,6 +47,12 @@ func toDomainUser(m userModel) *domain.User {
 	}
 	if m.StudioStatus != nil {
 		status = *m.StudioStatus
+	}
+	if m.MworkUserID != nil {
+		mworkUserID = *m.MworkUserID
+	}
+	if m.MworkRole != nil {
+		mworkRole = *m.MworkRole
 	}
 
 	return &domain.User{
@@ -57,6 +65,8 @@ func toDomainUser(m userModel) *domain.User {
 		AvatarURL:     avatar,
 		EmailVerified: m.EmailVerified,
 		StudioStatus:  domain.StudioStatus(status),
+		MworkUserID:   mworkUserID,
+		MworkRole:     mworkRole,
 		CreatedAt:     m.CreatedAt,
 		UpdatedAt:     m.UpdatedAt,
 	}
@@ -65,7 +75,7 @@ func toDomainUser(m userModel) *domain.User {
 func toUserModel(u *domain.User) userModel {
 	email := strings.TrimSpace(strings.ToLower(u.Email))
 
-	var phone, avatar, status *string
+	var phone, avatar, status, mworkUserID, mworkRole *string
 	if u.Phone != "" {
 		v := u.Phone
 		phone = &v
@@ -78,6 +88,14 @@ func toUserModel(u *domain.User) userModel {
 		v := string(u.StudioStatus)
 		status = &v
 	}
+	if u.MworkUserID != "" {
+		v := u.MworkUserID
+		mworkUserID = &v
+	}
+	if u.MworkRole != "" {
+		v := u.MworkRole
+		mworkRole = &v
+	}
 
 	return userModel{
 		ID:            u.ID,
@@ -89,6 +107,8 @@ func toUserModel(u *domain.User) userModel {
 		AvatarURL:     avatar,
 		EmailVerified: u.EmailVerified,
 		StudioStatus:  status,
+		MworkUserID:   mworkUserID,
+		MworkRole:     mworkRole,
 		CreatedAt:     u.CreatedAt,
 		UpdatedAt:     u.UpdatedAt,
 	}
@@ -122,6 +142,17 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	var m userModel
 	tx := r.db.WithContext(ctx).First(&m, id)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	return toDomainUser(m), nil
+}
+
+func (r *UserRepository) GetByMworkUserID(ctx context.Context, mworkUserID string) (*domain.User, error) {
+	var m userModel
+	tx := r.db.WithContext(ctx).
+		Where("mwork_user_id = ?", mworkUserID).
+		First(&m)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

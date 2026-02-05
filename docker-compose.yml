@@ -4,6 +4,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: photostudio_db
+    networks:
+      - photostudio_net
     environment:
       POSTGRES_USER: photostudio
       POSTGRES_PASSWORD: photostudio123
@@ -24,15 +26,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - photostudio_net
     ports:
-      - "3001:3001"
+      - "8090:8090"
     environment:
       - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
       - JWT_SECRET=docker_dev_secret_change_in_production
-      - PORT=3001
+      - PORT=8090
       - ENV=development
     volumes:
       - ./uploads:/app/uploads
 
 volumes:
   postgres_data:
+
+networks:
+  photostudio_net:
+    name: photostudio_net

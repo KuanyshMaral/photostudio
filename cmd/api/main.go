@@ -6,6 +6,7 @@ import (
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
 	"photostudio/internal/modules/favorite"
+	"photostudio/internal/modules/mwork"
 	"strings"
 	"time"
 
@@ -131,6 +132,9 @@ func main() {
 
 	managerHandler := manager.NewHandler(bookingRepo, ownerCRMRepo)
 
+	mworkService := mwork.NewService(userRepo)
+	mworkHandler := mwork.NewHandler(mworkService)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(gin.Recovery())
@@ -208,6 +212,12 @@ func main() {
 	}
 	// Chat WebSocket route (public, auth via query param)
 	r.GET("/ws/chat", chatWSHandler.HandleWebSocket)
+
+	internal := r.Group("/internal")
+	internal.Use(middleware.InternalTokenAuth())
+	{
+		mworkHandler.RegisterRoutes(internal)
+	}
 
 	// Static files for uploads
 	r.Static("/static", "./uploads")
