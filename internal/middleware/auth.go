@@ -153,7 +153,7 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		
+
 		// Everything is OK → store user_id in context for downstream handlers
 		// We store it as int64 because Gin’s c.GetInt64 is convenient and safe
 		c.Set("user_id", claims.UserID)

@@ -71,15 +71,15 @@ func (h *Handler) SyncUser(c *gin.Context) {
 	}
 
 	logSync(req, string(result), start)
-		c.JSON(status, gin.H{
-			"data": SyncUserResponse{
-				ID:          user.ID,
-				MworkUserID: req.MworkUserID,
-				Email:       user.Email,
-				Role:        req.Role,
-			},
-		})
-	}
+	c.JSON(status, gin.H{
+		"data": SyncUserResponse{
+			ID:          user.ID,
+			MworkUserID: req.MworkUserID,
+			Email:       user.Email,
+			Role:        req.Role,
+		},
+	})
+}
 
 func writeError(c *gin.Context, status int, code, message string, details map[string]any) {
 	payload := gin.H{
