@@ -7,7 +7,6 @@ import (
 	"photostudio/internal/middleware"
 	"photostudio/internal/modules/favorite"
 	"photostudio/internal/modules/mwork"
-	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -70,16 +69,19 @@ func main() {
 		&domain.PortfolioProject{},
 		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
 	}
-	if strings.HasSuffix(databaseURL, ".db") {
-		log.Println("Running AutoMigrate for local development...")
+
+	// Check if migrations should be run via environment variable
+	runMigrations := os.Getenv("DB_AUTO_MIGRATE")
+	if runMigrations == "true" || runMigrations == "1" {
+		log.Println("🔄 Running database migrations (DB_AUTO_MIGRATE=true)...")
 		for _, model := range models {
 			if err := db.AutoMigrate(model); err != nil {
 				log.Fatalf("AutoMigrate failed for %T: %v", model, err)
 			}
 		}
-		log.Println("✅ AutoMigrate completed")
+		log.Println("✅ AutoMigrate completed successfully")
 	} else {
-		log.Println("Skipping AutoMigrate (non-sqlite database)")
+		log.Println("⏭️  Skipping AutoMigrate (DB_AUTO_MIGRATE not set or false)")
 	}
 
 	// Repositories

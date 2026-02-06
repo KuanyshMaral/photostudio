@@ -35,6 +35,7 @@ services:
       - JWT_SECRET=docker_dev_secret_change_in_production
       - PORT=8090
       - ENV=development
+      - DB_AUTO_MIGRATE=true
     volumes:
       - ./uploads:/app/uploads
 
