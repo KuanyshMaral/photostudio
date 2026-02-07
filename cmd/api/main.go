@@ -143,6 +143,10 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS())
 
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	v1 := r.Group("/api/v1")
 
 	// Public routes
