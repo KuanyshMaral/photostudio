@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # IMAGE_NAME мы задаем динамически в шагах, чтобы сделать lowercase
 
 jobs:
   build-and-deploy:
@@ -20,6 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 1. Исправляем заглавные буквы в имени образа
       - name: Lowercase Repo Name
         run: echo "IMAGE_NAME=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
@@ -46,15 +47,26 @@ jobs:
           script: |
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             
+            # Идем в папку проекта
             cd /srv/apps/photostudio
             
-            # Обновляем конфиги
+            # Обновляем конфиги и docker-compose
             git reset --hard
             git pull origin main
             
+            # Скачиваем свежий образ бэка
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             
-            # Перезапускаем бэкенд (убедись, что сервис называется api или backend)
+            # Перезапускаем БЭКЕНД (убедись, что сервис называется 'api')
             docker compose up -d --no-deps --build api
             
             docker image prune -f
+
+      # 2. ПИНАЕМ ФРОНТЕНД 
+      - name: Trigger Frontend Deploy
+        if: success()
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GHCR_TOKEN }}
+          repository: KuanyshMaral/photostudio-front  # <-- ИМЯ РЕПО ФРОНТА
+          event-type: backend_updated
