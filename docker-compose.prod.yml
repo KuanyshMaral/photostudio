@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: photostudio_db
+    networks:
+      - photostudio_net
+    env_file: .env
+    environment:
+      POSTGRES_USER: photostudio
+      POSTGRES_PASSWORD: photostudio123
+      POSTGRES_DB: photostudio
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U photostudio -d photostudio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: ghcr.io/kuanyshmaral/photostudio-api:latest
+    container_name: photostudio_api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - photostudio_net
+    ports:
+      - "8090:8090"
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
+      - PORT=8090
+    volumes:
+      - ./uploads:/app/uploads
+
+volumes:
+  postgres_data:
+
+networks:
+  photostudio_net:
+    name: photostudio_net
