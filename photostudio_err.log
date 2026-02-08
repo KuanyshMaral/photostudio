@@ -1,0 +1,8 @@
+2026/02/09 01:58:59 ⚠️ DATABASE_URL not set → using SQLite: studio.db
+2026/02/09 01:58:59 Using SQLite for local development: studio.db
+2026/02/09 01:58:59 🔄 Running database migrations (DB_AUTO_MIGRATE=true)...
+2026/02/09 01:58:59 ✅ AutoMigrate completed successfully
+2026/02/09 01:58:59 🚀 Server starting on :8090
+[GIN-debug] [ERROR] listen tcp :8090: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+2026/02/09 01:58:59 Failed to start server: listen tcp :8090: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+exit status 1
