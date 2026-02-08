@@ -58,6 +58,29 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 		})
 		return
 	}
+
+	// Extract user_id from context (set by JWT or MWork middleware)
+	userIDAny, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Missing auth"},
+		})
+		return
+	}
+
+	userID, ok := userIDAny.(int64)
+	if !ok || userID <= 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error":   gin.H{"code": "UNAUTHORIZED", "message": "Invalid auth context"},
+		})
+		return
+	}
+
+	// Override user_id from context (prevents user from impersonating)
+	req.UserID = userID
+
 	b, err := h.service.CreateBooking(c.Request.Context(), req)
 	if err != nil {
 		switch {

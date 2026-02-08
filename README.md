@@ -155,6 +155,12 @@ docker-compose up --build
 - API: **http://localhost:3001**
 - PostgreSQL: localhost:5432 (user: photostudio, pass: photostudio123, db: photostudio)
 
+## 🔐 GitHub Secrets (CI/CD)
+
+- `PROD_HOST`
+- `PROD_USER`
+- `PROD_SSH_KEY`
+
 ## 📂 Структура проекта
 
 ```text
@@ -183,7 +189,7 @@ backend/
 - **Production** — обязательно PostgreSQL + Docker
 - **Безопасность** — **смените JWT_SECRET** в production!
 - **Тесты** — `make test` или `go test ./... -v`
-- **Файлы** — загружаются в `./uploads/` (gitignore)
+- **Файлы** — загружаются в `./uploads/` (gitignore) 
 
 ## 📌 Статус проекта
 

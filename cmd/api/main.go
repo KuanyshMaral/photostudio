@@ -143,6 +143,10 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS())
 
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	v1 := r.Group("/api/v1")
 
 	// Public routes
@@ -219,6 +223,24 @@ func main() {
 	internal.Use(middleware.InternalTokenAuth())
 	{
 		mworkHandler.RegisterRoutes(internal)
+
+		// MWork-authenticated booking routes (with user ID mapping)
+		mworkBookings := internal.Group("/mwork")
+		mworkBookings.Use(middleware.MWorkUserAuth(userRepo))
+		{
+			// POST /internal/mwork/bookings - create booking with X-MWork-User-ID header
+			mworkBookings.POST("/bookings", bookingHandler.CreateBooking)
+			// GET /internal/mwork/bookings - list my bookings
+			mworkBookings.GET("/bookings", bookingHandler.GetMyBookings)
+			// GET /internal/mwork/studios - list studios (public data)
+			mworkBookings.GET("/studios", catalogHandler.GetStudios)
+			// GET /internal/mwork/studios/:id - studio details
+			mworkBookings.GET("/studios/:id", catalogHandler.GetStudioByID)
+			// GET /internal/mwork/rooms/:id/availability - room availability
+			mworkBookings.GET("/rooms/:id/availability", bookingHandler.GetRoomAvailability)
+			// GET /internal/mwork/rooms/:id/busy-slots - room busy slots
+			mworkBookings.GET("/rooms/:id/busy-slots", bookingHandler.GetBusySlots)
+		}
 	}
 
 	// Static files for uploads
