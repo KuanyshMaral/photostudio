@@ -139,7 +139,7 @@ func main() {
 
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
-	r.Use(gin.Recovery())
+	r.Use(middleware.ErrorLogger())
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS())
 
