@@ -29,7 +29,7 @@ func ErrorLogger() gin.HandlerFunc {
 			}
 
 			for _, err := range c.Errors {
-				logRequestError(c, start, err.Type.String(), err.Error(), debug.Stack())
+				logRequestError(c, start, fmt.Sprintf("%v", err.Type), err.Error(), debug.Stack())
 				if err.Meta != nil {
 					log.Printf("request_error_meta request_id=%s meta=%+v", requestID(c), err.Meta)
 				}
