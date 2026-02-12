@@ -1,0 +1,298 @@
+definitions:
+  gin.H:
+    additionalProperties: {}
+    type: object
+  internal_modules_booking.BookingResponse:
+    properties:
+      balance:
+        description: TotalPrice - DepositAmount
+        type: number
+      cancellation_reason:
+        description: 'Block 9: Только если отменено'
+        type: string
+      created_at:
+        type: string
+      deposit_amount:
+        description: 'Block 10: Для менеджеров'
+        type: number
+      end_time:
+        type: string
+      id:
+        type: integer
+      notes:
+        type: string
+      room_id:
+        type: integer
+      room_name:
+        type: string
+      start_time:
+        type: string
+      status:
+        type: string
+      studio_id:
+        type: integer
+      studio_name:
+        type: string
+      total_price:
+        type: number
+    type: object
+  internal_modules_booking.UpdateDepositRequest:
+    properties:
+      deposit_amount:
+        minimum: 0
+        type: number
+    required:
+    - deposit_amount
+    type: object
+  internal_modules_catalog.WorkingHoursResponse:
+    properties:
+      compact_text:
+        description: '"Пн-Пт: 10:00-20:00"'
+        type: string
+      hours:
+        items:
+          $ref: '#/definitions/photostudio_internal_domain.WorkingHours'
+        type: array
+      is_open_now:
+        type: boolean
+      next_open_time:
+        description: Когда откроется
+        type: string
+      status_text:
+        description: '"Открыто (закроется в 20:00)"'
+        type: string
+      studio_id:
+        type: integer
+    type: object
+  internal_modules_favorite.CheckFavoriteResponse:
+    properties:
+      is_favorite:
+        type: boolean
+    type: object
+  internal_modules_favorite.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  internal_modules_favorite.FavoriteListResponse:
+    properties:
+      favorites:
+        items:
+          $ref: '#/definitions/internal_modules_favorite.FavoriteResponse'
+        type: array
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  internal_modules_favorite.FavoriteResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      studio:
+        $ref: '#/definitions/internal_modules_favorite.StudioBrief'
+      studio_id:
+        type: integer
+    type: object
+  internal_modules_favorite.StudioBrief:
+    properties:
+      address:
+        type: string
+      district:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      rating:
+        type: number
+    type: object
+  photostudio_internal_domain.WorkingHours:
+    properties:
+      close_time:
+        description: '"21:00"'
+        type: string
+      day_of_week:
+        description: 0=Вс, 1=Пн, ..., 6=Сб
+        type: integer
+      is_closed:
+        description: true = выходной
+        type: boolean
+      open_time:
+        description: '"09:00"'
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API server for booking system.
+  title: PhotoStudio API
+  version: "1.0"
+paths:
+  /bookings/{id}/deposit:
+    patch:
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Сумма предоплаты
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_booking.UpdateDepositRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_booking.BookingResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить предоплату
+      tags:
+      - Booking
+  /favorites:
+    get:
+      parameters:
+      - default: 1
+        description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Элементов на страницу
+        in: query
+        name: per_page
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.FavoriteListResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить избранное
+      tags:
+      - Favorites
+  /favorites/{studioId}:
+    delete:
+      parameters:
+      - description: ID студии
+        in: path
+        name: studioId
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Favorite not found
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить из избранного
+      tags:
+      - Favorites
+    post:
+      parameters:
+      - description: ID студии
+        in: path
+        name: studioId
+        required: true
+        type: integer
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.FavoriteResponse'
+        "400":
+          description: Studio already in favorites
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "404":
+          description: Studio not found
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить в избранное
+      tags:
+      - Favorites
+  /favorites/{studioId}/check:
+    get:
+      parameters:
+      - description: ID студии
+        in: path
+        name: studioId
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.CheckFavoriteResponse'
+      security:
+      - BearerAuth: []
+      summary: Проверить избранное
+      tags:
+      - Favorites
+  /studios/{id}/working-hours:
+    put:
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Часы работы
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/photostudio_internal_domain.WorkingHours'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить часы работы студии
+      tags:
+      - Catalog
+  /studios/{id}/working-hours/v2:
+    get:
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_catalog.WorkingHoursResponse'
+      summary: Получить часы работы студии (новый формат)
+      tags:
+      - Catalog
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

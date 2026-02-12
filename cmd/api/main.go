@@ -25,8 +25,19 @@ import (
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "photostudio/docs"
 )
 
+// @title           PhotoStudio API
+// @version         1.0
+// @description     API server for booking system.
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Load .env file if it exists (only in local dev)
 	if err := godotenv.Load(); err != nil {
@@ -142,6 +153,11 @@ func main() {
 	r.Use(middleware.ErrorLogger())
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS())
+
+	// === SWAGGER START ===
+	// Доступен по /swagger/index.html
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// === SWAGGER END ===
 
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
