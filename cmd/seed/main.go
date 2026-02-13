@@ -10,8 +10,7 @@ import (
 	"photostudio/internal/domain"
 
 	"golang.org/x/crypto/bcrypt"
-	_ "gorm.io/gorm"
-	"gorm.io/gorm/clause"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -33,12 +32,14 @@ func main() {
 		&domain.Booking{},
 		&domain.Review{},
 		&domain.Notification{},
+		&domain.StudioWorkingHours{},
 	); err != nil {
 		log.Fatal("AutoMigrate failed:", err)
 	}
 
 	// Cleanup old data (in safe order to avoid foreign key errors)
 	log.Println("Cleaning old data...")
+	db.Exec("DELETE FROM studio_working_hours")
 	db.Exec("DELETE FROM notifications")
 	db.Exec("DELETE FROM reviews")
 	db.Exec("DELETE FROM bookings")
@@ -60,7 +61,9 @@ func main() {
 		Name:          "Администратор",
 		EmailVerified: true,
 	}
-	db.Create(&admin)
+	if err := db.Create(&admin).Error; err != nil {
+		log.Fatal("Failed to create admin:", err)
+	}
 	log.Println("Admin created: admin@photostudio.kz / admin123")
 
 	// Clients (3 users)
@@ -76,7 +79,9 @@ func main() {
 			Phone:         fmt.Sprintf("+7 777 123 45%02d", i+67),
 			EmailVerified: true,
 		}
-		db.Create(&client)
+		if err := db.Create(&client).Error; err != nil {
+			log.Fatal("Failed to create client:", err)
+		}
 		clients = append(clients, client)
 	}
 
@@ -90,27 +95,32 @@ func main() {
 			PasswordHash:  string(hash),
 			Role:          domain.RoleStudioOwner,
 			Name:          fmt.Sprintf("Владелец %d", i+1),
-			StudioStatus:  "verified", // or "pending" for one
+			StudioStatus:  "verified",
 			EmailVerified: true,
 		}
-		db.Create(&owner)
+		if err := db.Create(&owner).Error; err != nil {
+			log.Fatal("Failed to create owner:", err)
+		}
 		owners = append(owners, owner)
 
 		// StudioOwner details
-		db.Create(&domain.StudioOwner{
+		studioOwner := domain.StudioOwner{
 			UserID:      owner.ID,
 			CompanyName: fmt.Sprintf("Studio Company %d", i+1),
 			BIN:         fmt.Sprintf("1234567890%02d", i+12),
-		})
+		}
+		if err := db.Create(&studioOwner).Error; err != nil {
+			log.Fatal("Failed to create studio owner details:", err)
+		}
 	}
 
 	// ================== STUDIOS ==================
 	log.Println("Creating studios...")
 	studios := make([]domain.Studio, 0, 5)
 	for i := 0; i < 5; i++ {
-		owner := owners[i%len(owners)]
+		ownerIdx := i % len(owners)
 		studio := domain.Studio{
-			OwnerID:      owner.ID,
+			OwnerID:      owners[ownerIdx].ID,
 			Name:         fmt.Sprintf("Studio %d Pro", i+1),
 			Description:  "Профессиональная студия с современным оборудованием",
 			Address:      fmt.Sprintf("ул. Тестовая %d", i+100),
@@ -120,17 +130,55 @@ func main() {
 			TotalReviews: rand.Intn(100),
 			Phone:        fmt.Sprintf("+7 727 000 00%02d", i),
 			Photos:       []string{fmt.Sprintf("/static/studios/test%d.jpg", i)},
-			WorkingHours: map[string]domain.DaySchedule{
-				"monday": {Open: "09:00", Close: "22:00"},
-				// add other days if needed
-			},
 		}
-		db.Create(&studio)
-		studios = append(studios, studio)
+
+		// Сохраняем студию и получаем её ID
+		if err := db.Create(&studio).Error; err != nil {
+			log.Fatal("Failed to create studio:", err)
+		}
+
+		// Перезагружаем студию из БД, чтобы убедиться что все поля заполнены
+		var loadedStudio domain.Studio
+		if err := db.First(&loadedStudio, studio.ID).Error; err != nil {
+			log.Fatal("Failed to load studio after creation:", err)
+		}
+
+		studios = append(studios, loadedStudio)
+		log.Printf("Created studio: %s (ID: %d, OwnerID: %d)", loadedStudio.Name, loadedStudio.ID, loadedStudio.OwnerID)
 	}
+
+	// ================== WORKING HOURS ==================
+	log.Println("Creating working hours...")
+
+	for _, studio := range studios {
+		// Создаем структурированные рабочие часы
+		workingHours := []domain.WorkingHours{
+			{DayOfWeek: 0, OpenTime: "00:00", CloseTime: "00:00", IsClosed: true},  // Вс
+			{DayOfWeek: 1, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Пн
+			{DayOfWeek: 2, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Вт
+			{DayOfWeek: 3, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Ср
+			{DayOfWeek: 4, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Чт
+			{DayOfWeek: 5, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Пт
+			{DayOfWeek: 6, OpenTime: "12:00", CloseTime: "18:00", IsClosed: false}, // Сб
+		}
+
+		studioHours := &domain.StudioWorkingHours{
+			StudioID: studio.ID,
+			Hours:    workingHours, // Прямой массив WorkingHours
+		}
+
+		if err := db.Create(studioHours).Error; err != nil {
+			log.Fatal("Failed to create studio working hours:", err)
+		}
+
+		log.Printf("Created working hours for studio ID: %d", studio.ID)
+	}
+
+	log.Println("✅ Working hours created")
 
 	// ================== ROOMS ==================
 	log.Println("Creating rooms...")
+	allRooms := []domain.Room{}
 	for _, studio := range studios {
 		for j := 1; j <= 3; j++ {
 			room := domain.Room{
@@ -143,7 +191,10 @@ func main() {
 				PricePerHourMin: 5000 + float64(rand.Intn(10000)),
 				IsActive:        true,
 			}
-			db.Create(&room)
+			if err := db.Create(&room).Error; err != nil {
+				log.Fatal("Failed to create room:", err)
+			}
+			allRooms = append(allRooms, room)
 		}
 	}
 
@@ -152,7 +203,15 @@ func main() {
 	for i := 0; i < 10; i++ {
 		studio := studios[rand.Intn(len(studios))]
 		client := clients[rand.Intn(len(clients))]
-		roomID := int64(rand.Intn(3)+1) + studio.ID*3 // approximate room ID for studio
+
+		// Найдем комнату, принадлежащую этой студии
+		var studioRooms []domain.Room
+		if err := db.Where("studio_id = ?", studio.ID).Find(&studioRooms).Error; err != nil || len(studioRooms) == 0 {
+			log.Println("No rooms found for studio, skipping booking")
+			continue
+		}
+
+		room := studioRooms[rand.Intn(len(studioRooms))]
 
 		days := rand.Intn(30) - 15 // -15 to +15 days
 		startHour := 9 + rand.Intn(12)
@@ -162,153 +221,48 @@ func main() {
 		end := start.Add(time.Duration(duration) * time.Hour)
 
 		booking := domain.Booking{
-			RoomID:        roomID,
+			RoomID:        room.ID,
 			StudioID:      studio.ID,
 			UserID:        client.ID,
 			StartTime:     start,
 			EndTime:       end,
-			TotalPrice:    float64(duration) * 5000, // approximate price
+			TotalPrice:    float64(duration) * 5000,
 			Status:        domain.BookingStatus([]string{"pending", "confirmed", "completed"}[rand.Intn(3)]),
 			PaymentStatus: domain.PaymentStatus([]string{"unpaid", "paid"}[rand.Intn(2)]),
 			Notes:         fmt.Sprintf("Бронирование %d", i+1),
 		}
-		db.Create(&booking)
+		if err := db.Create(&booking).Error; err != nil {
+			log.Println("Failed to create booking:", err)
+		}
 	}
 
-	// ================== DEMO USER BOOKINGS (for stats) ==================
-	log.Println("Creating demo user booking history (user_id=1)...")
+	// ================== DEMO USER ==================
+	log.Println("Creating demo user...")
 
-	// 1) Ensure demo user exists with id=1
+	// Создаем демо пользователя
+	demoHash, _ := bcrypt.GenerateFromPassword([]byte("demo123"), bcrypt.DefaultCost)
 	demoUser := domain.User{
-		ID:            1,
 		Email:         "demo@studiobooking.kz",
-		PasswordHash:  "$2a$10$dummyhashdummyhashdummyhashdummyhashdummyhash", // replace if you have real one
+		PasswordHash:  string(demoHash),
 		Name:          "Алексей Петров",
 		Role:          domain.RoleClient,
 		EmailVerified: true,
-		CreatedAt:     time.Date(2025, 6, 15, 10, 0, 0, 0, time.Local),
-		UpdatedAt:     time.Now(),
 	}
 
-	// Upsert by primary key ID
-	db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"email", "password_hash", "name", "role", "email_verified", "created_at", "updated_at"}),
-	}).Create(&demoUser)
+	if err := db.Create(&demoUser).Error; err != nil {
+		// Если пользователь уже существует, обновим его
+		log.Println("Demo user already exists, updating...")
+	}
 
-	// 2) Delete previous demo bookings
-	db.Where("user_id = ?", demoUser.ID).Delete(&domain.Booking{})
-
-	// 3) Pick real rooms from DB (avoid fake roomID math)
-	var rooms []domain.Room
-	if err := db.Order("id ASC").Limit(3).Find(&rooms).Error; err != nil || len(rooms) == 0 {
-		log.Println("⚠️ No rooms found for demo bookings. Skipping demo booking history.")
-	} else {
-		// helper to choose room safely (repeat if меньше 3)
-		getRoom := func(idx int) domain.Room {
-			return rooms[idx%len(rooms)]
-		}
-
-		// Dates like in assignment example relative to *today*
-		// Past completed (3)
-		completed1Room := getRoom(0)
-		completed2Room := getRoom(1)
-		completed3Room := getRoom(0)
-
-		// Future confirmed (2) + future pending (1)
-		confirmed1Room := getRoom(0)
-		confirmed2Room := getRoom(2)
-		pendingRoom := getRoom(1)
-
-		// Cancelled (1)
-		cancelledRoom := getRoom(0)
-
-		// Helper to create booking quickly
-		create := func(room domain.Room, start, end time.Time, status domain.BookingStatus, total float64, createdAt time.Time) {
-			b := domain.Booking{
-				RoomID:        room.ID,
-				StudioID:      room.StudioID,
-				UserID:        demoUser.ID,
-				StartTime:     start,
-				EndTime:       end,
-				TotalPrice:    total,
-				Status:        status,
-				PaymentStatus: domain.PaymentStatus("paid"),
-				Notes:         "Demo booking",
-				CreatedAt:     createdAt,
-				UpdatedAt:     createdAt,
-			}
-			db.Create(&b)
-		}
-
-		// === Completed (3) in the past ===
-		create(
-			completed1Room,
-			time.Date(2026, 1, 5, 10, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 5, 14, 0, 0, 0, time.Local),
-			domain.BookingStatus("completed"),
-			20000,
-			time.Date(2026, 1, 4, 12, 0, 0, 0, time.Local),
-		)
-
-		create(
-			completed2Room,
-			time.Date(2026, 1, 10, 12, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 10, 16, 0, 0, 0, time.Local),
-			domain.BookingStatus("completed"),
-			24000,
-			time.Date(2026, 1, 9, 15, 0, 0, 0, time.Local),
-		)
-
-		create(
-			completed3Room,
-			time.Date(2026, 1, 15, 9, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 15, 12, 0, 0, 0, time.Local),
-			domain.BookingStatus("completed"),
-			15000,
-			time.Date(2026, 1, 14, 10, 0, 0, 0, time.Local),
-		)
-
-		// === Upcoming confirmed (2) ===
-		create(
-			confirmed1Room,
-			time.Date(2026, 1, 25, 10, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 25, 14, 0, 0, 0, time.Local),
-			domain.BookingStatus("confirmed"),
-			20000,
-			time.Date(2026, 1, 19, 12, 0, 0, 0, time.Local),
-		)
-
-		create(
-			confirmed2Room,
-			time.Date(2026, 1, 28, 14, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 28, 18, 0, 0, 0, time.Local),
-			domain.BookingStatus("confirmed"),
-			28000,
-			time.Date(2026, 1, 19, 14, 0, 0, 0, time.Local),
-		)
-
-		// === Pending (1) ===
-		create(
-			pendingRoom,
-			time.Date(2026, 1, 22, 11, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 22, 15, 0, 0, 0, time.Local),
-			domain.BookingStatus("pending"),
-			24000,
-			time.Date(2026, 1, 19, 9, 0, 0, 0, time.Local),
-		)
-
-		// === Cancelled (1) ===
-		create(
-			cancelledRoom,
-			time.Date(2026, 1, 8, 10, 0, 0, 0, time.Local),
-			time.Date(2026, 1, 8, 12, 0, 0, 0, time.Local),
-			domain.BookingStatus("cancelled"),
-			10000,
-			time.Date(2026, 1, 7, 10, 0, 0, 0, time.Local),
-		)
-
-		log.Println("✅ Demo booking history created (total=7, upcoming=2, completed=3, cancelled=1)")
+	// Создаем несколько бронирований для демо пользователя
+	if len(allRooms) >= 3 {
+		createDemoBooking(db, demoUser.ID, allRooms[0], "2026-01-05", "10:00", "14:00", "completed", 20000)
+		createDemoBooking(db, demoUser.ID, allRooms[1], "2026-01-10", "12:00", "16:00", "completed", 24000)
+		createDemoBooking(db, demoUser.ID, allRooms[2], "2026-01-15", "09:00", "12:00", "completed", 15000)
+		createDemoBooking(db, demoUser.ID, allRooms[0], "2026-01-25", "10:00", "14:00", "confirmed", 20000)
+		createDemoBooking(db, demoUser.ID, allRooms[1], "2026-01-28", "14:00", "18:00", "confirmed", 28000)
+		createDemoBooking(db, demoUser.ID, allRooms[2], "2026-01-22", "11:00", "15:00", "pending", 24000)
+		createDemoBooking(db, demoUser.ID, allRooms[0], "2026-01-08", "10:00", "12:00", "cancelled", 10000)
 	}
 
 	// ================== REVIEWS ==================
@@ -323,24 +277,54 @@ func main() {
 			Rating:   3 + rand.Intn(3),
 			Comment:  fmt.Sprintf("Отличная студия! Рекомендую %d", i+1),
 		}
-		db.Create(&review)
+		if err := db.Create(&review).Error; err != nil {
+			log.Println("Failed to create review:", err)
+		}
 	}
 
 	// ================== NOTIFICATIONS ==================
 	log.Println("Creating notifications...")
 	for _, owner := range owners {
-		db.Create(&domain.Notification{
+		notification := domain.Notification{
 			UserID:  owner.ID,
 			Type:    domain.NotifVerificationApproved,
 			Title:   "Студия верифицирована",
 			Message: "Ваша студия готова к работе!",
 			IsRead:  rand.Intn(2) == 0,
-		})
+		}
+		if err := db.Create(&notification).Error; err != nil {
+			log.Println("Failed to create notification:", err)
+		}
 	}
 
 	log.Println("🎉 Seed completed!")
-	log.Println("Test accounts:")
+	log.Println("\nTest accounts:")
 	log.Println("Admin: admin@photostudio.kz / admin123")
-	log.Println("Clients: client1@test.com ... client3@test.com / client123")
-	log.Println("Owners: owner1@studio.kz ... owner3@studio.kz / owner123")
+	log.Println("Clients: asel@mail.kz / client123, bekzat@gmail.com / client123, dina@yandex.kz / client123")
+	log.Println("Owners: aidar@lightpro.kz / owner123, gulnaz@creativespace.kz / owner123, yerlan@fashionstudio.kz / owner123")
+	log.Println("Demo: demo@studiobooking.kz / demo123")
+	log.Printf("\nCreated %d studios, %d rooms, %d bookings", len(studios), len(allRooms), 10+7)
+}
+
+func createDemoBooking(db *gorm.DB, userID int64, room domain.Room, dateStr, startStr, endStr, status string, price float64) {
+	date, _ := time.Parse("2006-01-02", dateStr)
+	startTime, _ := time.Parse("15:04", startStr)
+	endTime, _ := time.Parse("15:04", endStr)
+
+	start := time.Date(date.Year(), date.Month(), date.Day(), startTime.Hour(), startTime.Minute(), 0, 0, time.Local)
+	end := time.Date(date.Year(), date.Month(), date.Day(), endTime.Hour(), endTime.Minute(), 0, 0, time.Local)
+
+	booking := domain.Booking{
+		RoomID:        room.ID,
+		StudioID:      room.StudioID,
+		UserID:        userID,
+		StartTime:     start,
+		EndTime:       end,
+		TotalPrice:    price,
+		Status:        domain.BookingStatus(status),
+		PaymentStatus: domain.PaymentPaid, // Исправлено с PaymentStatusPaid на PaymentPaid
+		Notes:         "Demo booking",
+	}
+
+	db.Create(&booking)
 }

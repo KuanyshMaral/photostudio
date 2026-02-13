@@ -43,6 +43,24 @@ func (h *Handler) RegisterRoutes(admin *gin.RouterGroup) {
 	admin.POST("/users/:id/block", h.BanUser)
 	admin.POST("/users/:id/unblock", h.UnbanUser)
 
+	// analytics
+	admin.GET("/analytics", h.GetPlatformAnalytics)
+
+	// vip/gold/promo
+	admin.PATCH("/studios/:id/vip", h.SetStudioVIP)
+	admin.PATCH("/studios/:id/gold", h.SetStudioGold)
+	admin.PATCH("/studios/:id/promo", h.SetStudioPromo)
+
+	// ads
+	admin.GET("/ads", h.GetAds)
+	admin.POST("/ads", h.CreateAd)
+	admin.PATCH("/ads/:id", h.UpdateAd)
+	admin.DELETE("/ads/:id", h.DeleteAd)
+
+	// reviews new style (keep old POST routes too)
+	admin.PATCH("/reviews/:id/hide", h.HideReview)
+	admin.DELETE("/reviews/:id", h.DeleteReview)
+
 }
 
 func (h *Handler) GetPendingStudios(c *gin.Context) {
@@ -425,4 +443,145 @@ func parseIntDefault(v string, def int) int {
 		return def
 	}
 	return n
+}
+
+func (h *Handler) GetPlatformAnalytics(c *gin.Context) {
+	daysBack := 30
+	if d := c.Query("days"); d != "" {
+		if v, err := strconv.Atoi(d); err == nil && v > 0 && v <= 365 {
+			daysBack = v
+		}
+	}
+
+	analytics, err := h.service.GetPlatformAnalytics(c.Request.Context(), daysBack)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "ANALYTICS_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"analytics": analytics})
+}
+
+func (h *Handler) SetStudioVIP(c *gin.Context) {
+	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	var req struct {
+		IsVIP bool `json:"is_vip"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if err := h.service.SetStudioVIP(c.Request.Context(), studioID, req.IsVIP); err != nil {
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "VIP status updated"})
+}
+
+func (h *Handler) SetStudioGold(c *gin.Context) {
+	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	var req struct {
+		IsGold bool `json:"is_gold"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if err := h.service.SetStudioGold(c.Request.Context(), studioID, req.IsGold); err != nil {
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Gold status updated"})
+}
+
+func (h *Handler) SetStudioPromo(c *gin.Context) {
+	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	var req struct {
+		InPromo bool `json:"in_promo_slider"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if err := h.service.SetStudioPromo(c.Request.Context(), studioID, req.InPromo); err != nil {
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Promo status updated"})
+}
+
+func (h *Handler) GetAds(c *gin.Context) {
+	placement := c.Query("placement")
+	activeOnly := c.Query("active_only") == "true"
+
+	ads, err := h.service.GetAds(c.Request.Context(), placement, activeOnly)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "FETCH_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"ads": ads})
+}
+
+func (h *Handler) CreateAd(c *gin.Context) {
+	var ad Ad
+	if err := c.ShouldBindJSON(&ad); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if err := h.service.CreateAd(c.Request.Context(), &ad); err != nil {
+		response.Error(c, http.StatusInternalServerError, "CREATE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusCreated, gin.H{"ad": ad})
+}
+
+func (h *Handler) UpdateAd(c *gin.Context) {
+	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	var updates map[string]interface{}
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		response.Error(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		return
+	}
+
+	if err := h.service.UpdateAd(c.Request.Context(), adID, updates); err != nil {
+		response.Error(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Ad updated"})
+}
+
+func (h *Handler) DeleteAd(c *gin.Context) {
+	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := h.service.DeleteAd(c.Request.Context(), adID); err != nil {
+		response.Error(c, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Ad deleted"})
+}
+
+func (h *Handler) DeleteReview(c *gin.Context) {
+	reviewID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+	if err := h.service.DeleteReview(c.Request.Context(), reviewID); err != nil {
+		response.Error(c, http.StatusInternalServerError, "DELETE_FAILED", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, gin.H{"message": "Review deleted"})
 }

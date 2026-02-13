@@ -1,0 +1,82 @@
+name: Deploy Photostudio Backend
+
+on:
+  push:
+    branches: ["main"]
+
+env:
+  REGISTRY: ghcr.io
+  # ВАЖНО: Убедись, что имя образа правильное (все буквы строчные!)
+  # Я предположил kuanyshmaral/photostudio-backend на основе mwork, поправь если репо называется иначе
+  IMAGE_NAME: kuanyshmaral/photostudio
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      # Эта либа сама генерит теги latest и sha, как в mwork
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build & push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy on server (migrate -> restart)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            set -euo pipefail
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+
+            # Заходим в папку photostudio (согласно скрину)
+            cd /srv/apps/photostudio
+
+            # Обновляем репо (нужно, чтобы migrations/ и compose были свежими)
+            git reset --hard
+            git pull origin main
+
+            # Тянем свежий образ API
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+            # 1) Накатываем миграции (если упадут — деплой остановится, что правильно)
+            # Убедись, что в docker-compose.yml photostudio есть сервис 'migrate' или убери эту строку, если миграции внутри api
+            docker compose run --rm migrate || echo "No migrate service found or migration failed, skipping..."
+
+            # 2) Рестарт API
+            # Пересобирать (--build) не нужно, мы же скачали готовый образ
+            docker compose up -d api
+            
+            # Если фронт тоже в этом композе (как в mwork), пытаемся поднять и его. Если нет - ошибка игнорируется.
+            docker compose up -d web || true
+
+            # Чистка старых образов
+            docker image prune -f

@@ -29,6 +29,8 @@ type User struct {
 	AvatarURL     string       `json:"avatar_url,omitempty"`
 	EmailVerified bool         `json:"email_verified"`
 	StudioStatus  StudioStatus `json:"studio_status,omitempty"`
+	MworkUserID   string       `json:"-"`
+	MworkRole     string       `json:"-"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`
 }

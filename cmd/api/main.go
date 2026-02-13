@@ -6,7 +6,7 @@ import (
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
 	"photostudio/internal/modules/favorite"
-	"strings"
+	"photostudio/internal/modules/mwork"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -19,13 +19,25 @@ import (
 	"photostudio/internal/modules/booking"
 	"photostudio/internal/modules/catalog"
 	"photostudio/internal/modules/chat"
+	"photostudio/internal/modules/manager"
 	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/owner"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "photostudio/docs"
 )
 
+// @title           PhotoStudio API
+// @version         1.0
+// @description     API server for booking system.
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Load .env file if it exists (only in local dev)
 	if err := godotenv.Load(); err != nil {
@@ -66,17 +78,21 @@ func main() {
 		&domain.MaintenanceItem{},
 		&domain.CompanyProfile{},
 		&domain.PortfolioProject{},
+		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
 	}
-	if strings.HasSuffix(databaseURL, ".db") {
-		log.Println("Running AutoMigrate for local development...")
+
+	// Check if migrations should be run via environment variable
+	runMigrations := os.Getenv("DB_AUTO_MIGRATE")
+	if runMigrations == "true" || runMigrations == "1" {
+		log.Println("🔄 Running database migrations (DB_AUTO_MIGRATE=true)...")
 		for _, model := range models {
 			if err := db.AutoMigrate(model); err != nil {
 				log.Fatalf("AutoMigrate failed for %T: %v", model, err)
 			}
 		}
-		log.Println("✅ AutoMigrate completed")
+		log.Println("✅ AutoMigrate completed successfully")
 	} else {
-		log.Println("Skipping AutoMigrate (non-sqlite database)")
+		log.Println("⏭️  Skipping AutoMigrate (DB_AUTO_MIGRATE not set or false)")
 	}
 
 	// Repositories
@@ -87,6 +103,7 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewOwnerRepository(db)
+	studioWorkingHoursRepo := repository.NewStudioWorkingHoursRepository(db)
 
 	notificationRepo := repository.NewNotificationRepository(db)
 	chatRepo := repository.NewChatRepository(db)
@@ -102,13 +119,14 @@ func main() {
 	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
 	authHandler := auth.NewHandler(authService, bookingRepo)
 
-	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
+	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
 	notificationService := notification.NewService(notificationRepo)
 	notificationHandler := notification.NewHandler(notificationService)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService)
+	// В main.go, найдите создание bookingService и обновите:
+	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
@@ -125,11 +143,25 @@ func main() {
 
 	ownerHandler := owner.NewHandler(ownerCRMRepo)
 
+	managerHandler := manager.NewHandler(bookingRepo, ownerCRMRepo)
+
+	mworkService := mwork.NewService(userRepo)
+	mworkHandler := mwork.NewHandler(mworkService)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
-	r.Use(gin.Recovery())
+	r.Use(middleware.ErrorLogger())
 	r.Use(gin.Logger())
 	r.Use(middleware.CORS())
+
+	// === SWAGGER START ===
+	// Доступен по /swagger/index.html
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// === SWAGGER END ===
+
+	r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
 	v1 := r.Group("/api/v1")
 
@@ -185,6 +217,12 @@ func main() {
 			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
 		}
 
+		managerGroup := protected.Group("")
+		managerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		{
+			managerHandler.RegisterRoutes(managerGroup)
+		}
+
 		// You can uncomment when ready
 		rooms := protected.Group("/rooms")
 		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
@@ -196,6 +234,30 @@ func main() {
 	}
 	// Chat WebSocket route (public, auth via query param)
 	r.GET("/ws/chat", chatWSHandler.HandleWebSocket)
+
+	internal := r.Group("/internal")
+	internal.Use(middleware.InternalTokenAuth())
+	{
+		mworkHandler.RegisterRoutes(internal)
+
+		// MWork-authenticated booking routes (with user ID mapping)
+		mworkBookings := internal.Group("/mwork")
+		mworkBookings.Use(middleware.MWorkUserAuth(userRepo))
+		{
+			// POST /internal/mwork/bookings - create booking with X-MWork-User-ID header
+			mworkBookings.POST("/bookings", bookingHandler.CreateBooking)
+			// GET /internal/mwork/bookings - list my bookings
+			mworkBookings.GET("/bookings", bookingHandler.GetMyBookings)
+			// GET /internal/mwork/studios - list studios (public data)
+			mworkBookings.GET("/studios", catalogHandler.GetStudios)
+			// GET /internal/mwork/studios/:id - studio details
+			mworkBookings.GET("/studios/:id", catalogHandler.GetStudioByID)
+			// GET /internal/mwork/rooms/:id/availability - room availability
+			mworkBookings.GET("/rooms/:id/availability", bookingHandler.GetRoomAvailability)
+			// GET /internal/mwork/rooms/:id/busy-slots - room busy slots
+			mworkBookings.GET("/rooms/:id/busy-slots", bookingHandler.GetBusySlots)
+		}
+	}
 
 	// Static files for uploads
 	r.Static("/static", "./uploads")
