@@ -35,6 +35,7 @@ import (
 // @title           PhotoStudio API
 // @version         1.0
 // @description     API server for booking system.
+// @basePath        /api/v1
 
 // @securityDefinitions.apikey BearerAuth
 // @in header

@@ -70,9 +70,9 @@ func (h *Handler) RegisterRoutes(admin *gin.RouterGroup) {
 // @Security	BearerAuth
 // @Param		page	query	int		false	"Номер страницы (по умолчанию 1)"	default(1)
 // @Param		limit	query	int		false	"Количество записей на странице (по умолчанию 20)"	default(20)
-// @Success		200	{object}	gin.H{pending_studios=[]interface{},count=int} "Список ожидающих студий"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении данных"
+// @Success		200	{object}		map[string]interface{} "Список ожидающих студий"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+	// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении данных"
 // @Router		/admin/studios/pending [GET]
 func (h *Handler) GetPendingStudios(c *gin.Context) {
 	if !isAdmin(c) {
@@ -101,10 +101,10 @@ func (h *Handler) GetPendingStudios(c *gin.Context) {
 // @Tags		Admin - Модерация студий
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID владельца студии"
-// @Success		200	{object}	gin.H{message=string} "Студия успешно одобрена"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID владельца или студия уже одобрена"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
+// @Success		200	{object}		map[string]interface{} "Студия успешно одобрена"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID владельца или студия уже одобрена"
+	// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+	// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
 // @Router		/admin/studios/:id/approve [POST]
 func (h *Handler) ApproveStudio(c *gin.Context) {
 	if !isAdmin(c) {
@@ -140,10 +140,10 @@ func (h *Handler) ApproveStudio(c *gin.Context) {
 // @Param		id		path	int				true	"ID студии"
 // @Param		request	body	VerifyStudioRequest	true	"Данные верификации (admin_notes)"
 // @Success		200	{object}	interface{} "Студия успешно верифицирована"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID студии"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при верификации студии"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID студии"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при верификации студии"
 // @Router		/admin/studios/:id/verify [POST]
 func (h *Handler) VerifyStudio(c *gin.Context) {
 	if !isAdmin(c) {
@@ -187,10 +187,10 @@ func (h *Handler) VerifyStudio(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID владельца студии"
 // @Param		request	body	RejectStudioRequest		true	"Причина отклонения заявки"
-// @Success		200	{object}	gin.H{message=string} "Заявка успешно отклонена"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID владельца или отсутствует причина"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
+// @Success		200	{object}		map[string]interface{} "Заявка успешно отклонена"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID владельца или отсутствует причина"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
 // @Router		/admin/studios/:id/reject [POST]
 func (h *Handler) RejectStudio(c *gin.Context) {
 	if !isAdmin(c) {
@@ -229,8 +229,8 @@ func (h *Handler) RejectStudio(c *gin.Context) {
 // @Tags		Admin - Статистика и аналитика
 // @Security	BearerAuth
 // @Success		200	{object}	interface{} "Объект со статистикой платформы"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении статистики"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении статистики"
 // @Router		/admin/statistics [GET]
 func (h *Handler) GetStatistics(c *gin.Context) {
 	if !isAdmin(c) {
@@ -254,9 +254,9 @@ func (h *Handler) GetStatistics(c *gin.Context) {
 // @Description	Возвращает ключевые показатели платформы: количество пользователей, студий, бронирований, доход и другие метрики. Доступно только администраторам.
 // @Tags		Admin - Статистика и аналитика
 // @Security	BearerAuth
-// @Success		200	{object}	gin.H "Объект со статистикой платформы"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении статистики"
+// @Success		200	{object}		map[string]interface{} "Объект со статистикой платформы"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении статистики"
 // @Router		/admin/stats [GET]
 func (h *Handler) GetStats(c *gin.Context) {
 	if !isAdmin(c) {
@@ -283,9 +283,9 @@ func (h *Handler) GetStats(c *gin.Context) {
 // @Param		id		path	int				true	"ID пользователя"
 // @Param		request	body	BlockUserRequest	true	"Причина блокировки"
 // @Success		200	{object}	interface{} "Пользователь успешно заблокирован"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID пользователя"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при блокировке пользователя"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID пользователя"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при блокировке пользователя"
 // @Router		/admin/users/:id/block [POST]
 func (h *Handler) BlockUser(c *gin.Context) {
 	if !isAdmin(c) {
@@ -323,9 +323,9 @@ func (h *Handler) BlockUser(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID пользователя"
 // @Success		200	{object}	interface{} "Пользователь успешно разблокирован"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID пользователя"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при разблокировке пользователя"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID пользователя"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при разблокировке пользователя"
 // @Router		/admin/users/:id/unblock [POST]
 func (h *Handler) UnblockUser(c *gin.Context) {
 	if !isAdmin(c) {
@@ -357,10 +357,10 @@ func (h *Handler) UnblockUser(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int					true	"ID пользователя"
 // @Param		request	body	BlockUserRequest	true	"Причина блокировки"
-// @Success		200	{object}	gin.H{message=string} "Пользователь успешно заблокирован"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID пользователя или отсутствует причина"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при блокировке пользователя"
+// @Success		200	{object}		map[string]interface{} "Пользователь успешно заблокирован"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID пользователя или отсутствует причина"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при блокировке пользователя"
 // @Router		/admin/users/:id/ban [PATCH]
 func (h *Handler) BanUser(c *gin.Context) {
 	if !isAdmin(c) {
@@ -394,10 +394,10 @@ func (h *Handler) BanUser(c *gin.Context) {
 // @Tags		Admin - Управление пользователями
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID пользователя"
-// @Success		200	{object}	gin.H{message=string} "Пользователь успешно разблокирован"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID пользователя"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при разблокировке пользователя"
+// @Success		200	{object}		map[string]interface{} "Пользователь успешно разблокирован"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID пользователя"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при разблокировке пользователя"
 // @Router		/admin/users/:id/unban [PATCH]
 func (h *Handler) UnbanUser(c *gin.Context) {
 	if !isAdmin(c) {
@@ -428,9 +428,9 @@ func (h *Handler) UnbanUser(c *gin.Context) {
 // @Param		limit	query	int		false	"Количество записей на странице (по умолчанию 20)"	default(20)
 // @Param		status	query	string	false	"Фильтр по статусу пользователя (active, banned, etc.)"
 // @Success		200	{object}	UserListResponse "Список пользователей с общим количеством и параметрами страницы"
-// @Failure		400	{object}	gin.H "Ошибка валидации параметров запроса"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении списка пользователей"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации параметров запроса"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении списка пользователей"
 // @Router		/admin/users [GET]
 func (h *Handler) GetUsers(c *gin.Context) {
 	if !isAdmin(c) {
@@ -474,9 +474,9 @@ func (h *Handler) GetUsers(c *gin.Context) {
 // @Param		limit	query	int		false	"Количество записей на странице (по умолчанию 20)"	default(20)
 // @Param		hidden	query	boolean	false	"Показать только скрытые отзывы"
 // @Success		200	{object}	ReviewListResponse "Список отзывов с общим количеством и параметрами страницы"
-// @Failure		400	{object}	gin.H "Ошибка валидации параметров запроса"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении списка отзывов"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации параметров запроса"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении списка отзывов"
 // @Router		/admin/reviews [GET]
 func (h *Handler) GetReviews(c *gin.Context) {
 	if !isAdmin(c) {
@@ -516,9 +516,9 @@ func (h *Handler) GetReviews(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID отзыва"
 // @Success		200	{object}	interface{} "Информация об отзыве после скрытия"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID отзыва"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при скрытии отзыва"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID отзыва"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при скрытии отзыва"
 // @Router		/admin/reviews/:id/hide [PATCH]
 func (h *Handler) HideReview(c *gin.Context) {
 	if !isAdmin(c) {
@@ -550,9 +550,9 @@ func (h *Handler) HideReview(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID отзыва"
 // @Success		200	{object}	interface{} "Информация об отзыве после восстановления"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID отзыва"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при восстановлении отзыва"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID отзыва"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при восстановлении отзыва"
 // @Router		/admin/reviews/:id/show [PATCH]
 func (h *Handler) ShowReview(c *gin.Context) {
 	if !isAdmin(c) {
@@ -609,9 +609,9 @@ func parseIntDefault(v string, def int) int {
 // @Tags		Admin - Статистика и аналитика
 // @Security	BearerAuth
 // @Param		days	query	int	false	"Количество дней для аналитики (1-365, по умолчанию 30)"	default(30)
-// @Success		200	{object}	gin.H{analytics=interface{}} "Аналитические данные платформы"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении аналитики"
+// @Success		200	{object}		map[string]interface{} "Аналитические данные платформы"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении аналитики"
 // @Router		/admin/analytics [GET]
 func (h *Handler) GetPlatformAnalytics(c *gin.Context) {
 	daysBack := 30
@@ -637,10 +637,10 @@ func (h *Handler) GetPlatformAnalytics(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID студии"
 // @Param		request	body	object{is_vip=boolean}	true	"Значение VIP статуса (true/false)"
-// @Success		200	{object}	gin.H{message=string} "VIP статус успешно обновлён"
-// @Failure		400	{object}	gin.H "Ошибка: неверный запрос"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении VIP статуса"
+// @Success		200	{object}		map[string]interface{} "VIP статус успешно обновлён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении VIP статуса"
 // @Router		/admin/studios/:id/vip [PATCH]
 func (h *Handler) SetStudioVIP(c *gin.Context) {
 	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -668,10 +668,10 @@ func (h *Handler) SetStudioVIP(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID студии"
 // @Param		request	body	object{is_gold=boolean}	true	"Значение Gold статуса (true/false)"
-// @Success		200	{object}	gin.H{message=string} "Gold статус успешно обновлён"
-// @Failure		400	{object}	gin.H "Ошибка: неверный запрос"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении Gold статуса"
+// @Success		200	{object}		map[string]interface{} "Gold статус успешно обновлён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении Gold статуса"
 // @Router		/admin/studios/:id/gold [PATCH]
 func (h *Handler) SetStudioGold(c *gin.Context) {
 	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -699,10 +699,10 @@ func (h *Handler) SetStudioGold(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int									true	"ID студии"
 // @Param		request	body	object{in_promo_slider=boolean}	true	"Значение промо статуса (true/false)"
-// @Success		200	{object}	gin.H{message=string} "Промо статус успешно обновлён"
-// @Failure		400	{object}	gin.H "Ошибка: неверный запрос"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении промо статуса"
+// @Success		200	{object}		map[string]interface{} "Промо статус успешно обновлён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении промо статуса"
 // @Router		/admin/studios/:id/promo [PATCH]
 func (h *Handler) SetStudioPromo(c *gin.Context) {
 	studioID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -730,9 +730,9 @@ func (h *Handler) SetStudioPromo(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		placement	query	string	false	"Место размещения объявления (homepage, booking_page, etc.)"
 // @Param		active_only	query	boolean	false	"Показать только активные объявления (true/false)"
-// @Success		200	{object}	gin.H{ads=[]interface{}} "Список объявлений"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении объявлений"
+// @Success		200	{object}		map[string]interface{} "Список объявлений"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении объявлений"
 // @Router		/admin/ads [GET]
 func (h *Handler) GetAds(c *gin.Context) {
 	placement := c.Query("placement")
@@ -753,10 +753,10 @@ func (h *Handler) GetAds(c *gin.Context) {
 // @Tags		Admin - Объявления и реклама
 // @Security	BearerAuth
 // @Param		request	body	Ad	true	"Данные объявления (placement, url, image_url, active, etc.)"
-// @Success		201	{object}	gin.H{ad=Ad} "Объявление успешно создано"
-// @Failure		400	{object}	gin.H "Ошибка: неверный запрос или отсутствуют необходимые поля"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при создании объявления"
+// @Success		201	{object}		map[string]interface{} "Объявление успешно создано"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос или отсутствуют необходимые поля"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при создании объявления"
 // @Router		/admin/ads [POST]
 func (h *Handler) CreateAd(c *gin.Context) {
 	var ad Ad
@@ -780,10 +780,10 @@ func (h *Handler) CreateAd(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID объявления"
 // @Param		request	body	map[string]interface{}	true	"Поля для обновления (placement, url, image_url, active, etc.)"
-// @Success		200	{object}	gin.H{message=string} "Объявление успешно обновлено"
-// @Failure		400	{object}	gin.H "Ошибка: неверный запрос"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении объявления"
+// @Success		200	{object}		map[string]interface{} "Объявление успешно обновлено"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении объявления"
 // @Router		/admin/ads/:id [PATCH]
 func (h *Handler) UpdateAd(c *gin.Context) {
 	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -808,9 +808,9 @@ func (h *Handler) UpdateAd(c *gin.Context) {
 // @Tags		Admin - Объявления и реклама
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID объявления"
-// @Success		200	{object}	gin.H{message=string} "Объявление успешно удалено"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при удалении объявления"
+// @Success		200	{object}		map[string]interface{} "Объявление успешно удалено"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при удалении объявления"
 // @Router		/admin/ads/:id [DELETE]
 func (h *Handler) DeleteAd(c *gin.Context) {
 	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -829,9 +829,9 @@ func (h *Handler) DeleteAd(c *gin.Context) {
 // @Tags		Admin - Модерация отзывов
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID отзыва"
-// @Success		200	{object}	gin.H{message=string} "Отзыв успешно удалён"
-// @Failure		403	{object}	gin.H "Доступ запрещён (требуются права администратора)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при удалении отзыва"
+// @Success		200	{object}		map[string]interface{} "Отзыв успешно удалён"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при удалении отзыва"
 // @Router		/admin/reviews/:id [DELETE]
 func (h *Handler) DeleteReview(c *gin.Context) {
 	reviewID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -843,3 +843,5 @@ func (h *Handler) DeleteReview(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Review deleted"})
 }
+
+

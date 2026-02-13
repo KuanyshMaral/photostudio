@@ -713,3 +713,5 @@ func (h *Handler) UpdateDeposit(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, ToBookingResponse(booking, true))
 }
+
+

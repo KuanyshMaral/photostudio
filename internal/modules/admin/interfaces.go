@@ -43,3 +43,5 @@ type StudioOwnerRepository interface {
 	FindPendingPaginated(ctx context.Context, offset, limit int) ([]domain.PendingStudioOwnerRow, int64, error)
 	DB() *gorm.DB
 }
+
+

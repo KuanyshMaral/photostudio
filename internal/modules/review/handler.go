@@ -34,12 +34,12 @@ func (h *Handler) RegisterRoutes(public, protected *gin.RouterGroup) {
 // @Tags		Отзывы
 // @Security	BearerAuth
 // @Param		request	body	CreateReviewRequest	true	"Данные отзыва (studio_id, rating, text)"
-// @Success		201	{object}	gin.H{success=bool,data=interface{}} "Отзыв успешно сохранён"
-// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка валидации данных"
-// @Failure		401	{object}	gin.H{success=bool,error=object} "Ошибка аутентификации"
-// @Failure		403	{object}	gin.H{success=bool,error=object} "Запрещено: не можно написать отзыв до завершения бронирования"
-// @Failure		409	{object}	gin.H{success=bool,error=object} "Ошибка: отзыв уже существует"
-// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при сохранении отзыва"
+// @Success		201	{object}		map[string]interface{} "Отзыв успешно сохранён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации данных"
+	// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+	// @Failure		403	{object}		map[string]interface{} "Запрещено: не можно написать отзыв до завершения бронирования"
+	// @Failure		409	{object}		map[string]interface{} "Ошибка: отзыв уже существует"
+	// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при сохранении отзыва"
 // @Router		/reviews [POST]
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateReviewRequest
@@ -79,9 +79,9 @@ func (h *Handler) Create(c *gin.Context) {
 // @Param		id		path	int	true	"ID студии"
 // @Param		limit	query	int	false	"Максимум количество отзывов (дефолт: 10)"
 // @Param		offset	query	int	false	"Офсет с какого рекорда начинать"
-// @Success		200	{object}	gin.H{success=bool,data=interface{}} "Список отзывов"
-// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка: неверный ID студии"
-// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при получении отзывов"
+// @Success		200	{object}		map[string]interface{} "Список отзывов"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID студии"
+	// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении отзывов"
 // @Router		/studios/:id/reviews [GET]
 func (h *Handler) GetByStudio(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -113,12 +113,12 @@ func (h *Handler) GetByStudio(c *gin.Context) {
 // @Security	BearerAuth
 // @Param		id		path	int				true	"ID отзыва"
 // @Param		request	body	OwnerResponseRequest	true	"Текст ответа"
-// @Success		200	{object}	gin.H{success=bool,data=interface{}} "Ответ успешно добавлен"
-// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка валидации данных"
-// @Failure		401	{object}	gin.H{success=bool,error=object} "Ошибка аутентификации"
-// @Failure		403	{object}	gin.H{success=bool,error=object} "Запрещено: вы не овнер студии"
-// @Failure		404	{object}	gin.H{success=bool,error=object} "Отзыв не найден"
-// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при добавлении ответа"
+// @Success		200	{object}		map[string]interface{} "Ответ успешно добавлен"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации данных"
+	// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+	// @Failure		403	{object}		map[string]interface{} "Запрещено: вы не овнер студии"
+	// @Failure		404	{object}		map[string]interface{} "Отзыв не найден"
+	// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при добавлении ответа"
 // @Router		/reviews/:id/response [POST]
 func (h *Handler) AddOwnerResponse(c *gin.Context) {
 	reviewID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -156,3 +156,5 @@ func (h *Handler) AddOwnerResponse(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": rv})
 }
+
+

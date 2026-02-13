@@ -65,3 +65,5 @@ type UserProfileResponse struct {
 	Stats          *UserStats      `json:"stats,omitempty"`
 	RecentBookings []RecentBooking `json:"recent_bookings,omitempty"`
 }
+
+

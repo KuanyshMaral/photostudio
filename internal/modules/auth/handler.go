@@ -50,10 +50,10 @@ func (h *Handler) RegisterProtectedRoutes(protected *gin.RouterGroup) {
 // @Description	Создаёт новый аккаунт клиента на платформе. Клиент получает возможность искать студии и делать бронирования. Автоматически генерируется JWT токен для сессии.
 // @Tags		Автентификация
 // @Param		request	body	RegisterClientRequest	true	"Данные для регистрации (email, password, name, phone)"
-// @Success		201	{object}	gin.H{user=interface{},token=string} "Клиент успешно зарегистрирован, возвращается JWT токен"
-// @Failure		400	{object}	gin.H "Ошибка валидации: неверный формат данных"
-// @Failure		409	{object}	gin.H "Ошибка: email уже зарегистрирован на платформе"
-// @Failure		500	{object}	gin.H "Ошибка сервера при создании аккаунта"
+// @Success		201	{object}		map[string]interface{} "Клиент успешно зарегистрирован, возвращается JWT токен"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
+// @Failure		409	{object}		map[string]interface{} "Ошибка: email уже зарегистрирован на платформе"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при создании аккаунта"
 // @Router		/auth/register/client [POST]
 func (h *Handler) RegisterClient(c *gin.Context) {
 	var req RegisterClientRequest
@@ -90,10 +90,10 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 // @Description	Создаёт новый аккаунт владельца студии. После регистрации требуется модерация администратором перед открытием студии. Владелец получает токен для доступа к личному кабинету.
 // @Tags		Автентификация
 // @Param		request	body	RegisterStudioRequest	true	"Данные для регистрации владельца (email, password, name, phone, studio_name, description, etc.)"
-// @Success		201	{object}	gin.H{user=interface{},token=string} "Владелец зарегистрирован, статус studio_status=pending, возвращается JWT токен"
-// @Failure		400	{object}	gin.H "Ошибка валидации: неверный формат данных"
-// @Failure		409	{object}	gin.H "Ошибка: email уже зарегистрирован на платформе"
-// @Failure		500	{object}	gin.H "Ошибка сервера при создании аккаунта владельца"
+// @Success		201	{object}		map[string]interface{} "Владелец зарегистрирован, статус studio_status=pending, возвращается JWT токен"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
+// @Failure		409	{object}		map[string]interface{} "Ошибка: email уже зарегистрирован на платформе"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при создании аккаунта владельца"
 // @Router		/auth/register/studio [POST]
 func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 	var req RegisterStudioRequest
@@ -130,10 +130,10 @@ func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 // @Description	Авторизует пользователя (клиента или владельца студии) по email и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.
 // @Tags		Автентификация
 // @Param		request	body	LoginRequest		true	"Учётные данные (email, password)"
-// @Success		200	{object}	gin.H{user=interface{},token=string} "Успешная авторизация, возвращается JWT токен"
-// @Failure		400	{object}	gin.H "Ошибка валидации: неверный формат данных"
-// @Failure		401	{object}	gin.H "Ошибка: неверный email или пароль"
-// @Failure		500	{object}	gin.H "Ошибка сервера при авторизации"
+// @Success		200	{object}		map[string]interface{} "Успешная авторизация, возвращается JWT токен"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
+// @Failure		401	{object}		map[string]interface{} "Ошибка: неверный email или пароль"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при авторизации"
 // @Router		/auth/login [POST]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
@@ -171,10 +171,10 @@ func (h *Handler) Login(c *gin.Context) {
 // @Tags		Профиль и аутентификация
 // @Security	BearerAuth
 // @Param		include_stats	query	boolean	false	"Включить статистику бронирований (true/false)"
-// @Success		200	{object}	gin.H{user=interface{}} "Профиль пользователя с информацией и статистикой"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: токен не предоставлен или истёк"
-// @Failure		404	{object}	gin.H "Ошибка: пользователь не найден"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении профиля"
+// @Success		200	{object}		map[string]interface{} "Профиль пользователя с информацией и статистикой"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: токен не предоставлен или истёк"
+// @Failure		404	{object}		map[string]interface{} "Ошибка: пользователь не найден"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении профиля"
 // @Router		/users/me [GET]
 func (h *Handler) GetMe(c *gin.Context) {
 	userIDAny, exists := c.Get("user_id")
@@ -240,10 +240,10 @@ func (h *Handler) GetMe(c *gin.Context) {
 // @Tags		Профиль и аутентификация
 // @Security	BearerAuth
 // @Param		request	body	UpdateProfileRequest	true	"Данные для обновления (name, phone, avatar_url, etc.)"
-// @Success		200	{object}	gin.H{user=interface{}} "Профиль успешно обновлён"
-// @Failure		400	{object}	gin.H "Ошибка валидации: неверный формат данных"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении профиля"
+// @Success		200	{object}		map[string]interface{} "Профиль успешно обновлён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении профиля"
 // @Router		/users/me [PUT]
 func (h *Handler) UpdateProfile(c *gin.Context) {
 	userID, _ := c.Get("user_id")
@@ -278,11 +278,11 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 // @Security	BearerAuth
 // @Accept		multipart/form-data
 // @Param		documents	formData	file		true	"Файлы документов для загрузки (несколько файлов допускаются)"
-// @Success		200	{object}	gin.H{message=string,uploaded_urls=interface{}} "Документы загружены успешно, возвращены URL для доступа"
-// @Failure		400	{object}	gin.H "Ошибка: отсутствуют файлы или неверный формат запроса"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		413	{object}	gin.H "Ошибка: файл слишком большой (макс 10MB)"
-// @Failure		500	{object}	gin.H "Ошибка сервера при загрузке документов"
+// @Success		200	{object}		map[string]interface{} "Документы загружены успешно, возвращены URL для доступа"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: отсутствуют файлы или неверный формат запроса"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		413	{object}		map[string]interface{} "Ошибка: файл слишком большой (макс 10MB)"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при загрузке документов"
 // @Router		/users/verification/documents [POST]
 func (h *Handler) UploadVerificationDocuments(c *gin.Context) {
 	userID, _ := c.Get("user_id")
@@ -332,3 +332,5 @@ func (h *Handler) UploadVerificationDocuments(c *gin.Context) {
 		"uploaded_urls": uploadedURLs,
 	})
 }
+
+

@@ -545,3 +545,5 @@ func (s *Service) GetWorkingHoursForDate(ctx context.Context, studioID int64, da
 		IsClosed:  false,
 	}, nil
 }
+
+

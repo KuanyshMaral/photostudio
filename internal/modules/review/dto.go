@@ -11,3 +11,5 @@ type CreateReviewRequest struct {
 type OwnerResponseRequest struct {
 	Response string `json:"response" validate:"required"`
 }
+
+

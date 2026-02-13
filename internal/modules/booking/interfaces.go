@@ -39,3 +39,5 @@ type NotificationSender interface {
 	NotifyBookingConfirmed(ctx context.Context, clientUserID, bookingID, studioID int64) error
 	NotifyBookingCancelled(ctx context.Context, clientUserID, bookingID, studioID int64, reason string) error
 }
+
+

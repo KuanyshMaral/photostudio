@@ -47,10 +47,10 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 // @Param		date_to		query	string	false	"Выконачая дата (YYYY-MM-DD)"
 // @Param		page		query	int	false	"Номер страницы"
 // @Param		per_page	query	int	false	"Количество бронирований на странице (макс 100)"
-// @Success		200	{object}	gin.H{bookings=interface{},total=int,page=int,per_page=int} "Список бронирований с пагинацией"
-// @Failure		400	{object}	gin.H "Ошибка в параметрах"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Success		200	{object}		map[string]interface{} "Список бронирований с пагинацией"
+// @Failure		400	{object}		map[string]interface{} "Ошибка в параметрах"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
 // @Router		/manager/bookings [GET]
 func (h *Handler) GetBookings(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -113,11 +113,11 @@ func (h *Handler) GetBookings(c *gin.Context) {
 // @Tags		Менеджер - Управление бронированиями
 // @Security	BearerAuth
 // @Param		id	path	int	true	"ID бронирования"
-// @Success		200	{object}	gin.H{booking=interface{}} "Подробная информация о бронировании"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		404	{object}	gin.H "Бронирование не найдено или доступ запрещён"
-// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Success		200	{object}		map[string]interface{} "Подробная информация о бронировании"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено или доступ запрещён"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
 // @Router		/manager/bookings/:id [GET]
 func (h *Handler) GetBooking(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -148,11 +148,11 @@ type UpdateDepositRequest struct {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID бронирования"
 // @Param		request	body	UpdateDepositRequest		true	"Новая сумма залога"
-// @Success		200	{object}	gin.H{message=string} "Намавка депозита обновлена"
-// @Failure		400	{object}	gin.H "Ошибка: неверные данные"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		404	{object}	gin.H "Бронирование не найдено"
-// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Success		200	{object}		map[string]interface{} "Намавка депозита обновлена"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверные данные"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
 // @Router		/manager/bookings/:id/deposit [PATCH]
 func (h *Handler) UpdateDeposit(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -195,11 +195,11 @@ type UpdateStatusRequest struct {
 // @Security	BearerAuth
 // @Param		id		path	int						true	"ID бронирования"
 // @Param		request	body	UpdateStatusRequest		true	"Новый статус (pending, confirmed, cancelled, completed)"
-// @Success		200	{object}	gin.H{message=string} "Статус бронирования обновлен"
-// @Failure		400	{object}	gin.H "Ошибка: неверные данные"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		404	{object}	gin.H "Бронирование не найдено"
-// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Success		200	{object}		map[string]interface{} "Статус бронирования обновлен"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверные данные"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
 // @Router		/manager/bookings/:id/status [PATCH]
 func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -239,10 +239,10 @@ func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 // @Param		search	query	string	false	"Поиск по имени клиента"
 // @Param		page	query	int	false	"Номер страницы"
 // @Param		per_page	query	int	false	"Количество клиентов на странице (макс 100)"
-// @Success		200	{object}	gin.H{clients=interface{},total=int,page=int,per_page=int} "Список клиентов с пагинацией"
-// @Failure		400	{object}	gin.H "Ошибка в параметрах"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации"
-// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Success		200	{object}		map[string]interface{} "Список клиентов с пагинацией"
+// @Failure		400	{object}		map[string]interface{} "Ошибка в параметрах"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
 // @Router		/manager/clients [GET]
 func (h *Handler) GetClients(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -275,3 +275,5 @@ func (h *Handler) GetClients(c *gin.Context) {
 		"per_page": perPage,
 	})
 }
+
+

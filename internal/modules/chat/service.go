@@ -377,3 +377,5 @@ func (s *Service) GetRecipientID(conversation *domain.Conversation, senderID int
 	}
 	return conversation.ParticipantA
 }
+
+

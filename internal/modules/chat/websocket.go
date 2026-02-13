@@ -247,3 +247,5 @@ func (h *WSHandler) handleRead(userID int64, msg WSClientMessage) {
 func (h *WSHandler) sendError(conn *websocket.Conn, code, message string) {
 	conn.WriteJSON(NewErrorEvent(code, message))
 }
+
+
