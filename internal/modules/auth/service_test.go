@@ -5,6 +5,7 @@ import (
 	_ "errors"
 	_ "github.com/golang-jwt/jwt/v5"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -83,7 +84,7 @@ func TestService_RegisterClient_Success(t *testing.T) {
 	userRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 	jwtSvc.On("GenerateToken", mock.Anything, "client").Return("fake-jwt-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
 
 	user, token, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Name:     "Test User",
@@ -107,7 +108,7 @@ func TestService_RegisterClient_EmailExists(t *testing.T) {
 
 	userRepo.On("ExistsByEmail", mock.Anything, "exists@example.com").Return(true, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
 
 	_, _, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Email: "exists@example.com",
@@ -132,7 +133,7 @@ func TestService_Login_Success(t *testing.T) {
 	userRepo.On("GetByEmail", mock.Anything, "user@example.com").Return(existingUser, nil)
 	jwtSvc.On("GenerateToken", int64(10), "client").Return("login-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
 
 	_, token, err := service.Login(context.Background(), LoginRequest{
 		Email:    "user@example.com",
@@ -153,7 +154,7 @@ func TestService_Login_WrongPassword(t *testing.T) {
 
 	userRepo.On("GetByEmail", mock.Anything, mock.Anything).Return(user, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
 
 	_, _, err := service.Login(context.Background(), LoginRequest{Password: "wrong"})
 
@@ -169,12 +170,10 @@ func TestService_AppendVerificationDocs(t *testing.T) {
 
 	studioOwnerRepo.On("AppendVerificationDocs", mock.Anything, int64(5), urls).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc)
+	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
 
 	err := service.AppendVerificationDocs(context.Background(), 5, urls)
 
 	assert.NoError(t, err)
 	studioOwnerRepo.AssertExpectations(t)
 }
-
-

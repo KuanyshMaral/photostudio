@@ -20,25 +20,31 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 }
 
 type userModel struct {
-	ID            int64     `gorm:"column:id;primaryKey"`
-	Email         string    `gorm:"column:email"`
-	PasswordHash  string    `gorm:"column:password_hash"`
-	Role          string    `gorm:"column:role"`
-	Name          string    `gorm:"column:name"`
-	Phone         *string   `gorm:"column:phone"`
-	AvatarURL     *string   `gorm:"column:avatar_url"`
-	EmailVerified bool      `gorm:"column:email_verified"`
-	StudioStatus  *string   `gorm:"column:studio_status"`
-	MworkUserID   *string   `gorm:"column:mwork_user_id"`
-	MworkRole     *string   `gorm:"column:mwork_role"`
-	CreatedAt     time.Time `gorm:"column:created_at"`
-	UpdatedAt     time.Time `gorm:"column:updated_at"`
+	ID                  int64      `gorm:"column:id;primaryKey"`
+	Email               string     `gorm:"column:email"`
+	PasswordHash        string     `gorm:"column:password_hash"`
+	Role                string     `gorm:"column:role"`
+	Name                string     `gorm:"column:name"`
+	Phone               *string    `gorm:"column:phone"`
+	AvatarURL           *string    `gorm:"column:avatar_url"`
+	EmailVerified       bool       `gorm:"column:email_verified"`
+	EmailVerifiedAt     *time.Time `gorm:"column:email_verified_at"`
+	IsBanned            bool       `gorm:"column:is_banned"`
+	BannedAt            *time.Time `gorm:"column:banned_at"`
+	BanReason           *string    `gorm:"column:ban_reason"`
+	FailedLoginAttempts int        `gorm:"column:failed_login_attempts"`
+	LockedUntil         *time.Time `gorm:"column:locked_until"`
+	StudioStatus        *string    `gorm:"column:studio_status"`
+	MworkUserID         *string    `gorm:"column:mwork_user_id"`
+	MworkRole           *string    `gorm:"column:mwork_role"`
+	CreatedAt           time.Time  `gorm:"column:created_at"`
+	UpdatedAt           time.Time  `gorm:"column:updated_at"`
 }
 
 func (userModel) TableName() string { return "users" }
 
 func toDomainUser(m userModel) *domain.User {
-	var phone, avatar, status, mworkUserID, mworkRole string
+	var phone, avatar, status, mworkUserID, mworkRole, banReason string
 	if m.Phone != nil {
 		phone = *m.Phone
 	}
@@ -54,28 +60,37 @@ func toDomainUser(m userModel) *domain.User {
 	if m.MworkRole != nil {
 		mworkRole = *m.MworkRole
 	}
+	if m.BanReason != nil {
+		banReason = *m.BanReason
+	}
 
 	return &domain.User{
-		ID:            m.ID,
-		Email:         m.Email,
-		PasswordHash:  m.PasswordHash,
-		Role:          domain.UserRole(m.Role),
-		Name:          m.Name,
-		Phone:         phone,
-		AvatarURL:     avatar,
-		EmailVerified: m.EmailVerified,
-		StudioStatus:  domain.StudioStatus(status),
-		MworkUserID:   mworkUserID,
-		MworkRole:     mworkRole,
-		CreatedAt:     m.CreatedAt,
-		UpdatedAt:     m.UpdatedAt,
+		ID:                  m.ID,
+		Email:               m.Email,
+		PasswordHash:        m.PasswordHash,
+		Role:                domain.UserRole(m.Role),
+		Name:                m.Name,
+		Phone:               phone,
+		AvatarURL:           avatar,
+		EmailVerified:       m.EmailVerified,
+		EmailVerifiedAt:     m.EmailVerifiedAt,
+		IsBanned:            m.IsBanned,
+		BannedAt:            m.BannedAt,
+		BanReason:           banReason,
+		FailedLoginAttempts: m.FailedLoginAttempts,
+		LockedUntil:         m.LockedUntil,
+		StudioStatus:        domain.StudioStatus(status),
+		MworkUserID:         mworkUserID,
+		MworkRole:           mworkRole,
+		CreatedAt:           m.CreatedAt,
+		UpdatedAt:           m.UpdatedAt,
 	}
 }
 
 func toUserModel(u *domain.User) userModel {
 	email := strings.TrimSpace(strings.ToLower(u.Email))
 
-	var phone, avatar, status, mworkUserID, mworkRole *string
+	var phone, avatar, status, mworkUserID, mworkRole, banReason *string
 	if u.Phone != "" {
 		v := u.Phone
 		phone = &v
@@ -83,6 +98,10 @@ func toUserModel(u *domain.User) userModel {
 	if u.AvatarURL != "" {
 		v := u.AvatarURL
 		avatar = &v
+	}
+	if u.BanReason != "" {
+		v := u.BanReason
+		banReason = &v
 	}
 	if u.StudioStatus != "" {
 		v := string(u.StudioStatus)
@@ -98,19 +117,25 @@ func toUserModel(u *domain.User) userModel {
 	}
 
 	return userModel{
-		ID:            u.ID,
-		Email:         email,
-		PasswordHash:  u.PasswordHash,
-		Role:          string(u.Role),
-		Name:          u.Name,
-		Phone:         phone,
-		AvatarURL:     avatar,
-		EmailVerified: u.EmailVerified,
-		StudioStatus:  status,
-		MworkUserID:   mworkUserID,
-		MworkRole:     mworkRole,
-		CreatedAt:     u.CreatedAt,
-		UpdatedAt:     u.UpdatedAt,
+		ID:                  u.ID,
+		Email:               email,
+		PasswordHash:        u.PasswordHash,
+		Role:                string(u.Role),
+		Name:                u.Name,
+		Phone:               phone,
+		AvatarURL:           avatar,
+		EmailVerified:       u.EmailVerified,
+		EmailVerifiedAt:     u.EmailVerifiedAt,
+		IsBanned:            u.IsBanned,
+		BannedAt:            u.BannedAt,
+		BanReason:           banReason,
+		FailedLoginAttempts: u.FailedLoginAttempts,
+		LockedUntil:         u.LockedUntil,
+		StudioStatus:        status,
+		MworkUserID:         mworkUserID,
+		MworkRole:           mworkRole,
+		CreatedAt:           u.CreatedAt,
+		UpdatedAt:           u.UpdatedAt,
 	}
 }
 

@@ -3,11 +3,11 @@ package main
 import (
 	"log"
 	"os"
+	"photostudio/internal/config"
 	"photostudio/internal/domain"
 	"photostudio/internal/middleware"
 	"photostudio/internal/modules/favorite"
 	"photostudio/internal/modules/mwork"
-	"time"
 
 	"github.com/joho/godotenv"
 
@@ -46,9 +46,9 @@ func main() {
 		log.Println("No .env file found, continuing with system env vars")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		log.Fatal("JWT_SECRET is empty")
+	authConfig, err := config.LoadAuthRuntimeConfig()
+	if err != nil {
+		log.Fatalf("invalid auth runtime config: %v", err)
 	}
 
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -114,14 +114,15 @@ func main() {
 	ownerCRMRepo := repository.NewOwnerCRMRepository(db)
 	robokassaPaymentRepo := repository.NewRobokassaPaymentRepository(db)
 	// Shared services
-	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
+	jwtService := jwtsvc.NewWithLegacy(authConfig.JWTSecret, authConfig.JWTAccessTTL, authConfig.JWTAllowLegacyClaims)
 
 	// Ownership checker (for catalog module)
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
-	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
-	authHandler := auth.NewHandler(authService, bookingRepo)
+	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev")
+	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
+	authHandler := auth.NewHandler(authService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
