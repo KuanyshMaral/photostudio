@@ -57,3 +57,5 @@ func NewErrorEvent(code, message string) *WSServerMessage {
 		ErrorMessage: message,
 	}
 }
+
+

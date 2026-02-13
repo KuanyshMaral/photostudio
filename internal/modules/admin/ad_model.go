@@ -20,3 +20,5 @@ type Ad struct {
 func (Ad) TableName() string {
 	return "ads"
 }
+
+

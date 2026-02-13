@@ -7,3 +7,5 @@ var (
 	ErrEmailAlreadyExists = errors.New("email already exists")
 	ErrUnauthorized       = errors.New("unauthorized")
 )
+
+

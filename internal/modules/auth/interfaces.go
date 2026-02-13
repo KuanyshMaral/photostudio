@@ -45,3 +45,5 @@ type BookingStatsReader interface {
 	GetStatsByUserID(userID int64) (*BookingStats, error)
 	GetRecentByUserID(userID int64, limit int) ([]RecentBookingRow, error)
 }
+
+

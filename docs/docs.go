@@ -45,32 +45,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Список объявлений",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "ads": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении объявлений",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -93,7 +83,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.Ad"
+                            "$ref": "#/definitions/admin.Ad"
                         }
                     }
                 ],
@@ -101,37 +91,29 @@ const docTemplate = `{
                     "201": {
                         "description": "Объявление успешно создано",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "ad": {
-                                            "$ref": "#/definitions/internal_modules_admin.Ad"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный запрос или отсутствуют необходимые поля",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при создании объявления",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -162,31 +144,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Объявление успешно удалено",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при удалении объявления",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -225,37 +198,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Объявление успешно обновлено",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный запрос",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении объявления",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -286,29 +251,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Аналитические данные платформы",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "analytics": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении аналитики",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -352,25 +310,28 @@ const docTemplate = `{
                     "200": {
                         "description": "Список отзывов с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.ReviewListResponse"
+                            "$ref": "#/definitions/admin.ReviewListResponse"
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации параметров запроса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении списка отзывов",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -401,31 +362,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Отзыв успешно удалён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при удалении отзыва",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -460,19 +412,22 @@ const docTemplate = `{
                     "400": {
                         "description": "Ошибка: неверный ID отзыва",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при скрытии отзыва",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -507,19 +462,22 @@ const docTemplate = `{
                     "400": {
                         "description": "Ошибка: неверный ID отзыва",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при восстановлении отзыва",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -545,13 +503,15 @@ const docTemplate = `{
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении статистики",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -573,19 +533,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Объект со статистикой платформы",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении статистики",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -616,37 +579,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Студия успешно одобрена",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID владельца или студия уже одобрена",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -691,37 +646,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Gold статус успешно обновлён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный запрос",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении Gold статуса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -766,37 +713,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Промо статус успешно обновлён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный запрос",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении промо статуса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -828,7 +767,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.RejectStudioRequest"
+                            "$ref": "#/definitions/admin.RejectStudioRequest"
                         }
                     }
                 ],
@@ -836,37 +775,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Заявка успешно отклонена",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID владельца или отсутствует причина",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -898,7 +829,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.VerifyStudioRequest"
+                            "$ref": "#/definitions/admin.VerifyStudioRequest"
                         }
                     }
                 ],
@@ -910,25 +841,29 @@ const docTemplate = `{
                     "400": {
                         "description": "Ошибка: неверный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при верификации студии",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -973,37 +908,29 @@ const docTemplate = `{
                     "200": {
                         "description": "VIP статус успешно обновлён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный запрос",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении VIP статуса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1041,35 +968,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Список ожидающих студий",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "pending_studios": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении данных",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1113,25 +1027,28 @@ const docTemplate = `{
                     "200": {
                         "description": "Список пользователей с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.UserListResponse"
+                            "$ref": "#/definitions/admin.UserListResponse"
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации параметров запроса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении списка пользователей",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1163,7 +1080,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.BlockUserRequest"
+                            "$ref": "#/definitions/admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -1171,37 +1088,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Пользователь успешно заблокирован",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID пользователя или отсутствует причина",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при блокировке пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1233,7 +1142,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_admin.BlockUserRequest"
+                            "$ref": "#/definitions/admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -1245,19 +1154,22 @@ const docTemplate = `{
                     "400": {
                         "description": "Ошибка: неверный ID пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при блокировке пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1288,37 +1200,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Пользователь успешно разблокирован",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при разблокировке пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1353,19 +1257,22 @@ const docTemplate = `{
                     "400": {
                         "description": "Ошибка: неверный ID пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Доступ запрещён (требуются права администратора)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при разблокировке пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -1521,7 +1428,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_catalog.UpdateRoomRequest"
+                            "$ref": "#/definitions/catalog.UpdateRoomRequest"
                         }
                     }
                 ],
@@ -1648,7 +1555,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_catalog.CreateEquipmentRequest"
+                            "$ref": "#/definitions/catalog.CreateEquipmentRequest"
                         }
                     }
                 ],
@@ -1824,7 +1731,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_catalog.CreateStudioRequest"
+                            "$ref": "#/definitions/catalog.CreateStudioRequest"
                         }
                     }
                 ],
@@ -1996,7 +1903,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_catalog.UpdateStudioRequest"
+                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
                         }
                     }
                 ],
@@ -2150,7 +2057,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_catalog.CreateRoomRequest"
+                            "$ref": "#/definitions/catalog.CreateRoomRequest"
                         }
                     }
                 ],
@@ -2399,7 +2306,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -2407,38 +2314,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Успешная авторизация, возвращается JWT токен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "token": {
-                                            "type": "string"
-                                        },
-                                        "user": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверный формат данных",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка: неверный email или пароль",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при авторизации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2458,7 +2356,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RegisterClientRequest"
+                            "$ref": "#/definitions/auth.RegisterClientRequest"
                         }
                     }
                 ],
@@ -2466,38 +2364,29 @@ const docTemplate = `{
                     "201": {
                         "description": "Клиент успешно зарегистрирован, возвращается JWT токен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "token": {
-                                            "type": "string"
-                                        },
-                                        "user": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверный формат данных",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "409": {
                         "description": "Ошибка: email уже зарегистрирован на платформе",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при создании аккаунта",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2517,7 +2406,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RegisterStudioRequest"
+                            "$ref": "#/definitions/auth.RegisterStudioRequest"
                         }
                     }
                 ],
@@ -2525,38 +2414,29 @@ const docTemplate = `{
                     "201": {
                         "description": "Владелец зарегистрирован, статус studio_status=pending, возвращается JWT токен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "token": {
-                                            "type": "string"
-                                        },
-                                        "user": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверный формат данных",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "409": {
                         "description": "Ошибка: email уже зарегистрирован на платформе",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при создании аккаунта владельца",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -2581,7 +2461,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.CreateBookingRequest"
+                            "$ref": "#/definitions/booking.CreateBookingRequest"
                         }
                     }
                 ],
@@ -2650,7 +2530,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.CancelBookingRequest"
+                            "$ref": "#/definitions/booking.CancelBookingRequest"
                         }
                     }
                 ],
@@ -2832,7 +2712,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.UpdateDepositRequest"
+                            "$ref": "#/definitions/booking.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -2954,7 +2834,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.UpdatePaymentStatusRequest"
+                            "$ref": "#/definitions/booking.UpdatePaymentStatusRequest"
                         }
                     }
                 ],
@@ -3023,7 +2903,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.UpdateBookingStatusRequest"
+                            "$ref": "#/definitions/booking.UpdateBookingStatusRequest"
                         }
                     }
                 ],
@@ -3150,7 +3030,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.CreateConversationRequest"
+                            "$ref": "#/definitions/chat.CreateConversationRequest"
                         }
                     }
                 ],
@@ -3267,7 +3147,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.SendMessageRequest"
+                            "$ref": "#/definitions/chat.SendMessageRequest"
                         }
                     }
                 ],
@@ -3454,7 +3334,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.BlockUserRequest"
+                            "$ref": "#/definitions/chat.BlockUserRequest"
                         }
                     }
                 ],
@@ -3547,35 +3427,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Список проектов портфолио",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer"
-                                        },
-                                        "projects": {
-                                            "type": "array",
-                                            "items": {}
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении портфолио",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3604,7 +3471,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.AddPortfolioRequest"
+                            "$ref": "#/definitions/owner.AddPortfolioRequest"
                         }
                     }
                 ],
@@ -3612,35 +3479,29 @@ const docTemplate = `{
                     "201": {
                         "description": "Проект успешно добавлен в портфолио",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "project": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: отсутствует URL изображения",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при добавлении проекта",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3674,43 +3535,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Проект успешно удалён из портфолио",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID проекта",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Проект не найден",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при удалении проекта",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3741,7 +3595,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.ReorderPortfolioRequest"
+                            "$ref": "#/definitions/owner.ReorderPortfolioRequest"
                         }
                     }
                 ],
@@ -3749,37 +3603,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Портфолио успешно переупорядочено",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка влидации: отсутствует или пустой массив ID проектов",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при переупорядочении портфолио",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3857,7 +3703,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.UpdateCompanyProfileRequest"
+                            "$ref": "#/definitions/owner.UpdateCompanyProfileRequest"
                         }
                     }
                 ],
@@ -3865,37 +3711,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Профиль компании успешно обновлён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверные данные",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении профиля",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3939,19 +3777,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Список избранных студий",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.FavoriteListResponse"
+                            "$ref": "#/definitions/favorite.FavoriteListResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при получении списка избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -3989,31 +3827,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Студия успешно добавлена в избранное",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.FavoriteResponse"
+                            "$ref": "#/definitions/favorite.FavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Студия уже находится в избранном или некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия не найдена",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при добавлении в избранное",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4052,25 +3890,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия отсутствует в избранном",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при удалении из избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4108,25 +3946,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Результат проверки наличия студии в избранном",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.CheckFavoriteResponse"
+                            "$ref": "#/definitions/favorite.CheckFavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при проверке избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4151,7 +3989,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_mwork.SyncUserRequest"
+                            "$ref": "#/definitions/mwork.SyncUserRequest"
                         }
                     }
                 ],
@@ -4159,61 +3997,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Пользователь синхронизирован успешно",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "string"
-                                        },
-                                        "user_id": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "201": {
                         "description": "Новый пользователь создан",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "string"
-                                        },
-                                        "user_id": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверные данные (invalid UUID, invalid role, etc.)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "409": {
                         "description": "Конфликт: пользователь с этим email уже существует",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при синхронизации пользователя",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4285,44 +4098,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Список бронирований с пагинацией",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "bookings": {},
-                                        "page": {
-                                            "type": "integer"
-                                        },
-                                        "per_page": {
-                                            "type": "integer"
-                                        },
-                                        "total": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка в параметрах",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4353,41 +4151,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Подробная информация о бронировании",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "booking": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Бронирование не найдено или доступ запрещён",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4419,7 +4212,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_manager.UpdateDepositRequest"
+                            "$ref": "#/definitions/manager.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -4427,43 +4220,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Намавка депозита обновлена",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверные данные",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Бронирование не найдено",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4495,7 +4281,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_manager.UpdateStatusRequest"
+                            "$ref": "#/definitions/manager.UpdateStatusRequest"
                         }
                     }
                 ],
@@ -4503,43 +4289,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Статус бронирования обновлен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверные данные",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Бронирование не найдено",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4581,44 +4360,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Список клиентов с пагинацией",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "clients": {},
-                                        "page": {
-                                            "type": "integer"
-                                        },
-                                        "per_page": {
-                                            "type": "integer"
-                                        },
-                                        "total": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка в параметрах",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4648,35 +4412,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Список уведомлений и количество непрочитанных",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "notifications": {
-                                            "type": "array",
-                                            "items": {}
-                                        },
-                                        "unread_count": {
-                                            "type": "integer"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении уведомлений",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4707,43 +4458,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Уведомление отмечено как прочитанное",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID уведомления",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Ошибка: уведомление не найдено",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении статуса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4765,31 +4509,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Все уведомления отмечены как прочитанные",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "status": {
-                                            "type": "string"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении статуса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4978,7 +4713,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.CreateMaintenanceRequest"
+                            "$ref": "#/definitions/owner.CreateMaintenanceRequest"
                         }
                     }
                 ],
@@ -5252,7 +4987,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.CreateProcurementRequest"
+                            "$ref": "#/definitions/owner.CreateProcurementRequest"
                         }
                     }
                 ],
@@ -5473,7 +5208,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.SetPINRequest"
+                            "$ref": "#/definitions/owner.SetPINRequest"
                         }
                     }
                 ],
@@ -5541,7 +5276,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_owner.VerifyPINRequest"
+                            "$ref": "#/definitions/owner.VerifyPINRequest"
                         }
                     }
                 ],
@@ -5609,7 +5344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.InitPaymentRequest"
+                            "$ref": "#/definitions/payment.InitPaymentRequest"
                         }
                     }
                 ],
@@ -5617,19 +5352,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.InitPaymentResponse"
+                            "$ref": "#/definitions/payment.InitPaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     }
                 }
@@ -5733,25 +5468,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.SuccessCallbackResponse"
+                            "$ref": "#/definitions/payment.SuccessCallbackResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     }
                 }
@@ -5776,7 +5511,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_review.CreateReviewRequest"
+                            "$ref": "#/definitions/review.CreateReviewRequest"
                         }
                     }
                 ],
@@ -5784,125 +5519,43 @@ const docTemplate = `{
                     "201": {
                         "description": "Отзыв успешно сохранён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {},
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации данных",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Запрещено: не можно написать отзыв до завершения бронирования",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "409": {
                         "description": "Ошибка: отзыв уже существует",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при сохранении отзыва",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -5934,7 +5587,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_review.OwnerResponseRequest"
+                            "$ref": "#/definitions/review.OwnerResponseRequest"
                         }
                     }
                 ],
@@ -5942,125 +5595,43 @@ const docTemplate = `{
                     "200": {
                         "description": "Ответ успешно добавлен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {},
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации данных",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "403": {
                         "description": "Запрещено: вы не овнер студии",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Отзыв не найден",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при добавлении ответа",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6141,7 +5712,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список занятых временных слотов на указанную дату",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_booking.BusySlotsResponse"
+                            "$ref": "#/definitions/booking.BusySlotsResponse"
                         }
                     },
                     "400": {
@@ -6193,62 +5764,22 @@ const docTemplate = `{
                     "200": {
                         "description": "Список отзывов",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {},
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: неверный ID студии",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении отзывов",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "type": "object"
-                                        },
-                                        "success": {
-                                            "type": "boolean"
-                                        }
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6319,35 +5850,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Профиль пользователя с информацией и статистикой",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "user": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: токен не предоставлен или истёк",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "404": {
                         "description": "Ошибка: пользователь не найден",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при получении профиля",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6370,7 +5895,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.UpdateProfileRequest"
+                            "$ref": "#/definitions/auth.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -6378,35 +5903,29 @@ const docTemplate = `{
                     "200": {
                         "description": "Профиль успешно обновлён",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "user": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка валидации: неверный формат данных",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при обновлении профиля",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6491,44 +6010,36 @@ const docTemplate = `{
                     "200": {
                         "description": "Документы загружены успешно, возвращены URL для доступа",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/gin.H"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
-                                        },
-                                        "uploaded_urls": {}
-                                    }
-                                }
-                            ]
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Ошибка: отсутствуют файлы или неверный формат запроса",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "401": {
                         "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "413": {
                         "description": "Ошибка: файл слишком большой (макс 10MB)",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера при загрузке документов",
                         "schema": {
-                            "$ref": "#/definitions/gin.H"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -6536,11 +6047,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "gin.H": {
-            "type": "object",
-            "additionalProperties": {}
-        },
-        "internal_modules_admin.Ad": {
+        "admin.Ad": {
             "type": "object",
             "properties": {
                 "clicks": {
@@ -6581,7 +6088,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_admin.BlockUserRequest": {
+        "admin.BlockUserRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -6592,7 +6099,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_admin.RejectStudioRequest": {
+        "admin.RejectStudioRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -6603,7 +6110,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_admin.ReviewListResponse": {
+        "admin.ReviewListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -6615,7 +6122,7 @@ const docTemplate = `{
                 "reviews": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/photostudio_internal_domain.Review"
+                        "$ref": "#/definitions/domain.Review"
                     }
                 },
                 "total": {
@@ -6623,7 +6130,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_admin.UserListResponse": {
+        "admin.UserListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -6638,12 +6145,12 @@ const docTemplate = `{
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/photostudio_internal_domain.User"
+                        "$ref": "#/definitions/domain.User"
                     }
                 }
             }
         },
-        "internal_modules_admin.VerifyStudioRequest": {
+        "admin.VerifyStudioRequest": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -6651,7 +6158,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.LoginRequest": {
+        "auth.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -6666,7 +6173,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.RegisterClientRequest": {
+        "auth.RegisterClientRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -6689,7 +6196,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.RegisterStudioRequest": {
+        "auth.RegisterStudioRequest": {
             "type": "object",
             "required": [
                 "bin",
@@ -6731,7 +6238,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.UpdateProfileRequest": {
+        "auth.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "name": {
@@ -6744,7 +6251,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.BusySlot": {
+        "booking.BusySlot": {
             "type": "object",
             "properties": {
                 "end": {
@@ -6757,13 +6264,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.BusySlotsResponse": {
+        "booking.BusySlotsResponse": {
             "type": "object",
             "properties": {
                 "busy_slots": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_booking.BusySlot"
+                        "$ref": "#/definitions/booking.BusySlot"
                     }
                 },
                 "close_time": {
@@ -6780,7 +6287,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.CancelBookingRequest": {
+        "booking.CancelBookingRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -6792,7 +6299,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.CreateBookingRequest": {
+        "booking.CreateBookingRequest": {
             "type": "object",
             "required": [
                 "end_time",
@@ -6822,7 +6329,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.UpdateBookingStatusRequest": {
+        "booking.UpdateBookingStatusRequest": {
             "type": "object",
             "properties": {
                 "status": {
@@ -6830,7 +6337,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.UpdateDepositRequest": {
+        "booking.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -6842,7 +6349,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_booking.UpdatePaymentStatusRequest": {
+        "booking.UpdatePaymentStatusRequest": {
             "type": "object",
             "required": [
                 "payment_status"
@@ -6856,13 +6363,13 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/photostudio_internal_domain.PaymentStatus"
+                            "$ref": "#/definitions/domain.PaymentStatus"
                         }
                     ]
                 }
             }
         },
-        "internal_modules_catalog.CreateEquipmentRequest": {
+        "catalog.CreateEquipmentRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -6889,7 +6396,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_catalog.CreateRoomRequest": {
+        "catalog.CreateRoomRequest": {
             "type": "object",
             "required": [
                 "area_sqm",
@@ -6935,7 +6442,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_catalog.CreateStudioRequest": {
+        "catalog.CreateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -6968,11 +6475,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/photostudio_internal_domain.WorkingHoursMap"
+                    "$ref": "#/definitions/domain.WorkingHoursMap"
                 }
             }
         },
-        "internal_modules_catalog.UpdateRoomRequest": {
+        "catalog.UpdateRoomRequest": {
             "type": "object",
             "properties": {
                 "amenities": {
@@ -7010,7 +6517,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_catalog.UpdateStudioRequest": {
+        "catalog.UpdateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -7043,11 +6550,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/photostudio_internal_domain.WorkingHoursMap"
+                    "$ref": "#/definitions/domain.WorkingHoursMap"
                 }
             }
         },
-        "internal_modules_chat.BlockUserRequest": {
+        "chat.BlockUserRequest": {
             "type": "object",
             "properties": {
                 "reason": {
@@ -7055,7 +6562,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_chat.CreateConversationRequest": {
+        "chat.CreateConversationRequest": {
             "type": "object",
             "required": [
                 "recipient_id"
@@ -7075,7 +6582,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_chat.SendMessageRequest": {
+        "chat.SendMessageRequest": {
             "type": "object",
             "required": [
                 "content"
@@ -7087,7 +6594,152 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_favorite.CheckFavoriteResponse": {
+        "domain.DaySchedule": {
+            "type": "object",
+            "properties": {
+                "close": {
+                    "description": "\"22:00\"",
+                    "type": "string"
+                },
+                "open": {
+                    "description": "\"09:00\"",
+                    "type": "string"
+                }
+            }
+        },
+        "domain.PaymentStatus": {
+            "type": "string",
+            "enum": [
+                "unpaid",
+                "paid",
+                "refunded"
+            ],
+            "x-enum-varnames": [
+                "PaymentUnpaid",
+                "PaymentPaid",
+                "PaymentRefunded"
+            ]
+        },
+        "domain.Review": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_hidden": {
+                    "type": "boolean"
+                },
+                "is_verified": {
+                    "type": "boolean"
+                },
+                "owner_response": {
+                    "type": "string"
+                },
+                "photos": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "responded_at": {
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.StudioStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "blocked"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusVerified",
+                "StatusRejected",
+                "StatusBlocked"
+            ]
+        },
+        "domain.User": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/domain.UserRole"
+                },
+                "studio_status": {
+                    "$ref": "#/definitions/domain.StudioStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.UserRole": {
+            "type": "string",
+            "enum": [
+                "client",
+                "studio_owner",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "RoleClient",
+                "RoleStudioOwner",
+                "RoleAdmin"
+            ]
+        },
+        "domain.WorkingHoursMap": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/domain.DaySchedule"
+            }
+        },
+        "favorite.CheckFavoriteResponse": {
             "type": "object",
             "properties": {
                 "is_favorite": {
@@ -7095,7 +6747,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_favorite.ErrorResponse": {
+        "favorite.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -7103,13 +6755,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_favorite.FavoriteListResponse": {
+        "favorite.FavoriteListResponse": {
             "type": "object",
             "properties": {
                 "favorites": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_favorite.FavoriteResponse"
+                        "$ref": "#/definitions/favorite.FavoriteResponse"
                     }
                 },
                 "page": {
@@ -7126,7 +6778,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_favorite.FavoriteResponse": {
+        "favorite.FavoriteResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -7136,14 +6788,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "studio": {
-                    "$ref": "#/definitions/internal_modules_favorite.StudioBrief"
+                    "$ref": "#/definitions/favorite.StudioBrief"
                 },
                 "studio_id": {
                     "type": "integer"
                 }
             }
         },
-        "internal_modules_favorite.StudioBrief": {
+        "favorite.StudioBrief": {
             "type": "object",
             "properties": {
                 "address": {
@@ -7169,7 +6821,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_manager.UpdateDepositRequest": {
+        "manager.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -7181,7 +6833,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_manager.UpdateStatusRequest": {
+        "manager.UpdateStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -7198,7 +6850,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_mwork.SyncUserRequest": {
+        "mwork.SyncUserRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -7217,7 +6869,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.AddPortfolioRequest": {
+        "owner.AddPortfolioRequest": {
             "type": "object",
             "required": [
                 "image_url"
@@ -7234,7 +6886,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.CreateMaintenanceRequest": {
+        "owner.CreateMaintenanceRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -7257,7 +6909,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.CreateProcurementRequest": {
+        "owner.CreateProcurementRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -7285,7 +6937,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.ReorderPortfolioRequest": {
+        "owner.ReorderPortfolioRequest": {
             "type": "object",
             "required": [
                 "project_ids"
@@ -7299,7 +6951,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.SetPINRequest": {
+        "owner.SetPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -7312,7 +6964,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.UpdateCompanyProfileRequest": {
+        "owner.UpdateCompanyProfileRequest": {
             "type": "object",
             "properties": {
                 "city": {
@@ -7368,7 +7020,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_owner.VerifyPINRequest": {
+        "owner.VerifyPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -7379,7 +7031,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_payment.ErrorResponse": {
+        "payment.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -7388,7 +7040,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_payment.InitPaymentRequest": {
+        "payment.InitPaymentRequest": {
             "type": "object",
             "required": [
                 "booking_id",
@@ -7418,7 +7070,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_payment.InitPaymentResponse": {
+        "payment.InitPaymentResponse": {
             "type": "object",
             "properties": {
                 "inv_id": {
@@ -7439,7 +7091,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_payment.SuccessCallbackResponse": {
+        "payment.SuccessCallbackResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -7452,7 +7104,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_review.CreateReviewRequest": {
+        "review.CreateReviewRequest": {
             "type": "object",
             "required": [
                 "rating",
@@ -7481,7 +7133,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_review.OwnerResponseRequest": {
+        "review.OwnerResponseRequest": {
             "type": "object",
             "required": [
                 "response"
@@ -7490,151 +7142,6 @@ const docTemplate = `{
                 "response": {
                     "type": "string"
                 }
-            }
-        },
-        "photostudio_internal_domain.DaySchedule": {
-            "type": "object",
-            "properties": {
-                "close": {
-                    "description": "\"22:00\"",
-                    "type": "string"
-                },
-                "open": {
-                    "description": "\"09:00\"",
-                    "type": "string"
-                }
-            }
-        },
-        "photostudio_internal_domain.PaymentStatus": {
-            "type": "string",
-            "enum": [
-                "unpaid",
-                "paid",
-                "refunded"
-            ],
-            "x-enum-varnames": [
-                "PaymentUnpaid",
-                "PaymentPaid",
-                "PaymentRefunded"
-            ]
-        },
-        "photostudio_internal_domain.Review": {
-            "type": "object",
-            "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_hidden": {
-                    "type": "boolean"
-                },
-                "is_verified": {
-                    "type": "boolean"
-                },
-                "owner_response": {
-                    "type": "string"
-                },
-                "photos": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "responded_at": {
-                    "type": "string"
-                },
-                "studio_id": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "photostudio_internal_domain.StudioStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "blocked"
-            ],
-            "x-enum-varnames": [
-                "StatusPending",
-                "StatusVerified",
-                "StatusRejected",
-                "StatusBlocked"
-            ]
-        },
-        "photostudio_internal_domain.User": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "email_verified": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/photostudio_internal_domain.UserRole"
-                },
-                "studio_status": {
-                    "$ref": "#/definitions/photostudio_internal_domain.StudioStatus"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "photostudio_internal_domain.UserRole": {
-            "type": "string",
-            "enum": [
-                "client",
-                "studio_owner",
-                "admin"
-            ],
-            "x-enum-varnames": [
-                "RoleClient",
-                "RoleStudioOwner",
-                "RoleAdmin"
-            ]
-        },
-        "photostudio_internal_domain.WorkingHoursMap": {
-            "type": "object",
-            "additionalProperties": {
-                "$ref": "#/definitions/photostudio_internal_domain.DaySchedule"
             }
         }
     },
@@ -7651,7 +7158,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "",
+	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "PhotoStudio API",
 	Description:      "API server for booking system.",

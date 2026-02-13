@@ -220,3 +220,5 @@ func (s *Service) hashPassword(password string) (string, error) {
 	}
 	return string(hash), nil
 }
+
+

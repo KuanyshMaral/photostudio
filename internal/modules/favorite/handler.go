@@ -205,3 +205,5 @@ func (h *Handler) CheckFavorite(c *gin.Context) {
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
+

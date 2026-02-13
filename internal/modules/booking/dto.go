@@ -103,3 +103,5 @@ func ToBookingResponse(b *domain.Booking, includeDeposit bool) BookingResponse {
 
 	return resp
 }
+
+

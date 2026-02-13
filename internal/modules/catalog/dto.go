@@ -174,3 +174,5 @@ func findNextOpenTime(hours []domain.WorkingHours, currentDay int) string {
 type UpdateWorkingHoursRequest struct {
 	Hours []domain.WorkingHours `json:"hours" binding:"required"`
 }
+
+

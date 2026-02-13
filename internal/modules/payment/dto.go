@@ -22,3 +22,5 @@ type SuccessCallbackResponse struct {
 	Status    string `json:"status" example:"ok"`
 	Validated bool   `json:"validated" example:"true"`
 }
+
+

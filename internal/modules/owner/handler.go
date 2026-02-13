@@ -566,10 +566,10 @@ type UpdateCompanyProfileRequest struct {
 // @Accept		json
 // @Produce	json
 // @Param		request	body	UpdateCompanyProfileRequest	true	"Данные для обновления профиля компании"
-// @Success		200	{object}	gin.H{message=string} "Профиль компании успешно обновлён"
-// @Failure		400	{object}	gin.H "Ошибка валидации: неверные данные"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении профиля"
+// @Success		200	{object}		map[string]interface{} "Профиль компании успешно обновлён"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверные данные"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении профиля"
 // @Router		/company/profile [PUT]
 func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -614,9 +614,9 @@ func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
 // @Tags		Owner - Портфолио
 // @Security	BearerAuth
 // @Produce	json
-// @Success		200	{object}	gin.H{projects=[]interface{},count=int} "Список проектов портфолио"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}	gin.H "Ошибка сервера при получении портфолио"
+// @Success		200	{object}		map[string]interface{} "Список проектов портфолио"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении портфолио"
 // @Router		/company/portfolio [GET]
 func (h *Handler) GetPortfolio(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -644,10 +644,10 @@ type AddPortfolioRequest struct {
 // @Accept		json
 // @Produce	json
 // @Param		request	body	AddPortfolioRequest	true	"Данные проекта (image_url, title, category)"
-// @Success		201	{object}	gin.H{project=interface{}} "Проект успешно добавлен в портфолио"
-// @Failure		400	{object}	gin.H "Ошибка валидации: отсутствует URL изображения"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}	gin.H "Ошибка сервера при добавлении проекта"
+// @Success		201	{object}		map[string]interface{} "Проект успешно добавлен в портфолио"
+// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: отсутствует URL изображения"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при добавлении проекта"
 // @Router		/company/portfolio [POST]
 func (h *Handler) AddPortfolioProject(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -680,11 +680,11 @@ func (h *Handler) AddPortfolioProject(c *gin.Context) {
 // @Security	BearerAuth
 // @Produce	json
 // @Param		id	path	int	true	"ID проекта портфолио"
-// @Success		200	{object}	gin.H{message=string} "Проект успешно удалён из портфолио"
-// @Failure		400	{object}	gin.H "Ошибка: неверный ID проекта"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		404	{object}	gin.H "Проект не найден"
-// @Failure		500	{object}	gin.H "Ошибка сервера при удалении проекта"
+// @Success		200	{object}		map[string]interface{} "Проект успешно удалён из портфолио"
+// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID проекта"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		404	{object}		map[string]interface{} "Проект не найден"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при удалении проекта"
 // @Router		/company/portfolio/:id [DELETE]
 func (h *Handler) DeletePortfolioProject(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -718,10 +718,10 @@ type ReorderPortfolioRequest struct {
 // @Accept		json
 // @Produce	json
 // @Param		request	body	ReorderPortfolioRequest	true	"Новый порядок проектов (массив ID)"
-// @Success		200	{object}	gin.H{message=string} "Портфолио успешно переупорядочено"
-// @Failure		400	{object}	gin.H "Ошибка влидации: отсутствует или пустой массив ID проектов"
-// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}	gin.H "Ошибка сервера при переупорядочении портфолио"
+// @Success		200	{object}		map[string]interface{} "Портфолио успешно переупорядочено"
+// @Failure		400	{object}		map[string]interface{} "Ошибка влидации: отсутствует или пустой массив ID проектов"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при переупорядочении портфолио"
 // @Router		/company/portfolio/reorder [PUT]
 func (h *Handler) ReorderPortfolio(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
@@ -739,3 +739,5 @@ func (h *Handler) ReorderPortfolio(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Portfolio reordered"})
 }
+
+

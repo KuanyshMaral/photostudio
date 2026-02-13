@@ -85,3 +85,5 @@ func ToFavoriteListResponse(favorites []domain.Favorite, total int64, page, perP
 		TotalPages: totalPages,
 	}
 }
+
+

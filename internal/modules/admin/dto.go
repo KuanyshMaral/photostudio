@@ -107,3 +107,5 @@ type DailyStats struct {
 	Bookings int64   `json:"bookings"`
 	Revenue  float64 `json:"revenue"`
 }
+
+

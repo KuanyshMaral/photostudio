@@ -722,3 +722,5 @@ func (s *Service) DeleteReview(ctx context.Context, reviewID int64) error {
 		Where("id = ?", reviewID).
 		Delete(nil).Error
 }
+
+

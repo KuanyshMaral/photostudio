@@ -176,3 +176,5 @@ func TestService_AppendVerificationDocs(t *testing.T) {
 	assert.NoError(t, err)
 	studioOwnerRepo.AssertExpectations(t)
 }
+
+
