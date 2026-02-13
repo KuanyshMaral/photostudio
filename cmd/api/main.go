@@ -22,6 +22,7 @@ import (
 	"photostudio/internal/modules/manager"
 	"photostudio/internal/modules/notification"
 	"photostudio/internal/modules/owner"
+	"photostudio/internal/modules/payment"
 	"photostudio/internal/modules/review"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/repository"
@@ -79,6 +80,7 @@ func main() {
 		&domain.CompanyProfile{},
 		&domain.PortfolioProject{},
 		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
+		&domain.RobokassaPayment{},
 	}
 
 	// Check if migrations should be run via environment variable
@@ -109,6 +111,7 @@ func main() {
 	chatRepo := repository.NewChatRepository(db)
 	favoriteRepo := repository.NewFavoriteRepository(db)
 	ownerCRMRepo := repository.NewOwnerCRMRepository(db)
+	robokassaPaymentRepo := repository.NewRobokassaPaymentRepository(db)
 	// Shared services
 	jwtService := jwtsvc.New(jwtSecret, 24*time.Hour)
 
@@ -148,6 +151,10 @@ func main() {
 	mworkService := mwork.NewService(userRepo)
 	mworkHandler := mwork.NewHandler(mworkService)
 
+	paymentLogger := func(format string, args ...interface{}) { log.Printf(format, args...) }
+	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger)
+	paymentHandler := payment.NewHandler(paymentService, paymentLogger)
+
 	// Router setup
 	r := gin.New() // Better than gin.Default() — we add only what we need
 	r.Use(middleware.ErrorLogger())
@@ -164,6 +171,7 @@ func main() {
 	})
 
 	v1 := r.Group("/api/v1")
+	paymentHandler.RegisterPublicRoutes(v1)
 
 	// Public routes
 	authHandler.RegisterPublicRoutes(v1)
@@ -180,6 +188,7 @@ func main() {
 		authHandler.RegisterProtectedRoutes(protected)
 		// Booking
 		bookingHandler.RegisterRoutes(protected)
+		paymentHandler.RegisterProtectedRoutes(protected)
 		// Protected reviews (create, respond)
 		reviewHandler.RegisterRoutes(nil, protected)
 		notificationHandler.RegisterRoutes(protected)
