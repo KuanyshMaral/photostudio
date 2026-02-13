@@ -65,6 +65,19 @@ type SetPINRequest struct {
 	PIN string `json:"pin" binding:"required,min=4,max=6,numeric"`
 }
 
+// @Summary Установка PIN кода
+// @Description Устанавливает PIN код из 4-6 цифр для защиты CRM функций владельца студии
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param request body SetPINRequest true "PIN request body"
+// @Success 200 {object} map[string]interface{} "PIN успешно установлен"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат PIN (должен быть 4-6 цифр)"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/set-pin [post]
+// @Security Bearer
 func (h *Handler) SetPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -90,6 +103,20 @@ type VerifyPINRequest struct {
 	PIN string `json:"pin" binding:"required"`
 }
 
+// @Summary Проверка PIN кода
+// @Description Проверяет корректность введённого PIN кода владельцем студии
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param request body VerifyPINRequest true "PIN request body"
+// @Success 200 {object} map[string]interface{} "PIN успешно проверен"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
+// @Failure 401 {object} map[string]interface{} "PIN неверен или требуется аутентификация"
+// @Failure 404 {object} map[string]interface{} "PIN не установлен"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/verify-pin [post]
+// @Security Bearer
 func (h *Handler) VerifyPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -124,6 +151,16 @@ func (h *Handler) VerifyPIN(c *gin.Context) {
 	})
 }
 
+// @Summary Проверка наличия PIN кода
+// @Description Проверяет, установлен ли PIN код для текущего владельца студии
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Success 200 {object} map[string]interface{} "Статус наличия PIN кода"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/has-pin [get]
+// @Security Bearer
 func (h *Handler) HasPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -142,6 +179,17 @@ func (h *Handler) HasPIN(c *gin.Context) {
 
 // ==================== Procurement Handlers ====================
 
+// @Summary Получение списка закупок
+// @Description Получает список закупок для студии владельца с опциональной фильтрацией по статусу завершённости
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param show_completed query bool false "Показывать ли завершённые закупки (по умолчанию false)"
+// @Success 200 {object} map[string]interface{} "Список закупок и их количество"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/procurement [get]
+// @Security Bearer
 func (h *Handler) GetProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	showCompleted := c.Query("show_completed") == "true"
@@ -164,6 +212,19 @@ type CreateProcurementRequest struct {
 	DueDate     string  `json:"due_date,omitempty"` // RFC3339
 }
 
+// @Summary Создание новой закупки
+// @Description Создаёт новую запись о закупке оборудования или материалов для студии. Приоритет по умолчанию - medium, количество - 1
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param request body CreateProcurementRequest true "Данные для создания закупки"
+// @Success 201 {object} map[string]interface{} "Закупка успешно создана"
+// @Failure 400 {object} map[string]interface{} "Некорректные данные запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/procurement [post]
+// @Security Bearer
 func (h *Handler) CreateProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -197,6 +258,21 @@ func (h *Handler) CreateProcurement(c *gin.Context) {
 	response.Success(c, http.StatusCreated, gin.H{"item": item})
 }
 
+// @Summary Обновление закупки
+// @Description Обновляет данные существующей закупки. Нельзя изменять ID, владельца и дату создания
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param id path int64 true "ID закупки"
+// @Param request body map[string]interface{} true "Поля для обновления"
+// @Success 200 {object} map[string]interface{} "Закупка успешно обновлена"
+// @Failure 400 {object} map[string]interface{} "Некорректный ID закупки"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 404 {object} map[string]interface{} "Закупка не найдена"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/procurement/{id} [patch]
+// @Security Bearer
 func (h *Handler) UpdateProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -228,6 +304,19 @@ func (h *Handler) UpdateProcurement(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Item updated"})
 }
 
+// @Summary Удаление закупки
+// @Description Удаляет закупку по ID. Может удалить только владелец студии
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param id path int64 true "ID закупки"
+// @Success 200 {object} map[string]interface{} "Закупка успешно удалена"
+// @Failure 400 {object} map[string]interface{} "Некорректный ID закупки"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 404 {object} map[string]interface{} "Закупка не найдена"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/procurement/{id} [delete]
+// @Security Bearer
 func (h *Handler) DeleteProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -250,6 +339,17 @@ func (h *Handler) DeleteProcurement(c *gin.Context) {
 
 // ==================== Maintenance Handlers ====================
 
+// @Summary Получение списка обслуживания
+// @Description Получает список записей об обслуживании оборудования и помещений студии. Можно отфильтровать по статусу: all, pending, in_progress, completed
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param status query string false "Фильтр по статусу (all, pending, in_progress, completed) - по умолчанию all"
+// @Success 200 {object} map[string]interface{} "Список записей об обслуживании и их количество"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/maintenance [get]
+// @Security Bearer
 func (h *Handler) GetMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	status := c.DefaultQuery("status", "all") // all, pending, in_progress, completed
@@ -271,6 +371,19 @@ type CreateMaintenanceRequest struct {
 	DueDate     string `json:"due_date,omitempty"`
 }
 
+// @Summary Создание новой записи об обслуживании
+// @Description Создаёт новую запись об обслуживании оборудования, помещений или инженерных систем студии. При отсутствии приоритета устанавливается значение medium. Статус по умолчанию - pending
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param request body CreateMaintenanceRequest true "Данные для создания записи об обслуживании"
+// @Success 201 {object} map[string]interface{} "Запись об обслуживании успешно создана"
+// @Failure 400 {object} map[string]interface{} "Некорректные данные запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/maintenance [post]
+// @Security Bearer
 func (h *Handler) CreateMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -301,6 +414,21 @@ func (h *Handler) CreateMaintenance(c *gin.Context) {
 	response.Success(c, http.StatusCreated, gin.H{"item": item})
 }
 
+// @Summary Обновление записи об обслуживании
+// @Description Обновляет данные существующей записи об обслуживании. Нельзя изменять ID, владельца и дату создания
+// @Tags Owner
+// @Accept json
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param id path int64 true "ID записи об обслуживании"
+// @Param request body map[string]interface{} true "Поля для обновления"
+// @Success 200 {object} map[string]interface{} "Запись об обслуживании успешно обновлена"
+// @Failure 400 {object} map[string]interface{} "Некорректный ID записи об обслуживании"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/maintenance/{id} [patch]
+// @Security Bearer
 func (h *Handler) UpdateMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -331,6 +459,19 @@ func (h *Handler) UpdateMaintenance(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Item updated"})
 }
 
+// @Summary Удаление записи об обслуживании
+// @Description Удаляет запись об обслуживании по ID. Может удалить только владелец студии
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Param id path int64 true "ID записи об обслуживании"
+// @Success 200 {object} map[string]interface{} "Запись об обслуживании успешно удалена"
+// @Failure 400 {object} map[string]interface{} "Некорректный ID записи об обслуживании"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/maintenance/{id} [delete]
+// @Security Bearer
 func (h *Handler) DeleteMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -353,6 +494,16 @@ func (h *Handler) DeleteMaintenance(c *gin.Context) {
 
 // ==================== Analytics Handler ====================
 
+// @Summary Получение аналитики студии
+// @Description Получает аналитические данные о работе студии владельца, включая статистику бронирований, доходы и другие метрики
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Success 200 {object} map[string]interface{} "Аналитические данные студии"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /owner/analytics [get]
+// @Security Bearer
 func (h *Handler) GetAnalytics(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -367,6 +518,16 @@ func (h *Handler) GetAnalytics(c *gin.Context) {
 
 // ==================== Company Profile Handlers ====================
 
+// @Summary Получение профиля компании
+// @Description Получает полные данные профиля компании/студии владельца, включая логотип, контактные данные, описание и специализацию
+// @Tags Owner
+// @Produce json
+// @Param authorization header string true "Bearer token"
+// @Success 200 {object} map[string]interface{} "Профиль компании/студии"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
+// @Router /company/profile [get]
+// @Security Bearer
 func (h *Handler) GetCompanyProfile(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -397,6 +558,19 @@ type UpdateCompanyProfileRequest struct {
 	Socials         map[string]string `json:"socials,omitempty"`
 }
 
+// UpdateCompanyProfile обновляет профиль компании владельца.
+// @Summary		Обновить профиль компании
+// @Description	Обновляет все данные профиля компании/студии: логотип, контакты, описание, специализацию, социальные сети и другую информацию.
+// @Tags		Owner - Профиль компании
+// @Security	BearerAuth
+// @Accept		json
+// @Produce	json
+// @Param		request	body	UpdateCompanyProfileRequest	true	"Данные для обновления профиля компании"
+// @Success		200	{object}	gin.H{message=string} "Профиль компании успешно обновлён"
+// @Failure		400	{object}	gin.H "Ошибка валидации: неверные данные"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении профиля"
+// @Router		/company/profile [PUT]
 func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -434,6 +608,16 @@ func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
 
 // ==================== Portfolio Handlers ====================
 
+// GetPortfolio получает портфолио студии владельца.
+// @Summary		Получить портфолио
+// @Description	Возвращает полный список проектов портфолио студии с информацией о каждом проекте, включая изображения и описание.
+// @Tags		Owner - Портфолио
+// @Security	BearerAuth
+// @Produce	json
+// @Success		200	{object}	gin.H{projects=[]interface{},count=int} "Список проектов портфолио"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при получении портфолио"
+// @Router		/company/portfolio [GET]
 func (h *Handler) GetPortfolio(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -452,6 +636,19 @@ type AddPortfolioRequest struct {
 	Category string `json:"category,omitempty"`
 }
 
+// AddPortfolioProject добавляет новый проект в портфолио студии.
+// @Summary		Добавить проект в портфолио
+// @Description	Добавляет новый проект в портфолио с изображением, названием и категорией. Проект автоматически добавляется в конец портфолио. Проект можно переупорядочить в любой момент.
+// @Tags		Owner - Портфолио
+// @Security	BearerAuth
+// @Accept		json
+// @Produce	json
+// @Param		request	body	AddPortfolioRequest	true	"Данные проекта (image_url, title, category)"
+// @Success		201	{object}	gin.H{project=interface{}} "Проект успешно добавлен в портфолио"
+// @Failure		400	{object}	gin.H "Ошибка валидации: отсутствует URL изображения"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при добавлении проекта"
+// @Router		/company/portfolio [POST]
 func (h *Handler) AddPortfolioProject(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -476,6 +673,19 @@ func (h *Handler) AddPortfolioProject(c *gin.Context) {
 	response.Success(c, http.StatusCreated, gin.H{"project": project})
 }
 
+// DeletePortfolioProject удаляет проект из портфолио.
+// @Summary		Удалить проект из портфолио
+// @Description	Удаляет проект из портфолио по ID. После удаления проект больше не будет виден в портфолио студии. Остальные проекты сохраняют свой порядок.
+// @Tags		Owner - Портфолио
+// @Security	BearerAuth
+// @Produce	json
+// @Param		id	path	int	true	"ID проекта портфолио"
+// @Success		200	{object}	gin.H{message=string} "Проект успешно удалён из портфолио"
+// @Failure		400	{object}	gin.H "Ошибка: неверный ID проекта"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		404	{object}	gin.H "Проект не найден"
+// @Failure		500	{object}	gin.H "Ошибка сервера при удалении проекта"
+// @Router		/company/portfolio/:id [DELETE]
 func (h *Handler) DeletePortfolioProject(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	projectID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -500,6 +710,19 @@ type ReorderPortfolioRequest struct {
 	ProjectIDs []int64 `json:"project_ids" binding:"required"`
 }
 
+// ReorderPortfolio переупорядочивает проекты в портфолио.
+// @Summary		Переупорядочить портфолио
+// @Description	Переупорядочивает проекты портфолио согласно переданному порядку ID проектов. Новый порядок заменяет старый полностью.
+// @Tags		Owner - Портфолио
+// @Security	BearerAuth
+// @Accept		json
+// @Produce	json
+// @Param		request	body	ReorderPortfolioRequest	true	"Новый порядок проектов (массив ID)"
+// @Success		200	{object}	gin.H{message=string} "Портфолио успешно переупорядочено"
+// @Failure		400	{object}	gin.H "Ошибка влидации: отсутствует или пустой массив ID проектов"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при переупорядочении портфолио"
+// @Router		/company/portfolio/reorder [PUT]
 func (h *Handler) ReorderPortfolio(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 

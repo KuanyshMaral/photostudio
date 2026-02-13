@@ -31,12 +31,18 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 }
 
 // GetFavorites возвращает список избранных студий текущего пользователя
-// @Summary Получить избранное
-// @Tags Favorites
+//
+// @Summary Получить список избранных студий
+// @Description Получает список студий, добавленных в избранное текущего пользователя, с поддержкой пагинации
+// @Tags Favorite
+// @Accept json
+// @Produce json
 // @Security BearerAuth
 // @Param page query int false "Номер страницы" default(1)
 // @Param per_page query int false "Элементов на страницу" default(20)
-// @Success 200 {object} FavoriteListResponse
+// @Success 200 {object} FavoriteListResponse "Список избранных студий"
+// @Failure 401 {object} ErrorResponse "Пользователь не авторизован"
+// @Failure 500 {object} ErrorResponse "Ошибка при получении списка избранного"
 // @Router /favorites [get]
 func (h *Handler) GetFavorites(c *gin.Context) {
 	// Получаем user_id из JWT (установлен middleware)
@@ -71,14 +77,20 @@ func (h *Handler) GetFavorites(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// AddFavorite добавляет студию в избранное
-// @Summary Добавить в избранное
-// @Tags Favorites
+// AddFavorite добавляет студию в избранное текущего пользователя
+//
+// @Summary Добавить студию в избранное
+// @Description Добавляет студию в список избранного. Возвращает ошибку, если студия уже в избранном или не существует
+// @Tags Favorite
+// @Accept json
+// @Produce json
 // @Security BearerAuth
-// @Param studioId path int true "ID студии"
-// @Success 201 {object} FavoriteResponse
-// @Failure 400 {object} ErrorResponse "Studio already in favorites"
-// @Failure 404 {object} ErrorResponse "Studio not found"
+// @Param studioId path int64 true "ID студии"
+// @Success 201 {object} FavoriteResponse "Студия успешно добавлена в избранное"
+// @Failure 400 {object} ErrorResponse "Студия уже находится в избранном или некорректный ID студии"
+// @Failure 401 {object} ErrorResponse "Пользователь не авторизован"
+// @Failure 404 {object} ErrorResponse "Студия не найдена"
+// @Failure 500 {object} ErrorResponse "Ошибка при добавлении в избранное"
 // @Router /favorites/{studioId} [post]
 func (h *Handler) AddFavorite(c *gin.Context) {
 	userID, exists := c.Get("user_id")
@@ -110,13 +122,20 @@ func (h *Handler) AddFavorite(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-// RemoveFavorite удаляет студию из избранного
-// @Summary Удалить из избранного
-// @Tags Favorites
+// RemoveFavorite удаляет студию из избранного текущего пользователя
+//
+// @Summary Удалить студию из избранного
+// @Description Удаляет студию из списка избранного. Возвращает ошибку, если студия не было в избранном
+// @Tags Favorite
+// @Accept json
+// @Produce json
 // @Security BearerAuth
-// @Param studioId path int true "ID студии"
-// @Success 204 "No Content"
-// @Failure 404 {object} ErrorResponse "Favorite not found"
+// @Param studioId path int64 true "ID студии"
+// @Success 204 "Студия успешно удалена из избранного"
+// @Failure 400 {object} ErrorResponse "Некорректный ID студии"
+// @Failure 401 {object} ErrorResponse "Пользователь не авторизован"
+// @Failure 404 {object} ErrorResponse "Студия отсутствует в избранном"
+// @Failure 500 {object} ErrorResponse "Ошибка при удалении из избранного"
 // @Router /favorites/{studioId} [delete]
 func (h *Handler) RemoveFavorite(c *gin.Context) {
 	userID, exists := c.Get("user_id")
@@ -145,12 +164,19 @@ func (h *Handler) RemoveFavorite(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// CheckFavorite проверяет, есть ли студия в избранном
-// @Summary Проверить избранное
-// @Tags Favorites
+// CheckFavorite проверяет, находится ли студия в избранном пользователя
+//
+// @Summary Проверить находится ли студия в избранном
+// @Description Проверяет наличие студии в списке избранного текущего пользователя
+// @Tags Favorite
+// @Accept json
+// @Produce json
 // @Security BearerAuth
-// @Param studioId path int true "ID студии"
-// @Success 200 {object} CheckFavoriteResponse
+// @Param studioId path int64 true "ID студии"
+// @Success 200 {object} CheckFavoriteResponse "Результат проверки наличия студии в избранном"
+// @Failure 400 {object} ErrorResponse "Некорректный ID студии"
+// @Failure 401 {object} ErrorResponse "Пользователь не авторизован"
+// @Failure 500 {object} ErrorResponse "Ошибка при проверке избранного"
 // @Router /favorites/{studioId}/check [get]
 func (h *Handler) CheckFavorite(c *gin.Context) {
 	userID, exists := c.Get("user_id")

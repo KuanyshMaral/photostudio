@@ -34,6 +34,24 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	}
 }
 
+// GetBookings получает список бронирований по студиям владельца.
+// @Summary		Получить отфильтрованные бронирования
+// @Description	Выводит список бронирований для всех студий владельца с деталями с возможностью фильтрирования по статусу, дате, клиенту.
+// @Tags		Менеджер - Управление бронированиями
+// @Security	BearerAuth
+// @Param		status		query	string	false	"Фильтр по статусу (all, pending, confirmed, cancelled, completed)"
+// @Param		client		query	string	false	"Фильтр по имени клиента"
+// @Param		studio_id	query	int	false	"Фильтр по ID студии"
+// @Param		room_id		query	int	false	"Фильтр по ID комнаты"
+// @Param		date_from	query	string	false	"Начальная дата (YYYY-MM-DD)"
+// @Param		date_to		query	string	false	"Выконачая дата (YYYY-MM-DD)"
+// @Param		page		query	int	false	"Номер страницы"
+// @Param		per_page	query	int	false	"Количество бронирований на странице (макс 100)"
+// @Success		200	{object}	gin.H{bookings=interface{},total=int,page=int,per_page=int} "Список бронирований с пагинацией"
+// @Failure		400	{object}	gin.H "Ошибка в параметрах"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации"
+// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Router		/manager/bookings [GET]
 func (h *Handler) GetBookings(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -89,6 +107,18 @@ func (h *Handler) GetBookings(c *gin.Context) {
 	})
 }
 
+// GetBooking получает детали одного бронирования.
+// @Summary		Открыть детали бронирования
+// @Description	Получает подробную информацию о бронировании (клиент, студия, настройки, цену, статус).
+// @Tags		Менеджер - Управление бронированиями
+// @Security	BearerAuth
+// @Param		id	path	int	true	"ID бронирования"
+// @Success		200	{object}	gin.H{booking=interface{}} "Подробная информация о бронировании"
+// @Failure		400	{object}	gin.H "Ошибка: неверный ID"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации"
+// @Failure		404	{object}	gin.H "Бронирование не найдено или доступ запрещён"
+// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Router		/manager/bookings/:id [GET]
 func (h *Handler) GetBooking(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -111,6 +141,19 @@ type UpdateDepositRequest struct {
 	DepositAmount float64 `json:"deposit_amount" binding:"required,min=0"`
 }
 
+// UpdateDeposit обновляет внесённою стоимость на бронировании.
+// @Summary		Обновить рассчётные средства
+// @Description	Обновляет внесённые средства (залог или авансовые платежи) для бронирования.
+// @Tags		Менеджер - Управление бронированиями
+// @Security	BearerAuth
+// @Param		id		path	int						true	"ID бронирования"
+// @Param		request	body	UpdateDepositRequest		true	"Новая сумма залога"
+// @Success		200	{object}	gin.H{message=string} "Намавка депозита обновлена"
+// @Failure		400	{object}	gin.H "Ошибка: неверные данные"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации"
+// @Failure		404	{object}	gin.H "Бронирование не найдено"
+// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Router		/manager/bookings/:id/deposit [PATCH]
 func (h *Handler) UpdateDeposit(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -145,6 +188,19 @@ type UpdateStatusRequest struct {
 	Status string `json:"status" binding:"required,oneof=pending confirmed cancelled completed"`
 }
 
+// UpdateBookingStatus обновляет статус бронирования.
+// @Summary		Обновить статус бронирования
+// @Description	Меняет статус бронирования: pending -> confirmed -> completed или cancelled.
+// @Tags		Менеджер - Управление бронированиями
+// @Security	BearerAuth
+// @Param		id		path	int						true	"ID бронирования"
+// @Param		request	body	UpdateStatusRequest		true	"Новый статус (pending, confirmed, cancelled, completed)"
+// @Success		200	{object}	gin.H{message=string} "Статус бронирования обновлен"
+// @Failure		400	{object}	gin.H "Ошибка: неверные данные"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации"
+// @Failure		404	{object}	gin.H "Бронирование не найдено"
+// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Router		/manager/bookings/:id/status [PATCH]
 func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -175,6 +231,19 @@ func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Status updated"})
 }
 
+// GetClients получает список клиентов студий владельца.
+// @Summary		Получить список клиентов
+// @Description	Выводит список всех клиентов, которые бронировали студии владельца, с возможностью поиска по имени.
+// @Tags		Менеджер - Отношения с клиентами
+// @Security	BearerAuth
+// @Param		search	query	string	false	"Поиск по имени клиента"
+// @Param		page	query	int	false	"Номер страницы"
+// @Param		per_page	query	int	false	"Количество клиентов на странице (макс 100)"
+// @Success		200	{object}	gin.H{clients=interface{},total=int,page=int,per_page=int} "Список клиентов с пагинацией"
+// @Failure		400	{object}	gin.H "Ошибка в параметрах"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации"
+// @Failure		500	{object}	gin.H "Ошибка сервера"
+// @Router		/manager/clients [GET]
 func (h *Handler) GetClients(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	search := c.Query("search")
