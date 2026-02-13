@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   postgres:
-    image: postgres:16-alpine # Обновил до 16 как в mwork
+    image: postgres:16-alpine
     container_name: photostudio_db
     environment:
       POSTGRES_USER: photostudio
@@ -15,10 +15,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 30s # Даем базе время на старт, чтобы деплой не падал
     restart: unless-stopped
 
-  # Сервис миграций (как в mwork)
-  # ВАЖНО: Убедись, что в папке проекта на сервере есть папка migrations/
+  # Adminer для управления базой
+  adminer:
+    image: adminer:latest
+    container_name: photostudio_adminer
+    restart: unless-stopped
+    ports:
+      - "8085:8080" # Порт 8085, чтобы не мешать mwork
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Сервис миграций
   migrate:
     image: migrate/migrate:4
     depends_on:
@@ -26,15 +37,14 @@ services:
         condition: service_healthy
     volumes:
       - ./migrations:/migrations:ro
-    environment:
-      # Формируем строку подключения тут, чтобы migrate её увидел
-      DATABASE_URL: postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
-    entrypoint: ["/bin/sh", "-lc"]
-    command: 'echo "Running Migrations..." && migrate -path=/migrations -database "$$DATABASE_URL" up'
+    # Надежный способ запуска миграций (без глючных entrypoint)
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable"
+      - "up"
     restart: "no"
 
   api:
-    # Тянем образ с GHCR (имя должно совпадать с тем, что в deploy.yml)
     image: ghcr.io/kuanyshmaral/photostudio:latest
     container_name: photostudio_api
     depends_on:
@@ -46,19 +56,19 @@ services:
       - "8090:8090"
     environment:
       - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
-      - JWT_SECRET=docker_dev_secret_change_in_production # Лучше вынести в .env, но пока оставил так
+      - JWT_SECRET=docker_dev_secret_change_in_production
       - PORT=8090
       - ENV=production
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
 
-  # Добавил фронтенд, как в mwork (если образа нет, закомментируй этот блок)
   web:
     image: ghcr.io/kuanyshmaral/photostudio-front:latest
+    container_name: photostudio_web
     restart: unless-stopped
     ports:
-      - "80:80" # Или другой порт, если 80 занят mwork-ом (например 3000:80)
+      - "3002:80" # Порт 3002, чтобы не мешать mwork
     depends_on:
       - api
 
