@@ -28,6 +28,18 @@ func (h *Handler) RegisterRoutes(internal *gin.RouterGroup) {
 	}
 }
 
+// SyncUser синхронизирует пользователя из Mwork платформы.
+// @Summary		Синхронизация пользователя из Mwork
+// @Description	Внутренний API endpoint для синхронизации пользователя из платформы Mwork. Создаёт или обновляет пользователя в PhotoStudio на основе данных из Mwork. Доступно только для внутренних сервисов.
+// @Tags		Интеграции - Mwork
+// @Security	BearerAuth
+// @Param		request	body	SyncUserRequest	true	"Данные пользователя из Mwork (mwork_user_id, email, full_name, role, phone)"
+// @Success		200	{object}	gin.H{user_id=int,status=string} "Пользователь синхронизирован успешно"
+// @Success		201	{object}	gin.H{user_id=int,status=string} "Новый пользователь создан"
+// @Failure		400	{object}	gin.H "Ошибка валидации: неверные данные (invalid UUID, invalid role, etc.)"
+// @Failure		409	{object}	gin.H "Конфликт: пользователь с этим email уже существует"
+// @Failure		500	{object}	gin.H "Ошибка сервера при синхронизации пользователя"
+// @Router		/internal/mwork/users/sync [POST]
 func (h *Handler) SyncUser(c *gin.Context) {
 	start := time.Now()
 

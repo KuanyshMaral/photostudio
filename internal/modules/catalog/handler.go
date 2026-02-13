@@ -32,7 +32,25 @@ func NewHandler(service *Service, userRepo *repository.UserRepository) *Handler 
 
 /* ---------- STUDIO HANDLERS ---------- */
 
-// GetStudios handles GET /api/v1/studios with filters
+// GetStudios получение списка студий с фильтрацией и поиском
+// @Summary Получить список студий
+// @Description Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.
+// @Tags Catalog - Студии
+// @Accept json
+// @Produce json
+// @Param city query string false "Фильтр по городу" example("Moscow")
+// @Param room_type query string false "Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)" example("Fashion")
+// @Param search query string false "Поиск по названию студии" example("My Studio")
+// @Param min_price query number false "Минимальная цена в час" example(100)
+// @Param max_price query number false "Максимальная цена в час" example(1000)
+// @Param sort_by query string false "Поле для сортировки (rating, price, created_at)" example("rating")
+// @Param sort_order query string false "Порядок сортировки (asc, desc)" example("desc")
+// @Param page query integer false "Номер страницы" example(1)
+// @Param limit query integer false "Количество студий на странице (максимум 100)" example(20)
+// @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий и информацией о пагинации"
+// @Failure 400 {object} map[string]interface{} "Некорректные параметры запроса"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios [get]
 func (h *Handler) GetStudios(c *gin.Context) {
 	var f repository.StudioFilters
 
@@ -94,7 +112,18 @@ func (h *Handler) GetStudios(c *gin.Context) {
 	})
 }
 
-// GetStudioByID handles GET /api/v1/studios/:id
+// GetStudioByID получение информации о студии по ID
+// @Summary Получить студию по ID
+// @Description Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.
+// @Tags Catalog - Студии
+// @Accept json
+// @Produce json
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о студии"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
+// @Failure 404 {object} map[string]interface{} "Студия не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id} [get]
 func (h *Handler) GetStudioByID(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -132,7 +161,19 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 	})
 }
 
-// GetStudioWorkingHours handles GET /api/v1/studios/:id/working-hours (legacy format)
+// GetStudioWorkingHours получение часов работы студии (устаревший формат)
+// @Summary Получить часы работы студии (v1)
+// @Description Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.
+// @Tags Catalog - Часы работы
+// @Accept json
+// @Produce json
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Success 200 {object} map[string]interface{} "Успешный ответ с часами работы и статусом"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
+// @Failure 404 {object} map[string]interface{} "Студия не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Deprecated
+// @Router /api/v1/studios/{id}/working-hours [get]
 func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -159,12 +200,18 @@ func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 	})
 }
 
-// GetStudioWorkingHoursV2 handles GET /api/v1/studios/:id/working-hours/v2 (new format with live status)
-// @Summary Получить часы работы студии (новый формат)
-// @Tags Catalog
-// @Param id path int true "ID студии"
-// @Success 200 {object} WorkingHoursResponse
-// @Router /studios/{id}/working-hours/v2 [get]
+// GetStudioWorkingHoursV2 получение часов работы студии с текущим статусом
+// @Summary Получить часы работы студии (v2)
+// @Description Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.
+// @Tags Catalog - Часы работы
+// @Accept json
+// @Produce json
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о часах работы и текущем статусе"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
+// @Failure 404 {object} map[string]interface{} "Студия не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id}/working-hours/v2 [get]
 func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
 	studioIDStr := c.Param("id")
 	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
@@ -186,14 +233,21 @@ func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
 	response.Success(c, http.StatusOK, hoursResponse)
 }
 
-// UpdateStudioWorkingHours handles PUT /api/v1/studios/:id/working-hours
+// UpdateStudioWorkingHours обновление часов работы студии
 // @Summary Обновить часы работы студии
-// @Tags Catalog
+// @Description Обновляет расписание работы студии. Требует аутентификации. Только владелец студии может обновлять её часы работы. Принимает массив объектов с информацией о рабочих днях и часах.
+// @Tags Catalog - Часы работы
+// @Accept json
+// @Produce json
 // @Security BearerAuth
-// @Param id path int true "ID студии"
-// @Param body body []domain.WorkingHours true "Часы работы"
-// @Success 200 {object} gin.H
-// @Router /studios/{id}/working-hours [put]
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Param body body array true "Массив объектов WorkingHours с расписанием работы по дням недели"
+// @Success 200 {object} map[string]interface{} "Успешное обновление часов работы"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id}/working-hours [put]
 func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -226,7 +280,17 @@ func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Working hours updated"})
 }
 
-// GetMyStudios — GET /studios/my
+// GetMyStudios получение всех студий текущего владельца
+// @Summary Получить мои студии
+// @Description Получает список всех студий, принадлежащих текущему авторизованному владельцу студии. Требует валидного JWT токена в заголовке Authorization.
+// @Tags Catalog - Студии
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий владельца"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/my [get]
 func (h *Handler) GetMyStudios(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -243,7 +307,20 @@ func (h *Handler) GetMyStudios(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"studios": studios})
 }
 
-// CreateStudio handles POST /api/v1/studios (protected)
+// CreateStudio создание новой студии
+// @Summary Создать новую студию
+// @Description Создает новую студию в каталоге. Требует аутентификации и верификации пользователя как владельца студии. Пользователь должен иметь роль студии-владельца и пройти верификацию.
+// @Tags Catalog - Студии
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body CreateStudioRequest true "Данные для создания студии (название, описание, адрес, город, цена и т.д.)"
+// @Success 201 {object} map[string]interface{} "Студия успешно создана, возвращает объект созданной студии"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 403 {object} map[string]interface{} "Пользователь не является верифицированным владельцем студии"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios [post]
 func (h *Handler) CreateStudio(c *gin.Context) {
 	var req CreateStudioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -311,7 +388,22 @@ func (h *Handler) CreateStudio(c *gin.Context) {
 	})
 }
 
-// UpdateStudio handles PUT /api/v1/studios/:id (protected)
+// UpdateStudio обновление информации о студии
+// @Summary Обновить студию
+// @Description Обновляет информацию о студии (названия, описание, адрес, город, цена в час и другие параметры). Требует аутентификации. Только владелец студии может её обновлять.
+// @Tags Catalog - Студии
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Param body body UpdateStudioRequest true "Данные для обновления студии"
+// @Success 200 {object} map[string]interface{} "Студия успешно обновлена, возвращает обновленный объект"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
+// @Failure 404 {object} map[string]interface{} "Студия не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id} [put]
 func (h *Handler) UpdateStudio(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -385,6 +477,20 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 	})
 }
 
+// UpdateRoom обновление информации о комнате
+// @Summary Обновить комнату
+// @Description Обновляет информацию о комнате в студии (названия, тип комнаты, описание и другие параметры). Требует аутентификации.
+// @Tags Catalog - Комнаты
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
+// @Param body body UpdateRoomRequest true "Данные для обновления комнаты"
+// @Success 200 {object} map[string]interface{} "Комната успешно обновлена"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса или тип комнаты"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/rooms/{id} [put]
 func (h *Handler) UpdateRoom(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -411,6 +517,19 @@ func (h *Handler) UpdateRoom(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"room": room})
 }
 
+// DeleteRoom удаление комнаты из студии
+// @Summary Удалить комнату
+// @Description Удаляет комнату из студии. Требует аутентификации. Только владелец студии может удалять комнаты.
+// @Tags Catalog - Комнаты
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
+// @Success 200 {object} map[string]interface{} "Комната успешно удалена"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/rooms/{id} [delete]
 func (h *Handler) DeleteRoom(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -428,7 +547,20 @@ func (h *Handler) DeleteRoom(c *gin.Context) {
 
 /* ---------- PHOTO HANDLERS ---------- */
 
-// UploadStudioPhotos handler for uploading studio photos
+// UploadStudioPhotos загрузка фотографий студии
+// @Summary Загрузить фотографии студии
+// @Description Загружает фотографии студии. Поддерживает загрузку до 10 файлов одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла: 5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.
+// @Tags Catalog - Фотографии
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Param photos formData []file true "Файлы изображений для загрузки (до 10 файлов)" CollectionFormat(multi)
+// @Success 200 {object} map[string]interface{} "Фотографии успешно загружены, возвращает список URL загруженных файлов"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса, файл слишком большой или недопустимый формат"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id}/photos [post]
 func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 	// 1. Extract studio ID from URL param
 	studioIDStr := c.Param("id")
@@ -530,7 +662,16 @@ func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 
 /* ---------- ROOM HANDLERS ---------- */
 
-// GetRooms handles GET /api/v1/rooms
+// GetRooms получение списка комнат студии
+// @Summary Получить комнаты студии
+// @Description Получает список всех комнат конкретной студии или всех комнат во всех студиях. Может быть отфильтровано по ID студии через параметр запроса.
+// @Tags Catalog - Комнаты
+// @Accept json
+// @Produce json
+// @Param studio_id query integer false "ID студии для фильтрации комнат. Если не указан, возвращает все комнаты" example(1)
+// @Success 200 {object} map[string]interface{} "Успешный ответ со списком комнат"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/rooms [get]
 func (h *Handler) GetRooms(c *gin.Context) {
 	var studioIDPtr *int64
 	if studioIDStr := c.Query("studio_id"); studioIDStr != "" {
@@ -553,7 +694,18 @@ func (h *Handler) GetRooms(c *gin.Context) {
 	})
 }
 
-// GetRoomByID handles GET /api/v1/rooms/:id
+// GetRoomByID получение информации о комнате по ID
+// @Summary Получить комнату по ID
+// @Description Получает полную информацию о комнате, включая её характеристики, тип, оборудование и фотографии по уникальному идентификатору.
+// @Tags Catalog - Комнаты
+// @Accept json
+// @Produce json
+// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
+// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о комнате"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
+// @Failure 404 {object} map[string]interface{} "Комната не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/rooms/{id} [get]
 func (h *Handler) GetRoomByID(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -591,7 +743,22 @@ func (h *Handler) GetRoomByID(c *gin.Context) {
 	})
 }
 
-// CreateRoom handles POST /api/v1/studios/:id/rooms (protected)
+// CreateRoom создание новой комнаты в студии
+// @Summary Создать новую комнату
+// @Description Создает новую комнату в студии. Требует аутентификации. Только владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion, Portrait, Creative, Commercial.
+// @Tags Catalog - Комнаты
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор студии" example(1)
+// @Param body body CreateRoomRequest true "Данные для создания комнаты (названия, тип, описание и т.д.)"
+// @Success 201 {object} map[string]interface{} "Комната успешно создана, возвращает объект созданной комнаты"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса или тип комнаты"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 403 {object} map[string]interface{} "Недостаточно прав для добавления комнат в эту студию"
+// @Failure 404 {object} map[string]interface{} "Студия не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/studios/{id}/rooms [post]
 func (h *Handler) CreateRoom(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -677,6 +844,14 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 	})
 }
 
+// GetRoomTypes получение списка доступных типов комнат
+// @Summary Получить типы комнат
+// @Description Возвращает список всех доступных типов комнат, которые могут быть использованы при создании или обновлении комнаты в студии. Например: Fashion, Portrait, Creative, Commercial.
+// @Tags Catalog - Типы комнат
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Успешный ответ со списком доступных типов комнат"
+// @Router /api/v1/room-types [get]
 func (h *Handler) GetRoomTypes(c *gin.Context) {
 	types := domain.ValidRoomTypes()
 
@@ -695,7 +870,22 @@ func (h *Handler) GetRoomTypes(c *gin.Context) {
 
 /* ---------- EQUIPMENT HANDLERS ---------- */
 
-// AddEquipment handles POST /api/v1/rooms/:id/equipment (protected)
+// AddEquipment добавление оборудования в комнату
+// @Summary Добавить оборудование в комнату
+// @Description Добавляет оборудование в комнату студии. Требует аутентификации. Только владелец студии может добавлять оборудование. Оборудование содержит названия и другую информацию о предметах в комнате.
+// @Tags Catalog - Оборудование
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
+// @Param body body CreateEquipmentRequest true "Данные оборудования для добавления (названия, тип и т.д.)"
+// @Success 201 {object} map[string]interface{} "Оборудование успешно добавлено, возвращает объект добавленного оборудования"
+// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
+// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
+// @Failure 403 {object} map[string]interface{} "Недостаточно прав для добавления оборудования в эту комнату"
+// @Failure 404 {object} map[string]interface{} "Комната не найдена"
+// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router /api/v1/rooms/{id}/equipment [post]
 func (h *Handler) AddEquipment(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
