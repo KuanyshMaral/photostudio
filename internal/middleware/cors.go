@@ -31,6 +31,15 @@ func CORS() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
 
+		if origin != "" && !allowedOrigins[origin] {
+			if c.Request.Method == http.MethodOptions {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
+			}
+			c.Next()
+			return
+		}
+
 		// Если Origin есть и он разрешён — отражаем его (важно для credentials)
 		if origin != "" && allowedOrigins[origin] {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
@@ -40,7 +49,7 @@ func CORS() gin.HandlerFunc {
 
 		// Всегда полезно отдавать эти заголовки (и для preflight тоже)
 		c.Writer.Header().Set("Access-Control-Allow-Headers",
-			"Content-Type, Content-Length, Authorization, Accept, Origin, X-Requested-With")
+			"Authorization, Content-Type")
 		c.Writer.Header().Set("Access-Control-Allow-Methods",
 			"GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Max-Age", "600")

@@ -154,8 +154,14 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 			return
 		}
 
-		// Everything is OK → store user_id in context for downstream handlers
-		// We store it as int64 because Gin’s c.GetInt64 is convenient and safe
+		if claims.UserID <= 0 {
+			response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token subject is invalid")
+			c.Abort()
+			return
+		}
+
+		// Everything is OK → store normalized user_id in context for downstream handlers
+		// (new format: sub, legacy fallback: user_id during migration)
 		c.Set("user_id", claims.UserID)
 		// Optional: you can also store role if you need it later
 		c.Set("role", claims.Role)

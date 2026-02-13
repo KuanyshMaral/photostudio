@@ -66,4 +66,11 @@ type UserProfileResponse struct {
 	RecentBookings []RecentBooking `json:"recent_bookings,omitempty"`
 }
 
+type VerifyRequestDTO struct {
+	Email string `json:"email" binding:"required,email"`
+}
 
+type VerifyConfirmDTO struct {
+	Email string `json:"email" binding:"required,email"`
+	Code  string `json:"code" binding:"required"`
+}
