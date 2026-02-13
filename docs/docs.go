@@ -5584,6 +5584,179 @@ const docTemplate = `{
                 }
             }
         },
+        "/payments/robokassa/init": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates Robokassa payment link and signature for a booking",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Initialize Robokassa payment",
+                "parameters": [
+                    {
+                        "description": "Payment init payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.InitPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.InitPaymentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/robokassa/result": {
+            "post": {
+                "description": "Validates callback signature and marks payment as paid (idempotent)",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Robokassa ResultURL callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Amount",
+                        "name": "OutSum",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Invoice ID",
+                        "name": "InvId",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MD5 signature",
+                        "name": "SignatureValue",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK{InvId}",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "forbidden",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "internal error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/robokassa/success": {
+            "get": {
+                "description": "Validates customer return callback signature",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Robokassa SuccessURL callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Amount",
+                        "name": "OutSum",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Invoice ID",
+                        "name": "InvId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "MD5 signature",
+                        "name": "SignatureValue",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.SuccessCallbackResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_payment.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/reviews": {
             "post": {
                 "security": [
@@ -7203,6 +7376,79 @@ const docTemplate = `{
             "properties": {
                 "pin": {
                     "type": "string"
+                }
+            }
+        },
+        "internal_modules_payment.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid request"
+                }
+            }
+        },
+        "internal_modules_payment.InitPaymentRequest": {
+            "type": "object",
+            "required": [
+                "booking_id",
+                "out_sum"
+            ],
+            "properties": {
+                "booking_id": {
+                    "type": "integer",
+                    "example": 123
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Room booking #123"
+                },
+                "out_sum": {
+                    "type": "string",
+                    "example": "2500.00"
+                },
+                "shp_params": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "example": {
+                        "{\"booking_id\"": "\"123\"}"
+                    }
+                }
+            }
+        },
+        "internal_modules_payment.InitPaymentResponse": {
+            "type": "object",
+            "properties": {
+                "inv_id": {
+                    "type": "integer",
+                    "example": 1700000000000000000
+                },
+                "payment_url": {
+                    "type": "string",
+                    "example": "https://auth.robokassa.ru/Merchant/Index.aspx?..."
+                },
+                "signature": {
+                    "type": "string",
+                    "example": "ABCDEF1234567890ABCDEF1234567890"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "created"
+                }
+            }
+        },
+        "internal_modules_payment.SuccessCallbackResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                },
+                "validated": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },

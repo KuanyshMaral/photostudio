@@ -561,6 +561,57 @@ definitions:
     required:
     - pin
     type: object
+  internal_modules_payment.ErrorResponse:
+    properties:
+      error:
+        example: invalid request
+        type: string
+    type: object
+  internal_modules_payment.InitPaymentRequest:
+    properties:
+      booking_id:
+        example: 123
+        type: integer
+      description:
+        example: 'Room booking #123'
+        type: string
+      out_sum:
+        example: "2500.00"
+        type: string
+      shp_params:
+        additionalProperties:
+          type: string
+        example:
+          '{"booking_id"': '"123"}'
+        type: object
+    required:
+    - booking_id
+    - out_sum
+    type: object
+  internal_modules_payment.InitPaymentResponse:
+    properties:
+      inv_id:
+        example: 1700000000000000000
+        type: integer
+      payment_url:
+        example: https://auth.robokassa.ru/Merchant/Index.aspx?...
+        type: string
+      signature:
+        example: ABCDEF1234567890ABCDEF1234567890
+        type: string
+      status:
+        example: created
+        type: string
+    type: object
+  internal_modules_payment.SuccessCallbackResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+      validated:
+        example: true
+        type: boolean
+    type: object
   internal_modules_review.CreateReviewRequest:
     properties:
       booking_id:
@@ -4389,6 +4440,120 @@ paths:
       summary: Проверка PIN кода
       tags:
       - Owner
+  /payments/robokassa/init:
+    post:
+      consumes:
+      - application/json
+      description: Creates Robokassa payment link and signature for a booking
+      parameters:
+      - description: Payment init payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_payment.InitPaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_payment.InitPaymentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_modules_payment.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_modules_payment.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Initialize Robokassa payment
+      tags:
+      - Payments
+  /payments/robokassa/result:
+    post:
+      description: Validates callback signature and marks payment as paid (idempotent)
+      parameters:
+      - description: Amount
+        in: formData
+        name: OutSum
+        required: true
+        type: string
+      - description: Invoice ID
+        in: formData
+        name: InvId
+        required: true
+        type: integer
+      - description: MD5 signature
+        in: formData
+        name: SignatureValue
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK{InvId}
+          schema:
+            type: string
+        "400":
+          description: bad request
+          schema:
+            type: string
+        "403":
+          description: forbidden
+          schema:
+            type: string
+        "500":
+          description: internal error
+          schema:
+            type: string
+      summary: Robokassa ResultURL callback
+      tags:
+      - Payments
+  /payments/robokassa/success:
+    get:
+      description: Validates customer return callback signature
+      parameters:
+      - description: Amount
+        in: query
+        name: OutSum
+        required: true
+        type: string
+      - description: Invoice ID
+        in: query
+        name: InvId
+        required: true
+        type: integer
+      - description: MD5 signature
+        in: query
+        name: SignatureValue
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_payment.SuccessCallbackResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_modules_payment.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/internal_modules_payment.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/internal_modules_payment.ErrorResponse'
+      summary: Robokassa SuccessURL callback
+      tags:
+      - Payments
   /reviews:
     post:
       description: Пользователь может написать отзыв о студии только после завершённого
