@@ -28,6 +28,16 @@ func (h *Handler) RegisterRoutes(protected *gin.RouterGroup) {
 	}
 }
 
+// GetNotifications получает список уведомлений текущего пользователя.
+// @Summary		Получить уведомления
+// @Description	Возвращает список последних уведомлений пользователя и количество непрочитанных. Поддерживает пагинацию через параметр limit.
+// @Tags		Уведомления
+// @Security	BearerAuth
+// @Param		limit	query	int	false	"Максимальное количество уведомлений (по умолчанию 20, макс 100)"
+// @Success		200	{object}	gin.H{notifications=[]interface{},unread_count=int} "Список уведомлений и количество непрочитанных"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при получении уведомлений"
+// @Router		/notifications [GET]
 func (h *Handler) GetNotifications(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -57,6 +67,18 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 	})
 }
 
+// MarkAsRead отмечает уведомление как прочитанное.
+// @Summary		Отметить уведомление как прочитанное
+// @Description	Отмечает конкретное уведомление как прочитанное. После этого оно больше не будет учитываться в счётчике непрочитанных.
+// @Tags		Уведомления
+// @Security	BearerAuth
+// @Param		id	path	int	true	"ID уведомления"
+// @Success		200	{object}	gin.H{status=string} "Уведомление отмечено как прочитанное"
+// @Failure		400	{object}	gin.H "Ошибка: неверный ID уведомления"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		404	{object}	gin.H "Ошибка: уведомление не найдено"
+// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении статуса"
+// @Router		/notifications/:id/read [PATCH]
 func (h *Handler) MarkAsRead(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -82,6 +104,15 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"status": "read"})
 }
 
+// MarkAllAsRead отмечает все уведомления пользователя как прочитанные.
+// @Summary		Отметить все уведомления как прочитанные
+// @Description	Отмечает все непрочитанные уведомления пользователя как прочитанные одним запросом.
+// @Tags		Уведомления
+// @Security	BearerAuth
+// @Success		200	{object}	gin.H{status=string} "Все уведомления отмечены как прочитанные"
+// @Failure		401	{object}	gin.H "Ошибка аутентификации: требуется токен"
+// @Failure		500	{object}	gin.H "Ошибка сервера при обновлении статуса"
+// @Router		/notifications/read-all [PATCH]
 func (h *Handler) MarkAllAsRead(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {

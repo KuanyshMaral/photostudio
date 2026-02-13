@@ -28,6 +28,19 @@ func (h *Handler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	}
 }
 
+// Create создаёт новый отзыв о студии.
+// @Summary		Написать отзыв
+// @Description	Пользователь может написать отзыв о студии только после завершённого бронирования. Может написать только один отзыв от пользователя на студию.
+// @Tags		Отзывы
+// @Security	BearerAuth
+// @Param		request	body	CreateReviewRequest	true	"Данные отзыва (studio_id, rating, text)"
+// @Success		201	{object}	gin.H{success=bool,data=interface{}} "Отзыв успешно сохранён"
+// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка валидации данных"
+// @Failure		401	{object}	gin.H{success=bool,error=object} "Ошибка аутентификации"
+// @Failure		403	{object}	gin.H{success=bool,error=object} "Запрещено: не можно написать отзыв до завершения бронирования"
+// @Failure		409	{object}	gin.H{success=bool,error=object} "Ошибка: отзыв уже существует"
+// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при сохранении отзыва"
+// @Router		/reviews [POST]
 func (h *Handler) Create(c *gin.Context) {
 	var req CreateReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -59,6 +72,17 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"success": true, "data": rv})
 }
 
+// GetByStudio получает список отзывов о конкретной студии.
+// @Summary		Получить отзывы студии
+// @Description	Возвращает постраничный список отзывов о студии. Отзывы отображаются только если они не скрыты администратором.
+// @Tags		Отзывы
+// @Param		id		path	int	true	"ID студии"
+// @Param		limit	query	int	false	"Максимум количество отзывов (дефолт: 10)"
+// @Param		offset	query	int	false	"Офсет с какого рекорда начинать"
+// @Success		200	{object}	gin.H{success=bool,data=interface{}} "Список отзывов"
+// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка: неверный ID студии"
+// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при получении отзывов"
+// @Router		/studios/:id/reviews [GET]
 func (h *Handler) GetByStudio(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || studioID <= 0 {
@@ -82,6 +106,20 @@ func (h *Handler) GetByStudio(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
 }
 
+// AddOwnerResponse добавляет ответ владельца студии на отзыв.
+// @Summary		Ответить на отзыв
+// @Description	Владелец студии может добавить ответ на отзыв клиента. Ответ вы ботается рядом с отзывом.
+// @Tags		Отзывы
+// @Security	BearerAuth
+// @Param		id		path	int				true	"ID отзыва"
+// @Param		request	body	OwnerResponseRequest	true	"Текст ответа"
+// @Success		200	{object}	gin.H{success=bool,data=interface{}} "Ответ успешно добавлен"
+// @Failure		400	{object}	gin.H{success=bool,error=object} "Ошибка валидации данных"
+// @Failure		401	{object}	gin.H{success=bool,error=object} "Ошибка аутентификации"
+// @Failure		403	{object}	gin.H{success=bool,error=object} "Запрещено: вы не овнер студии"
+// @Failure		404	{object}	gin.H{success=bool,error=object} "Отзыв не найден"
+// @Failure		500	{object}	gin.H{success=bool,error=object} "Ошибка сервера при добавлении ответа"
+// @Router		/reviews/:id/response [POST]
 func (h *Handler) AddOwnerResponse(c *gin.Context) {
 	reviewID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || reviewID <= 0 {

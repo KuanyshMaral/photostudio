@@ -45,7 +45,18 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	rg.PATCH("/bookings/:id/deposit", h.UpdateDeposit)
 }
 
-// CreateBooking создаёт новое бронирование
+// CreateBooking создаёт новое бронирование на указанное время и комнату
+// @Summary		Создать новое бронирование
+// @Description	Создаёт новое бронирование на указанную дату и время в выбранной комнате. Проверяет доступность времени, наличие конфликтов с существующими бронированиями и валидность переданных данных. Пользователь идентифицируется по токену аутентификации. При успешном создании возвращается ID и статус новой брони.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		body body CreateBookingRequest true "Данные для создания бронирования (room_id, user_id, start_time, end_time)"
+// @Success		201 {object} map[string]interface{} "Бронирование успешно создано"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации или некорректные данные запроса"
+// @Failure		401 {object} map[string]interface{} "Ошибка аутентификации - отсутствует или невалидный токен"
+// @Failure		409 {object} map[string]interface{} "Конфликт времени - комната занята в выбранный период"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера"
+// @Router		/bookings [post]
 func (h *Handler) CreateBooking(c *gin.Context) {
 	var req CreateBookingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -137,6 +148,16 @@ type BusySlotsResponse struct {
 	CloseTime string     `json:"close_time"`
 }
 
+// GetBusySlots возвращает список занятых временных слотов для конкретной комнаты на указанную дату
+// @Summary		Получить занятые временные слоты
+// @Description	Возвращает список всех занятых временных промежутков (слотов) для указанной комнаты на определённую дату. Также включает информацию о времени открытия и закрытия студии. Используется при выборе времени для новой брони. Каждый слот содержит время начала и окончания в формате HH:MM.
+// @Tags		Бронирования
+// @Param		id path integer true "ID комнаты"
+// @Param		date query string true "Дата в формате YYYY-MM-DD (обязательный параметр)"
+// @Success		200 {object} BusySlotsResponse "Список занятых временных слотов на указанную дату"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации - неверный ID комнаты или формат даты"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при получении занятых слотов"
+// @Router		/rooms/{id}/busy-slots [get]
 func (h *Handler) GetBusySlots(c *gin.Context) {
 	roomIDStr := c.Param("id")
 	roomID, err := strconv.ParseInt(roomIDStr, 10, 64)
@@ -186,8 +207,16 @@ func (h *Handler) GetBusySlots(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": resp})
 }
 
-// GetRoomAvailability Task 3.1: GET /rooms/:id/availability?date=YYYY-MM-DD
-// Now returns booked slots in addition to available slots
+// GetRoomAvailability возвращает информацию о доступности комнаты и забронированных слотах на конкретную дату
+// @Summary		Проверить доступность комнаты на дату
+// @Description	Возвращает детальную информацию о доступности указанной комнаты на определённую дату, включая забронированные временные слоты. Помогает пользователю выбрать свободное время для создания новой брони. Ответ включает информацию о всех занятых и свободных промежутках времени.
+// @Tags		Бронирования
+// @Param		id path integer true "ID комнаты"
+// @Param		date query string true "Дата в формате YYYY-MM-DD (обязательный параметр)"
+// @Success		200 {object} map[string]interface{} "Информация о доступности комнаты, включая забронированные слоты"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации - неверный ID, отсутствует дата или неправильный формат"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при получении информации о доступности"
+// @Router		/rooms/{id}/availability [get]
 func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || roomID <= 0 {
@@ -227,8 +256,17 @@ func (h *Handler) GetRoomAvailability(c *gin.Context) {
 	})
 }
 
-// GetMyBookings Task 3.2: GET /users/me/bookings?limit=&offset=
-// Requires middleware to set c.Set("user_id", int64(...))
+// GetMyBookings возвращает список всех бронирований текущего пользователя с поддержкой пагинации
+// @Summary		Получить мои бронирования
+// @Description	Возвращает полный список бронирований, сделанных текущим пользователем, отфильтрованный по ID из токена аутентификации. Поддерживает пагинацию через параметры limit и offset для управления объёмом данных. Максимальное значение limit составляет 100 записей.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		limit query integer false "Максимальное количество записей (по умолчанию 20, максимум 100)"
+// @Param		offset query integer false "Смещение для пагинации, начиная с 0 (по умолчанию 0)"
+// @Success		200 {object} map[string]interface{} "Список бронирований текущего пользователя с информацией о пагинации"
+// @Failure		401 {object} map[string]interface{} "Ошибка аутентификации - отсутствует или невалидный токен"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при получении бронирований"
+// @Router		/users/me/bookings [get]
 func (h *Handler) GetMyBookings(c *gin.Context) {
 	userIDAny, ok := c.Get("user_id")
 	if !ok {
@@ -285,6 +323,15 @@ type UpdateBookingStatusRequest struct {
 	Status string `json:"status"`
 }
 
+// GetStudioBookings возвращает список всех бронирований для конкретной студии
+// @Summary		Получить бронирования студии
+// @Description	Возвращает полный список всех бронирований, связанных с указанной студией. Используется владельцами студий или администраторами для управления и мониторинга бронирований. Включает информацию о клиентах, времени, статусах и платежах.
+// @Tags		Бронирования
+// @Param		id path integer true "ID студии"
+// @Success		200 {object} map[string]interface{} "Список всех бронирований студии"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации - неверный ID студии"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при получении бронирований"
+// @Router		/studios/{id}/bookings [get]
 func (h *Handler) GetStudioBookings(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -300,6 +347,20 @@ func (h *Handler) GetStudioBookings(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"bookings": bookings})
 }
+
+// UpdatePaymentStatus изменяет статус платежа для конкретного бронирования
+// @Summary		Обновить статус платежа
+// @Description	Обновляет информацию о статусе платежа для указанного бронирования. Только автор бронирования или администратор может обновлять статус платежа для бронирования. Статус может быть изменён с 'pending' на другие валидные значения в соответствии с логикой системы.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Param		body body UpdatePaymentStatusRequest true "Новый статус платежа (payment_status)"
+// @Success		200 {object} map[string]interface{} "Статус платежа успешно обновлен"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации запроса"
+// @Failure		401 {object} map[string]interface{} "Ошибка аутентификации - отсутствует токен"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - недостаточно прав для обновления этой брони"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при обновлении статуса"
+// @Router		/bookings/{id}/payment-status [patch]
 func (h *Handler) UpdatePaymentStatus(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -332,8 +393,20 @@ func (h *Handler) UpdatePaymentStatus(c *gin.Context) {
 	response.Success(c, http.StatusOK, b)
 }
 
-// UpdateBookingStatus Task 3.3: PATCH /bookings/:id/status
-// Requires middleware to set c.Set("user_id", int64(...)) and c.Set("role", string(...))
+// UpdateBookingStatus изменяет статус бронирования с проверкой прав доступа и корректности перехода статуса
+// @Summary		Обновить статус бронирования
+// @Description	Обновляет статус указанного бронирования. Только владелец студии, администратор или автор бронирования могут изменять статусы в соответствии с правилами переходов. Поддерживает валидацию переходов статусов для обеспечения целостности бизнес-логики. Дополнительно проверяется текущий статус для предотвращения невалидных переходов.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Param		body body UpdateBookingStatusRequest true "Новый статус бронирования (status)"
+// @Success		200 {object} map[string]interface{} "Статус бронирования успешно обновлен"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации или невалидный переход статуса"
+// @Failure		401 {object} map[string]interface{} "Ошибка аутентификации - отсутствует или невалидный токен"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - только владелец студии может менять статус"
+// @Failure		404 {object} map[string]interface{} "Бронирование не найдено"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при обновлении статуса"
+// @Router		/bookings/{id}/status [patch]
 func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || bookingID <= 0 {
@@ -421,7 +494,17 @@ func (h *Handler) UpdateBookingStatus(c *gin.Context) {
 	})
 }
 
-// ConfirmBooking PATCH /api/v1/bookings/:id/confirm (only studio owner)
+// ConfirmBooking подтверждает бронирование, меняя его статус на 'confirmed'
+// @Summary		Подтвердить бронирование
+// @Description	Подтверждает указанное бронирование и устанавливает его статус в 'confirmed'. Эта операция доступна только владельцу студии, к которой относится бронирование. Подтверждение означает, что владелец студии согласился с условиями бронирования и готов к проведению сессии.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Success		200 {object} map[string]interface{} "Бронирование успешно подтверждено"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - только владелец студии может подтвердить бронирование"
+// @Failure		404 {object} map[string]interface{} "Бронирование не найдено"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при подтверждении брони"
+// @Router		/bookings/{id}/confirm [patch]
 func (h *Handler) ConfirmBooking(c *gin.Context) {
 	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.GetInt64("user_id")
@@ -441,8 +524,19 @@ func (h *Handler) ConfirmBooking(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Booking confirmed"})
 }
 
-// CancelBooking PATCH /api/v1/bookings/:id/cancel (client or owner)
-// Block 9: Причина обязательна!
+// CancelBooking отменяет существующее бронирование с обязательным указанием причины
+// @Summary		Отменить бронирование
+// @Description	Отменяет указанное бронирование и устанавливает его статус в 'cancelled'. Требует обязательное указание причины отмены (минимум 10 символов). Бронирование может быть отменено клиентом (автором) или владельцем/менеджером студии. Невозможно отменить уже завершённое или уже отменённое бронирование. Причина отмены сохраняется в системе для аналитики.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Param		body body CancelBookingRequest true "Причина отмены бронирования (минимум 10 символов)"
+// @Success		200 {object} map[string]interface{} "Бронирование успешно отменено с указанной причиной"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации или невозможно отменить статус (уже завершено или отменено)"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - невозможно отменить это бронирование"
+// @Failure		404 {object} map[string]interface{} "Бронирование не найдено"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при отмене брони"
+// @Router		/bookings/{id}/cancel [patch]
 func (h *Handler) CancelBooking(c *gin.Context) {
 	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.GetInt64("user_id")
@@ -497,9 +591,18 @@ func (h *Handler) CancelBooking(c *gin.Context) {
 	response.Success(c, http.StatusOK, ToBookingResponse(updatedBooking, false))
 }
 
-// CompleteBooking PATCH /api/v1/bookings/:id/complete (only owner)
-// Аналогично confirm, но меняем на "completed"
-// Дополнительная проверка: статус должен быть "confirmed"
+// CompleteBooking завершает подтверждённое бронирование, меняя его статус на 'completed'
+// @Summary		Завершить бронирование
+// @Description	Завершает указанное бронирование и устанавливает его статус в 'completed'. Доступно только владельцу студии. Бронирование можно завершить только если оно находится в статусе 'confirmed'. Завершение бронирования означает, что сессия в студии была проведена и завершена.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Success		200 {object} map[string]interface{} "Бронирование успешно завершено"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации - невозможно завершить бронирование с текущим статусом (должно быть 'confirmed')"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - только владелец студии может завершить бронирование"
+// @Failure		404 {object} map[string]interface{} "Бронирование не найдено"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при завершении брони"
+// @Router		/bookings/{id}/complete [patch]
 func (h *Handler) CompleteBooking(c *gin.Context) {
 	bookingID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 	userID := c.GetInt64("user_id")
@@ -531,7 +634,18 @@ func (h *Handler) CompleteBooking(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "Booking completed"})
 }
 
-// MarkBookingPaid PATCH /api/v1/bookings/:id/mark-paid (only owner)
+// MarkBookingPaid отмечает бронирование как оплаченное, обновляя статус платежа на 'paid'
+// @Summary		Отметить бронирование как оплаченное
+// @Description	Отмечает указанное бронирование как оплаченное, изменяя статус платежа на 'paid'. Эта операция доступна только владельцу студии. Используется для подтверждения получения платежа за бронирование. После отметки как оплаченного бронирование учитывается в доходах студии.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Success		200 {object} map[string]interface{} "Статус платежа успешно обновлен на 'paid'"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации - неверный ID бронирования"
+// @Failure		401 {object} map[string]interface{} "Ошибка аутентификации - отсутствует токен"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - недостаточно прав для обновления статуса платежа"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при обновлении статуса платежа"
+// @Router		/bookings/{id}/mark-paid [patch]
 func (h *Handler) MarkBookingPaid(c *gin.Context) {
 	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -558,14 +672,18 @@ func (h *Handler) MarkBookingPaid(c *gin.Context) {
 	response.Success(c, http.StatusOK, b)
 }
 
-// UpdateDeposit обновляет предоплату (только для менеджеров)
-// @Summary Обновить предоплату
-// @Tags Booking
-// @Security BearerAuth
-// @Param id path int true "ID бронирования"
-// @Param body body UpdateDepositRequest true "Сумма предоплаты"
-// @Success 200 {object} BookingResponse
-// @Router /bookings/{id}/deposit [patch]
+// UpdateDeposit обновляет размер залога (предоплаты) для бронирования, доступно только для менеджеров и владельцев
+// @Summary		Обновить размер залога
+// @Description	Обновляет размер залога (предоплаты) для указанного бронирования. Эта операция доступна только администраторам и владельцам студий. Залог представляет собой предварительный платёж для гарантирования брони. Сумма залога может быть изменена в зависимости от политики студии.
+// @Tags		Бронирования
+// @Security	BearerAuth
+// @Param		id path integer true "ID бронирования"
+// @Param		body body UpdateDepositRequest true "Новая сумма залога (deposit_amount)"
+// @Success		200 {object} map[string]interface{} "Размер залога успешно обновлен"
+// @Failure		400 {object} map[string]interface{} "Ошибка валидации запроса или некорректная сумма залога"
+// @Failure		403 {object} map[string]interface{} "Доступ запрещен - только администраторы и владельцы студий могут обновлять залог"
+// @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера при обновлении залога"
+// @Router		/bookings/{id}/deposit [patch]
 func (h *Handler) UpdateDeposit(c *gin.Context) {
 	userRole, _ := c.Get("role")
 

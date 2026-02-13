@@ -42,6 +42,18 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 	}
 }
 
+// CreateConversation создаёт новую беседу между пользователями
+//
+// @Summary Создать новую беседу
+// @Description Создаёт новую беседу с другим пользователем или получает существующую
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body CreateConversationRequest true "Данные для создания беседы"
+// @Success 201 {object} map[string]interface{} "Беседа успешно создана"
+// @Failure 400 {object} map[string]string "Ошибка валидации или создания беседы"
+// @Router /chat/conversations [post]
 func (h *Handler) CreateConversation(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -66,6 +78,19 @@ func (h *Handler) CreateConversation(c *gin.Context) {
 	response.Success(c, http.StatusCreated, out)
 }
 
+// ListConversations возвращает список всех бесед пользователя
+//
+// @Summary Получить список всех бесед
+// @Description Получает список бесед текущего пользователя с поддержкой пагинации
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param limit query int false "Максимальное количество бесед" default(20)
+// @Param offset query int false "Смещение от начала" default(0)
+// @Success 200 {object} map[string]interface{} "Список бесед"
+// @Failure 500 {object} map[string]string "Ошибка при получении бесед"
+// @Router /chat/conversations [get]
 func (h *Handler) ListConversations(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -86,6 +111,20 @@ func (h *Handler) ListConversations(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"conversations": items})
 }
 
+// GetMessages получает сообщения из беседы
+//
+// @Summary Получить сообщения беседы
+// @Description Получает сообщения из конкретной беседы с поддержкой пагинации и фильтрации
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID беседы"
+// @Param limit query int false "Максимальное количество сообщений" default(50)
+// @Param before_id query int64 false "ID сообщения для загрузки сообщений до него"
+// @Success 200 {object} map[string]interface{} "Список сообщений и флаг há_more"
+// @Failure 400 {object} map[string]string "Ошибка валидации ID или доступа"
+// @Router /chat/conversations/{id}/messages [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -124,6 +163,19 @@ func (h *Handler) GetMessages(c *gin.Context) {
 	})
 }
 
+// SendMessage отправляет сообщение в беседу
+//
+// @Summary Отправить сообщение
+// @Description Отправляет текстовое сообщение в беседу. Пользователь должен быть участником беседы
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID беседы"
+// @Param request body SendMessageRequest true "Содержимое сообщения"
+// @Success 201 {object} map[string]interface{} "Сообщение успешно отправлено"
+// @Failure 400 {object} map[string]string "Ошибка валидации или отправки сообщения"
+// @Router /chat/conversations/{id}/messages [post]
 func (h *Handler) SendMessage(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -148,6 +200,18 @@ func (h *Handler) SendMessage(c *gin.Context) {
 	response.Success(c, http.StatusCreated, gin.H{"message": ToMessageResponse(msg)})
 }
 
+// MarkAsRead отмечает сообщения в беседе как прочитанные
+//
+// @Summary Отметить сообщения как прочитанные
+// @Description Отмечает все неприлитанные сообщения в беседе как прочитанные для текущего пользователя
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID беседы"
+// @Success 200 {object} map[string]interface{} "Количество отмеченных сообщений"
+// @Failure 400 {object} map[string]string "Ошибка валидации или отметки сообщений"
+// @Router /chat/conversations/{id}/read [post]
 func (h *Handler) MarkAsRead(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -166,6 +230,19 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"updated": updated})
 }
 
+// BlockUser блокирует пользователя в чате
+//
+// @Summary Заблокировать пользователя
+// @Description Блокирует пользователя для предотвращения получения сообщений от него
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID пользователя для блокировки"
+// @Param request body BlockUserRequest true "Причина блокировки (опционально)"
+// @Success 200 {object} map[string]string "Пользователь успешно заблокирован"
+// @Failure 400 {object} map[string]string "Ошибка при блокировке пользователя"
+// @Router /chat/users/{id}/block [post]
 func (h *Handler) BlockUser(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -186,6 +263,18 @@ func (h *Handler) BlockUser(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "User blocked"})
 }
 
+// UnblockUser разблокирует пользователя в чате
+//
+// @Summary Разблокировать пользователя
+// @Description Разблокирует ранее заблокированного пользователя для получения сообщений от него
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID заблокированного пользователя"
+// @Success 200 {object} map[string]string "Пользователь успешно разблокирован"
+// @Failure 400 {object} map[string]string "Ошибка при разблокировке пользователя"
+// @Router /chat/users/{id}/block [delete]
 func (h *Handler) UnblockUser(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 
@@ -203,16 +292,22 @@ func (h *Handler) UnblockUser(c *gin.Context) {
 	response.Success(c, http.StatusOK, gin.H{"message": "User unblocked"})
 }
 
-// UploadImage загружает изображение в чат
+// UploadImage загружает изображение в чат беседы
 //
-// Method: POST /api/v1/conversations/:id/messages/upload
-// Content-Type: multipart/form-data
-// Body: image (file)
-//
-// Валидация:
-// - Размер: максимум 5 MB
-// - Формат: jpg, jpeg, png, webp
-// - Права: только участник диалога
+// @Summary Загрузить изображение в чат
+// @Description Загружает изображение в беседу. Поддерживаемые форматы: jpg, jpeg, png, webp. Максимальный размер: 5 MB
+// @Tags Chat
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "ID беседы"
+// @Param image formData file true "Изображение для загрузки"
+// @Success 201 {object} map[string]interface{} "Сообщение с изображением успешно отправлено"
+// @Failure 400 {object} map[string]string "Ошибка: нет файла, недопустимый формат или слишком большой размер"
+// @Failure 401 {object} map[string]string "Пользователь не авторизован"
+// @Failure 403 {object} map[string]string "Пользователь не является участником беседы или заблокирован"
+// @Failure 500 {object} map[string]string "Ошибка при сохранении файла"
+// @Router /chat/conversations/{id}/messages/upload [post]
 func (h *Handler) UploadImage(c *gin.Context) {
 	// 1. Получаем user_id из JWT
 	userID := c.GetInt64("user_id")

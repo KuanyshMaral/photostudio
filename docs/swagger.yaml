@@ -2,39 +2,200 @@ definitions:
   gin.H:
     additionalProperties: {}
     type: object
-  internal_modules_booking.BookingResponse:
+  internal_modules_admin.Ad:
     properties:
-      balance:
-        description: TotalPrice - DepositAmount
-        type: number
-      cancellation_reason:
-        description: 'Block 9: Только если отменено'
-        type: string
+      clicks:
+        type: integer
       created_at:
         type: string
-      deposit_amount:
-        description: 'Block 10: Для менеджеров'
-        type: number
-      end_time:
+      end_date:
         type: string
       id:
         type: integer
+      image_url:
+        type: string
+      impressions:
+        type: integer
+      is_active:
+        type: boolean
+      placement:
+        type: string
+      start_date:
+        type: string
+      target_url:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_modules_admin.BlockUserRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  internal_modules_admin.RejectStudioRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  internal_modules_admin.ReviewListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      reviews:
+        items:
+          $ref: '#/definitions/photostudio_internal_domain.Review'
+        type: array
+      total:
+        type: integer
+    type: object
+  internal_modules_admin.UserListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/photostudio_internal_domain.User'
+        type: array
+    type: object
+  internal_modules_admin.VerifyStudioRequest:
+    properties:
+      admin_notes:
+        type: string
+    type: object
+  internal_modules_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_modules_auth.RegisterClientRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  internal_modules_auth.RegisterStudioRequest:
+    properties:
+      bin:
+        type: string
+      company_name:
+        type: string
+      contact_person:
+        type: string
+      contact_position:
+        type: string
+      email:
+        type: string
+      legal_address:
+        type: string
+      name:
+        minLength: 2
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone:
+        type: string
+    required:
+    - bin
+    - company_name
+    - email
+    - name
+    - password
+    - phone
+    type: object
+  internal_modules_auth.UpdateProfileRequest:
+    properties:
+      name:
+        minLength: 2
+        type: string
+      phone:
+        description: 'optional: use phone validation'
+        type: string
+    type: object
+  internal_modules_booking.BusySlot:
+    properties:
+      end:
+        description: '"12:00"'
+        type: string
+      start:
+        description: '"10:00"'
+        type: string
+    type: object
+  internal_modules_booking.BusySlotsResponse:
+    properties:
+      busy_slots:
+        items:
+          $ref: '#/definitions/internal_modules_booking.BusySlot'
+        type: array
+      close_time:
+        type: string
+      date:
+        type: string
+      open_time:
+        type: string
+      room_id:
+        type: integer
+    type: object
+  internal_modules_booking.CancelBookingRequest:
+    properties:
+      reason:
+        minLength: 10
+        type: string
+    required:
+    - reason
+    type: object
+  internal_modules_booking.CreateBookingRequest:
+    properties:
+      end_time:
+        type: string
       notes:
         type: string
       room_id:
         type: integer
-      room_name:
-        type: string
       start_time:
-        type: string
-      status:
         type: string
       studio_id:
         type: integer
-      studio_name:
+      user_id:
+        description: Optional - will be filled from context by middleware
+        type: integer
+    required:
+    - end_time
+    - room_id
+    - start_time
+    - studio_id
+    type: object
+  internal_modules_booking.UpdateBookingStatusRequest:
+    properties:
+      status:
         type: string
-      total_price:
-        type: number
     type: object
   internal_modules_booking.UpdateDepositRequest:
     properties:
@@ -44,25 +205,168 @@ definitions:
     required:
     - deposit_amount
     type: object
-  internal_modules_catalog.WorkingHoursResponse:
+  internal_modules_booking.UpdatePaymentStatusRequest:
     properties:
-      compact_text:
-        description: '"Пн-Пт: 10:00-20:00"'
+      payment_status:
+        allOf:
+        - $ref: '#/definitions/photostudio_internal_domain.PaymentStatus'
+        enum:
+        - unpaid
+        - paid
+        - refunded
+    required:
+    - payment_status
+    type: object
+  internal_modules_catalog.CreateEquipmentRequest:
+    properties:
+      brand:
         type: string
-      hours:
+      category:
+        type: string
+      model:
+        type: string
+      name:
+        type: string
+      quantity:
+        type: integer
+      rental_price:
+        type: number
+    required:
+    - name
+    - quantity
+    type: object
+  internal_modules_catalog.CreateRoomRequest:
+    properties:
+      amenities:
         items:
-          $ref: '#/definitions/photostudio_internal_domain.WorkingHours'
+          type: string
         type: array
-      is_open_now:
-        type: boolean
-      next_open_time:
-        description: Когда откроется
+      area_sqm:
+        type: integer
+      capacity:
+        type: integer
+      description:
         type: string
-      status_text:
-        description: '"Открыто (закроется в 20:00)"'
+      name:
         type: string
+      photos:
+        items:
+          type: string
+        type: array
+      price_per_hour_max:
+        type: number
+      price_per_hour_min:
+        minimum: 0
+        type: number
+      room_type:
+        type: string
+    required:
+    - area_sqm
+    - capacity
+    - name
+    - price_per_hour_min
+    - room_type
+    type: object
+  internal_modules_catalog.CreateStudioRequest:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      description:
+        type: string
+      district:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      website:
+        type: string
+      working_hours:
+        $ref: '#/definitions/photostudio_internal_domain.WorkingHoursMap'
+    required:
+    - address
+    - city
+    - name
+    type: object
+  internal_modules_catalog.UpdateRoomRequest:
+    properties:
+      amenities:
+        items:
+          type: string
+        type: array
+      area_sqm:
+        type: integer
+      capacity:
+        type: integer
+      description:
+        type: string
+      name:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      price_per_hour_max:
+        type: number
+      price_per_hour_min:
+        type: number
+      room_type:
+        type: string
+    type: object
+  internal_modules_catalog.UpdateStudioRequest:
+    properties:
+      address:
+        type: string
+      city:
+        type: string
+      description:
+        type: string
+      district:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      website:
+        type: string
+      working_hours:
+        $ref: '#/definitions/photostudio_internal_domain.WorkingHoursMap'
+    required:
+    - address
+    - city
+    - name
+    type: object
+  internal_modules_chat.BlockUserRequest:
+    properties:
+      reason:
+        type: string
+    type: object
+  internal_modules_chat.CreateConversationRequest:
+    properties:
+      booking_id:
+        type: integer
+      initial_message:
+        type: string
+      recipient_id:
+        type: integer
       studio_id:
         type: integer
+    required:
+    - recipient_id
+    type: object
+  internal_modules_chat.SendMessageRequest:
+    properties:
+      content:
+        maxLength: 4000
+        type: string
+    required:
+    - content
     type: object
   internal_modules_favorite.CheckFavoriteResponse:
     properties:
@@ -117,20 +421,273 @@ definitions:
       rating:
         type: number
     type: object
-  photostudio_internal_domain.WorkingHours:
+  internal_modules_manager.UpdateDepositRequest:
     properties:
-      close_time:
-        description: '"21:00"'
+      deposit_amount:
+        minimum: 0
+        type: number
+    required:
+    - deposit_amount
+    type: object
+  internal_modules_manager.UpdateStatusRequest:
+    properties:
+      status:
+        enum:
+        - pending
+        - confirmed
+        - cancelled
+        - completed
         type: string
-      day_of_week:
-        description: 0=Вс, 1=Пн, ..., 6=Сб
+    required:
+    - status
+    type: object
+  internal_modules_mwork.SyncUserRequest:
+    properties:
+      email:
+        type: string
+      mwork_user_id:
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - mwork_user_id
+    - role
+    type: object
+  internal_modules_owner.AddPortfolioRequest:
+    properties:
+      category:
+        type: string
+      image_url:
+        type: string
+      title:
+        type: string
+    required:
+    - image_url
+    type: object
+  internal_modules_owner.CreateMaintenanceRequest:
+    properties:
+      assigned_to:
+        type: string
+      description:
+        type: string
+      due_date:
+        type: string
+      priority:
+        type: string
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  internal_modules_owner.CreateProcurementRequest:
+    properties:
+      description:
+        type: string
+      due_date:
+        description: RFC3339
+        type: string
+      est_cost:
+        type: number
+      priority:
+        description: low, medium, high
+        type: string
+      quantity:
         type: integer
-      is_closed:
-        description: true = выходной
-        type: boolean
-      open_time:
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  internal_modules_owner.ReorderPortfolioRequest:
+    properties:
+      project_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - project_ids
+    type: object
+  internal_modules_owner.SetPINRequest:
+    properties:
+      pin:
+        maxLength: 6
+        minLength: 4
+        type: string
+    required:
+    - pin
+    type: object
+  internal_modules_owner.UpdateCompanyProfileRequest:
+    properties:
+      city:
+        type: string
+      company_name:
+        type: string
+      company_type:
+        type: string
+      contact_person:
+        type: string
+      description:
+        type: string
+      email:
+        type: string
+      logo:
+        type: string
+      phone:
+        type: string
+      services:
+        items:
+          type: string
+        type: array
+      socials:
+        additionalProperties:
+          type: string
+        type: object
+      specialization:
+        type: string
+      team_size:
+        type: integer
+      website:
+        type: string
+      work_hours:
+        type: string
+      years_experience:
+        type: integer
+    type: object
+  internal_modules_owner.VerifyPINRequest:
+    properties:
+      pin:
+        type: string
+    required:
+    - pin
+    type: object
+  internal_modules_review.CreateReviewRequest:
+    properties:
+      booking_id:
+        type: integer
+      comment:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      rating:
+        maximum: 5
+        minimum: 1
+        type: integer
+      studio_id:
+        type: integer
+    required:
+    - rating
+    - studio_id
+    type: object
+  internal_modules_review.OwnerResponseRequest:
+    properties:
+      response:
+        type: string
+    required:
+    - response
+    type: object
+  photostudio_internal_domain.DaySchedule:
+    properties:
+      close:
+        description: '"22:00"'
+        type: string
+      open:
         description: '"09:00"'
         type: string
+    type: object
+  photostudio_internal_domain.PaymentStatus:
+    enum:
+    - unpaid
+    - paid
+    - refunded
+    type: string
+    x-enum-varnames:
+    - PaymentUnpaid
+    - PaymentPaid
+    - PaymentRefunded
+  photostudio_internal_domain.Review:
+    properties:
+      booking_id:
+        type: integer
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_hidden:
+        type: boolean
+      is_verified:
+        type: boolean
+      owner_response:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      rating:
+        type: integer
+      responded_at:
+        type: string
+      studio_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  photostudio_internal_domain.StudioStatus:
+    enum:
+    - pending
+    - verified
+    - rejected
+    - blocked
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusVerified
+    - StatusRejected
+    - StatusBlocked
+  photostudio_internal_domain.User:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/photostudio_internal_domain.UserRole'
+      studio_status:
+        $ref: '#/definitions/photostudio_internal_domain.StudioStatus'
+      updated_at:
+        type: string
+    required:
+    - email
+    type: object
+  photostudio_internal_domain.UserRole:
+    enum:
+    - client
+    - studio_owner
+    - admin
+    type: string
+    x-enum-varnames:
+    - RoleClient
+    - RoleStudioOwner
+    - RoleAdmin
+  photostudio_internal_domain.WorkingHoursMap:
+    additionalProperties:
+      $ref: '#/definitions/photostudio_internal_domain.DaySchedule'
     type: object
 info:
   contact: {}
@@ -138,15 +695,1886 @@ info:
   title: PhotoStudio API
   version: "1.0"
 paths:
-  /bookings/{id}/deposit:
+  /admin/ads:
+    get:
+      description: Возвращает список баннеров и объявлений с фильтром по месту размещения
+        и статусу активности. Используется для управления рекламными материалами на
+        платформе.
+      parameters:
+      - description: Место размещения объявления (homepage, booking_page, etc.)
+        in: query
+        name: placement
+        type: string
+      - description: Показать только активные объявления (true/false)
+        in: query
+        name: active_only
+        type: boolean
+      responses:
+        "200":
+          description: Список объявлений
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                ads:
+                  items: {}
+                  type: array
+              type: object
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении объявлений
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить список объявлений
+      tags:
+      - Admin - Объявления и реклама
+    post:
+      description: 'Создаёт новый баннер/объявление для размещения на платформе. Объявление
+        может быть размещено в различных местах: на главной странице, странице бронирования
+        и т.д.'
+      parameters:
+      - description: Данные объявления (placement, url, image_url, active, etc.)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin.Ad'
+      responses:
+        "201":
+          description: Объявление успешно создано
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                ad:
+                  $ref: '#/definitions/internal_modules_admin.Ad'
+              type: object
+        "400":
+          description: 'Ошибка: неверный запрос или отсутствуют необходимые поля'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при создании объявления
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Создать объявление
+      tags:
+      - Admin - Объявления и реклама
+  /admin/ads/:id:
+    delete:
+      description: Удаляет и удаляет из БД баннер/объявление с платформы. После удаления
+        объявление больше не будет отображаться.
+      parameters:
+      - description: ID объявления
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Объявление успешно удалено
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при удалении объявления
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Удалить объявление
+      tags:
+      - Admin - Объявления и реклама
     patch:
+      description: 'Обновляет параметры существующего баннера/объявления: URL, изображение,
+        место размещения, статус активности и другие поля.'
+      parameters:
+      - description: ID объявления
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля для обновления (placement, url, image_url, active, etc.)
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: Объявление успешно обновлено
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении объявления
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить объявление
+      tags:
+      - Admin - Объявления и реклама
+  /admin/analytics:
+    get:
+      description: 'Возвращает подробную аналитику активности платформы за указанный
+        период: данные о пользователях, бронированиях, доходах, популярных студиях
+        и другие метрики.'
+      parameters:
+      - default: 30
+        description: Количество дней для аналитики (1-365, по умолчанию 30)
+        in: query
+        name: days
+        type: integer
+      responses:
+        "200":
+          description: Аналитические данные платформы
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                analytics: {}
+              type: object
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении аналитики
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить аналитику платформы
+      tags:
+      - Admin - Статистика и аналитика
+  /admin/reviews:
+    get:
+      description: Возвращает постраничный список всех отзывов на платформе с фильтром
+        по скрытым/видимым отзывам и другим параметрам. Доступно только администраторам.
+      parameters:
+      - default: 1
+        description: Номер страницы (по умолчанию 1)
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Количество записей на странице (по умолчанию 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Показать только скрытые отзывы
+        in: query
+        name: hidden
+        type: boolean
+      responses:
+        "200":
+          description: Список отзывов с общим количеством и параметрами страницы
+          schema:
+            $ref: '#/definitions/internal_modules_admin.ReviewListResponse'
+        "400":
+          description: Ошибка валидации параметров запроса
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении списка отзывов
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить список отзывов
+      tags:
+      - Admin - Модерация отзывов
+  /admin/reviews/:id:
+    delete:
+      description: Полностью удаляет отзыв из базы данных. Это необратимое действие.
+        Отзыв указанного автора удаляется вместе со всеми его данными.
+      parameters:
+      - description: ID отзыва
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Отзыв успешно удалён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при удалении отзыва
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Удалить отзыв
+      tags:
+      - Admin - Модерация отзывов
+  /admin/reviews/:id/hide:
+    patch:
+      description: Скрывает отзыв, чтобы он не отображался в списке отзывов студии.
+        Отзыв остаётся в БД, но не видит пользователям.
+      parameters:
+      - description: ID отзыва
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Информация об отзыве после скрытия
+          schema: {}
+        "400":
+          description: 'Ошибка: неверный ID отзыва'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при скрытии отзыва
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Скрыть отзыв
+      tags:
+      - Admin - Модерация отзывов
+  /admin/reviews/:id/show:
+    patch:
+      description: Восстанавливает видимость скрытого отзыва, чтобы он вновь отображался
+        в списке отзывов студии.
+      parameters:
+      - description: ID отзыва
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Информация об отзыве после восстановления
+          schema: {}
+        "400":
+          description: 'Ошибка: неверный ID отзыва'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при восстановлении отзыва
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Показать отзыв
+      tags:
+      - Admin - Модерация отзывов
+  /admin/statistics:
+    get:
+      description: Возвращает детальную статистику платформы. Алиас для GetStats с
+        альтернативным путём (для обратной совместимости).
+      responses:
+        "200":
+          description: Объект со статистикой платформы
+          schema: {}
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении статистики
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить расширённую статистику
+      tags:
+      - Admin - Статистика и аналитика
+  /admin/stats:
+    get:
+      description: 'Возвращает ключевые показатели платформы: количество пользователей,
+        студий, бронирований, доход и другие метрики. Доступно только администраторам.'
+      responses:
+        "200":
+          description: Объект со статистикой платформы
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении статистики
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить статистику платформы
+      tags:
+      - Admin - Статистика и аналитика
+  /admin/studios/:id/approve:
+    post:
+      description: Одобряет заявку на открытие студии от владельца. Запись указывает,
+        что администратор подтвердил право владельца на управление студией. После
+        одобрения студия появится в каталоге.
+      parameters:
+      - description: ID владельца студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Студия успешно одобрена
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID владельца или студия уже одобрена'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Одобрить студию владельца
+      tags:
+      - Admin - Модерация студий
+  /admin/studios/:id/gold:
+    patch:
+      description: Назначает или отменяет Gold статус студии. Gold студии получают
+        улучшенный рейтинг и видимость в поиске.
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Значение Gold статуса (true/false)
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            is_gold:
+              type: boolean
+          type: object
+      responses:
+        "200":
+          description: Gold статус успешно обновлён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении Gold статуса
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Установить Gold статус студии
+      tags:
+      - Admin - Управление студиями
+  /admin/studios/:id/promo:
+    patch:
+      description: Добавляет студию в ротирующийся слайдер продвигаемых студий на
+        главной странице или убирает её оттуда. Студии в слайдере получают дополнительную
+        видимость.
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Значение промо статуса (true/false)
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            in_promo_slider:
+              type: boolean
+          type: object
+      responses:
+        "200":
+          description: Промо статус успешно обновлён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении промо статуса
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Установить промо статус студии
+      tags:
+      - Admin - Управление студиями
+  /admin/studios/:id/reject:
+    post:
+      description: Отклоняет заявку на открытие студии от владельца с указанием причины.
+        Владелец сможет подать новую заявку и исправить ошибки.
+      parameters:
+      - description: ID владельца студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Причина отклонения заявки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin.RejectStudioRequest'
+      responses:
+        "200":
+          description: Заявка успешно отклонена
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID владельца или отсутствует причина'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Отклонить заявку студии
+      tags:
+      - Admin - Модерация студий
+  /admin/studios/:id/verify:
+    post:
+      description: Проверяет и верифицирует студию с добавлением административных
+        заметок. Альтернативный эндпоинт для одобрения студии с дополнительной информацией.
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные верификации (admin_notes)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin.VerifyStudioRequest'
+      responses:
+        "200":
+          description: Студия успешно верифицирована
+          schema: {}
+        "400":
+          description: 'Ошибка: неверный ID студии'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при верификации студии
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Верифицировать студию
+      tags:
+      - Admin - Модерация студий
+  /admin/studios/:id/vip:
+    patch:
+      description: Назначает или отменяет VIP статус студии. VIP студии получают приоритет
+        в выдаче и специальные выделения в каталоге.
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Значение VIP статуса (true/false)
+        in: body
+        name: request
+        required: true
+        schema:
+          properties:
+            is_vip:
+              type: boolean
+          type: object
+      responses:
+        "200":
+          description: VIP статус успешно обновлён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный запрос'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении VIP статуса
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Установить VIP статус студии
+      tags:
+      - Admin - Управление студиями
+  /admin/studios/pending:
+    get:
+      description: Возвращает постраничный список студий владельцев, которые ждут
+        одобрения от администратора. Доступно только для администраторов.
+      parameters:
+      - default: 1
+        description: Номер страницы (по умолчанию 1)
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Количество записей на странице (по умолчанию 20)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: Список ожидающих студий
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                count:
+                  type: integer
+                pending_studios:
+                  items: {}
+                  type: array
+              type: object
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении данных
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить список ожидающих студий
+      tags:
+      - Admin - Модерация студий
+  /admin/users:
+    get:
+      description: Возвращает постраничный список всех пользователей платформы с возможностью
+        фильтрации по статусу и другим параметрам. Доступно только администраторам.
+      parameters:
+      - default: 1
+        description: Номер страницы (по умолчанию 1)
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Количество записей на странице (по умолчанию 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Фильтр по статусу пользователя (active, banned, etc.)
+        in: query
+        name: status
+        type: string
+      responses:
+        "200":
+          description: Список пользователей с общим количеством и параметрами страницы
+          schema:
+            $ref: '#/definitions/internal_modules_admin.UserListResponse'
+        "400":
+          description: Ошибка валидации параметров запроса
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении списка пользователей
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить список пользователей
+      tags:
+      - Admin - Управление пользователями
+  /admin/users/:id/ban:
+    patch:
+      description: Блокирует пользователя с указанной причиной. Заблокированный пользователь
+        не сможет использовать платформу, но его данные сохраняются.
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Причина блокировки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin.BlockUserRequest'
+      responses:
+        "200":
+          description: Пользователь успешно заблокирован
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID пользователя или отсутствует причина'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при блокировке пользователя
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Заблокировать пользователя
+      tags:
+      - Admin - Управление пользователями
+  /admin/users/:id/block:
+    post:
+      description: Блокирует пользователя с указанной причиной. Алиас для BanUser
+        для обратной совместимости.
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Причина блокировки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_admin.BlockUserRequest'
+      responses:
+        "200":
+          description: Пользователь успешно заблокирован
+          schema: {}
+        "400":
+          description: 'Ошибка: неверный ID пользователя'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при блокировке пользователя
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Заблокировать пользователя (алиас)
+      tags:
+      - Admin - Управление пользователями
+  /admin/users/:id/unban:
+    patch:
+      description: Восстанавливает доступ заблокированного пользователя к платформе.
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Пользователь успешно разблокирован
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID пользователя'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при разблокировке пользователя
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Разблокировать пользователя
+      tags:
+      - Admin - Управление пользователями
+  /admin/users/:id/unblock:
+    post:
+      description: Восстанавливает доступ заблокированного пользователя. Алиас для
+        UnbanUser для обратной совместимости.
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Пользователь успешно разблокирован
+          schema: {}
+        "400":
+          description: 'Ошибка: неверный ID пользователя'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "403":
+          description: Доступ запрещён (требуются права администратора)
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при разблокировке пользователя
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Разблокировать пользователя (алиас)
+      tags:
+      - Admin - Управление пользователями
+  /api/v1/room-types:
+    get:
+      consumes:
+      - application/json
+      description: 'Возвращает список всех доступных типов комнат, которые могут быть
+        использованы при создании или обновлении комнаты в студии. Например: Fashion,
+        Portrait, Creative, Commercial.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ со списком доступных типов комнат
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить типы комнат
+      tags:
+      - Catalog - Типы комнат
+  /api/v1/rooms:
+    get:
+      consumes:
+      - application/json
+      description: Получает список всех комнат конкретной студии или всех комнат во
+        всех студиях. Может быть отфильтровано по ID студии через параметр запроса.
+      parameters:
+      - description: ID студии для фильтрации комнат. Если не указан, возвращает все
+          комнаты
+        example: 1
+        in: query
+        name: studio_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ со списком комнат
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить комнаты студии
+      tags:
+      - Catalog - Комнаты
+  /api/v1/rooms/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет комнату из студии. Требует аутентификации. Только владелец
+        студии может удалять комнаты.
+      parameters:
+      - description: Уникальный идентификатор комнаты
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Комната успешно удалена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить комнату
+      tags:
+      - Catalog - Комнаты
+    get:
+      consumes:
+      - application/json
+      description: Получает полную информацию о комнате, включая её характеристики,
+        тип, оборудование и фотографии по уникальному идентификатору.
+      parameters:
+      - description: Уникальный идентификатор комнаты
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с информацией о комнате
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Комната не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить комнату по ID
+      tags:
+      - Catalog - Комнаты
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о комнате в студии (названия, тип комнаты,
+        описание и другие параметры). Требует аутентификации.
+      parameters:
+      - description: Уникальный идентификатор комнаты
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления комнаты
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_catalog.UpdateRoomRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Комната успешно обновлена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса или тип комнаты
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить комнату
+      tags:
+      - Catalog - Комнаты
+  /api/v1/rooms/{id}/equipment:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет оборудование в комнату студии. Требует аутентификации.
+        Только владелец студии может добавлять оборудование. Оборудование содержит
+        названия и другую информацию о предметах в комнате.
+      parameters:
+      - description: Уникальный идентификатор комнаты
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные оборудования для добавления (названия, тип и т.д.)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_catalog.CreateEquipmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Оборудование успешно добавлено, возвращает объект добавленного
+            оборудования
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для добавления оборудования в эту комнату
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Комната не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить оборудование в комнату
+      tags:
+      - Catalog - Оборудование
+  /api/v1/studios:
+    get:
+      consumes:
+      - application/json
+      description: Получает список всех студий с возможностью фильтрации по городу,
+        типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.
+      parameters:
+      - description: Фильтр по городу
+        example: '"Moscow"'
+        in: query
+        name: city
+        type: string
+      - description: Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)
+        example: '"Fashion"'
+        in: query
+        name: room_type
+        type: string
+      - description: Поиск по названию студии
+        example: '"My Studio"'
+        in: query
+        name: search
+        type: string
+      - description: Минимальная цена в час
+        example: 100
+        in: query
+        name: min_price
+        type: number
+      - description: Максимальная цена в час
+        example: 1000
+        in: query
+        name: max_price
+        type: number
+      - description: Поле для сортировки (rating, price, created_at)
+        example: '"rating"'
+        in: query
+        name: sort_by
+        type: string
+      - description: Порядок сортировки (asc, desc)
+        example: '"desc"'
+        in: query
+        name: sort_order
+        type: string
+      - description: Номер страницы
+        example: 1
+        in: query
+        name: page
+        type: integer
+      - description: Количество студий на странице (максимум 100)
+        example: 20
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ со списком студий и информацией о пагинации
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректные параметры запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить список студий
+      tags:
+      - Catalog - Студии
+    post:
+      consumes:
+      - application/json
+      description: Создает новую студию в каталоге. Требует аутентификации и верификации
+        пользователя как владельца студии. Пользователь должен иметь роль студии-владельца
+        и пройти верификацию.
+      parameters:
+      - description: Данные для создания студии (название, описание, адрес, город,
+          цена и т.д.)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_catalog.CreateStudioRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Студия успешно создана, возвращает объект созданной студии
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Пользователь не является верифицированным владельцем студии
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новую студию
+      tags:
+      - Catalog - Студии
+  /api/v1/studios/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получает полную информацию о студии, включая все комнаты, оборудование
+        и фотографии по уникальному идентификатору.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с информацией о студии
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить студию по ID
+      tags:
+      - Catalog - Студии
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о студии (названия, описание, адрес, город,
+        цена в час и другие параметры). Требует аутентификации. Только владелец студии
+        может её обновлять.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления студии
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_catalog.UpdateStudioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Студия успешно обновлена, возвращает обновленный объект
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для обновления этой студии
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить студию
+      tags:
+      - Catalog - Студии
+  /api/v1/studios/{id}/photos:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Загружает фотографии студии. Поддерживает загрузку до 10 файлов
+        одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла:
+        5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.'
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - collectionFormat: multi
+        description: Файлы изображений для загрузки (до 10 файлов)
+        in: formData
+        items:
+          type: file
+        name: photos
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Фотографии успешно загружены, возвращает список URL загруженных
+            файлов
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса, файл слишком большой или недопустимый
+            формат
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить фотографии студии
+      tags:
+      - Catalog - Фотографии
+  /api/v1/studios/{id}/rooms:
+    post:
+      consumes:
+      - application/json
+      description: 'Создает новую комнату в студии. Требует аутентификации. Только
+        владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion,
+        Portrait, Creative, Commercial.'
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для создания комнаты (названия, тип, описание и т.д.)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_catalog.CreateRoomRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Комната успешно создана, возвращает объект созданной комнаты
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса или тип комнаты
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для добавления комнат в эту студию
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новую комнату
+      tags:
+      - Catalog - Комнаты
+  /api/v1/studios/{id}/working-hours:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      description: Получает информацию о часах работы студии и её текущем статусе
+        (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с часами работы и статусом
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить часы работы студии (v1)
+      tags:
+      - Catalog - Часы работы
+    put:
+      consumes:
+      - application/json
+      description: Обновляет расписание работы студии. Требует аутентификации. Только
+        владелец студии может обновлять её часы работы. Принимает массив объектов
+        с информацией о рабочих днях и часах.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Массив объектов WorkingHours с расписанием работы по дням недели
+        in: body
+        name: body
+        required: true
+        schema:
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление часов работы
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для обновления этой студии
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить часы работы студии
+      tags:
+      - Catalog - Часы работы
+  /api/v1/studios/{id}/working-hours/v2:
+    get:
+      consumes:
+      - application/json
+      description: Получает информацию о часах работы студии в новом формате с подробной
+        информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия
+        и полном расписании по дням недели.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с информацией о часах работы и текущем статусе
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить часы работы студии (v2)
+      tags:
+      - Catalog - Часы работы
+  /api/v1/studios/my:
+    get:
+      consumes:
+      - application/json
+      description: Получает список всех студий, принадлежащих текущему авторизованному
+        владельцу студии. Требует валидного JWT токена в заголовке Authorization.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ со списком студий владельца
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить мои студии
+      tags:
+      - Catalog - Студии
+  /auth/login:
+    post:
+      description: Авторизует пользователя (клиента или владельца студии) по email
+        и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.
+      parameters:
+      - description: Учётные данные (email, password)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_auth.LoginRequest'
+      responses:
+        "200":
+          description: Успешная авторизация, возвращается JWT токен
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                token:
+                  type: string
+                user: {}
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверный формат данных'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка: неверный email или пароль'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при авторизации
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Войти в аккаунт
+      tags:
+      - Автентификация
+  /auth/register/client:
+    post:
+      description: Создаёт новый аккаунт клиента на платформе. Клиент получает возможность
+        искать студии и делать бронирования. Автоматически генерируется JWT токен
+        для сессии.
+      parameters:
+      - description: Данные для регистрации (email, password, name, phone)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_auth.RegisterClientRequest'
+      responses:
+        "201":
+          description: Клиент успешно зарегистрирован, возвращается JWT токен
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                token:
+                  type: string
+                user: {}
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверный формат данных'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "409":
+          description: 'Ошибка: email уже зарегистрирован на платформе'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при создании аккаунта
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Зарегистрировать клиента
+      tags:
+      - Автентификация
+  /auth/register/studio:
+    post:
+      description: Создаёт новый аккаунт владельца студии. После регистрации требуется
+        модерация администратором перед открытием студии. Владелец получает токен
+        для доступа к личному кабинету.
+      parameters:
+      - description: Данные для регистрации владельца (email, password, name, phone,
+          studio_name, description, etc.)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_auth.RegisterStudioRequest'
+      responses:
+        "201":
+          description: Владелец зарегистрирован, статус studio_status=pending, возвращается
+            JWT токен
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                token:
+                  type: string
+                user: {}
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверный формат данных'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "409":
+          description: 'Ошибка: email уже зарегистрирован на платформе'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при создании аккаунта владельца
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Зарегистрировать владельца студии
+      tags:
+      - Автентификация
+  /bookings:
+    post:
+      description: Создаёт новое бронирование на указанную дату и время в выбранной
+        комнате. Проверяет доступность времени, наличие конфликтов с существующими
+        бронированиями и валидность переданных данных. Пользователь идентифицируется
+        по токену аутентификации. При успешном создании возвращается ID и статус новой
+        брони.
+      parameters:
+      - description: Данные для создания бронирования (room_id, user_id, start_time,
+          end_time)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_booking.CreateBookingRequest'
+      responses:
+        "201":
+          description: Бронирование успешно создано
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или некорректные данные запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации - отсутствует или невалидный токен
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Конфликт времени - комната занята в выбранный период
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новое бронирование
+      tags:
+      - Бронирования
+  /bookings/{id}/cancel:
+    patch:
+      description: Отменяет указанное бронирование и устанавливает его статус в 'cancelled'.
+        Требует обязательное указание причины отмены (минимум 10 символов). Бронирование
+        может быть отменено клиентом (автором) или владельцем/менеджером студии. Невозможно
+        отменить уже завершённое или уже отменённое бронирование. Причина отмены сохраняется
+        в системе для аналитики.
       parameters:
       - description: ID бронирования
         in: path
         name: id
         required: true
         type: integer
-      - description: Сумма предоплаты
+      - description: Причина отмены бронирования (минимум 10 символов)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_booking.CancelBookingRequest'
+      responses:
+        "200":
+          description: Бронирование успешно отменено с указанной причиной
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или невозможно отменить статус (уже завершено
+            или отменено)
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - невозможно отменить это бронирование
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Бронирование не найдено
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при отмене брони
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отменить бронирование
+      tags:
+      - Бронирования
+  /bookings/{id}/complete:
+    patch:
+      description: Завершает указанное бронирование и устанавливает его статус в 'completed'.
+        Доступно только владельцу студии. Бронирование можно завершить только если
+        оно находится в статусе 'confirmed'. Завершение бронирования означает, что
+        сессия в студии была проведена и завершена.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Бронирование успешно завершено
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации - невозможно завершить бронирование с текущим
+            статусом (должно быть 'confirmed')
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - только владелец студии может завершить бронирование
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Бронирование не найдено
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при завершении брони
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Завершить бронирование
+      tags:
+      - Бронирования
+  /bookings/{id}/confirm:
+    patch:
+      description: Подтверждает указанное бронирование и устанавливает его статус
+        в 'confirmed'. Эта операция доступна только владельцу студии, к которой относится
+        бронирование. Подтверждение означает, что владелец студии согласился с условиями
+        бронирования и готов к проведению сессии.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Бронирование успешно подтверждено
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - только владелец студии может подтвердить
+            бронирование
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Бронирование не найдено
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при подтверждении брони
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Подтвердить бронирование
+      tags:
+      - Бронирования
+  /bookings/{id}/deposit:
+    patch:
+      description: Обновляет размер залога (предоплаты) для указанного бронирования.
+        Эта операция доступна только администраторам и владельцам студий. Залог представляет
+        собой предварительный платёж для гарантирования брони. Сумма залога может
+        быть изменена в зависимости от политики студии.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новая сумма залога (deposit_amount)
         in: body
         name: body
         required: true
@@ -154,16 +2582,720 @@ paths:
           $ref: '#/definitions/internal_modules_booking.UpdateDepositRequest'
       responses:
         "200":
-          description: OK
+          description: Размер залога успешно обновлен
           schema:
-            $ref: '#/definitions/internal_modules_booking.BookingResponse'
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации запроса или некорректная сумма залога
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - только администраторы и владельцы студий
+            могут обновлять залог
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при обновлении залога
+          schema:
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
-      summary: Обновить предоплату
+      summary: Обновить размер залога
       tags:
-      - Booking
+      - Бронирования
+  /bookings/{id}/mark-paid:
+    patch:
+      description: Отмечает указанное бронирование как оплаченное, изменяя статус
+        платежа на 'paid'. Эта операция доступна только владельцу студии. Используется
+        для подтверждения получения платежа за бронирование. После отметки как оплаченного
+        бронирование учитывается в доходах студии.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Статус платежа успешно обновлен на 'paid'
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации - неверный ID бронирования
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации - отсутствует токен
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - недостаточно прав для обновления статуса
+            платежа
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при обновлении статуса платежа
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отметить бронирование как оплаченное
+      tags:
+      - Бронирования
+  /bookings/{id}/payment-status:
+    patch:
+      description: Обновляет информацию о статусе платежа для указанного бронирования.
+        Только автор бронирования или администратор может обновлять статус платежа
+        для бронирования. Статус может быть изменён с 'pending' на другие валидные
+        значения в соответствии с логикой системы.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус платежа (payment_status)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_booking.UpdatePaymentStatusRequest'
+      responses:
+        "200":
+          description: Статус платежа успешно обновлен
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации - отсутствует токен
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - недостаточно прав для обновления этой брони
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при обновлении статуса
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить статус платежа
+      tags:
+      - Бронирования
+  /bookings/{id}/status:
+    patch:
+      description: Обновляет статус указанного бронирования. Только владелец студии,
+        администратор или автор бронирования могут изменять статусы в соответствии
+        с правилами переходов. Поддерживает валидацию переходов статусов для обеспечения
+        целостности бизнес-логики. Дополнительно проверяется текущий статус для предотвращения
+        невалидных переходов.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус бронирования (status)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_booking.UpdateBookingStatusRequest'
+      responses:
+        "200":
+          description: Статус бронирования успешно обновлен
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или невалидный переход статуса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации - отсутствует или невалидный токен
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Доступ запрещен - только владелец студии может менять статус
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Бронирование не найдено
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при обновлении статуса
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить статус бронирования
+      tags:
+      - Бронирования
+  /chat/conversations:
+    get:
+      consumes:
+      - application/json
+      description: Получает список бесед текущего пользователя с поддержкой пагинации
+      parameters:
+      - default: 20
+        description: Максимальное количество бесед
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение от начала
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список бесед
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка при получении бесед
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить список всех бесед
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новую беседу с другим пользователем или получает существующую
+      parameters:
+      - description: Данные для создания беседы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_chat.CreateConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Беседа успешно создана
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или создания беседы
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новую беседу
+      tags:
+      - Chat
+  /chat/conversations/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      description: Получает сообщения из конкретной беседы с поддержкой пагинации
+        и фильтрации
+      parameters:
+      - description: ID беседы
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 50
+        description: Максимальное количество сообщений
+        in: query
+        name: limit
+        type: integer
+      - description: ID сообщения для загрузки сообщений до него
+        format: int64
+        in: query
+        name: before_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список сообщений и флаг há_more
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации ID или доступа
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить сообщения беседы
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      description: Отправляет текстовое сообщение в беседу. Пользователь должен быть
+        участником беседы
+      parameters:
+      - description: ID беседы
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Содержимое сообщения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_chat.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Сообщение успешно отправлено
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или отправки сообщения
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отправить сообщение
+      tags:
+      - Chat
+  /chat/conversations/{id}/messages/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Загружает изображение в беседу. Поддерживаемые форматы: jpg, jpeg,
+        png, webp. Максимальный размер: 5 MB'
+      parameters:
+      - description: ID беседы
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Изображение для загрузки
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Сообщение с изображением успешно отправлено
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: нет файла, недопустимый формат или слишком большой
+            размер'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Пользователь не является участником беседы или заблокирован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка при сохранении файла
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить изображение в чат
+      tags:
+      - Chat
+  /chat/conversations/{id}/read:
+    post:
+      consumes:
+      - application/json
+      description: Отмечает все неприлитанные сообщения в беседе как прочитанные для
+        текущего пользователя
+      parameters:
+      - description: ID беседы
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Количество отмеченных сообщений
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации или отметки сообщений
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отметить сообщения как прочитанные
+      tags:
+      - Chat
+  /chat/users/{id}/block:
+    delete:
+      consumes:
+      - application/json
+      description: Разблокирует ранее заблокированного пользователя для получения
+        сообщений от него
+      parameters:
+      - description: ID заблокированного пользователя
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Пользователь успешно разблокирован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка при разблокировке пользователя
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Разблокировать пользователя
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      description: Блокирует пользователя для предотвращения получения сообщений от
+        него
+      parameters:
+      - description: ID пользователя для блокировки
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Причина блокировки (опционально)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_chat.BlockUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Пользователь успешно заблокирован
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Ошибка при блокировке пользователя
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Заблокировать пользователя
+      tags:
+      - Chat
+  /company/portfolio:
+    get:
+      description: Возвращает полный список проектов портфолио студии с информацией
+        о каждом проекте, включая изображения и описание.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список проектов портфолио
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                count:
+                  type: integer
+                projects:
+                  items: {}
+                  type: array
+              type: object
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении портфолио
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить портфолио
+      tags:
+      - Owner - Портфолио
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новый проект в портфолио с изображением, названием и
+        категорией. Проект автоматически добавляется в конец портфолио. Проект можно
+        переупорядочить в любой момент.
+      parameters:
+      - description: Данные проекта (image_url, title, category)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.AddPortfolioRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Проект успешно добавлен в портфолио
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                project: {}
+              type: object
+        "400":
+          description: 'Ошибка валидации: отсутствует URL изображения'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при добавлении проекта
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Добавить проект в портфолио
+      tags:
+      - Owner - Портфолио
+  /company/portfolio/:id:
+    delete:
+      description: Удаляет проект из портфолио по ID. После удаления проект больше
+        не будет виден в портфолио студии. Остальные проекты сохраняют свой порядок.
+      parameters:
+      - description: ID проекта портфолио
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Проект успешно удалён из портфолио
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID проекта'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Проект не найден
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при удалении проекта
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Удалить проект из портфолио
+      tags:
+      - Owner - Портфолио
+  /company/portfolio/reorder:
+    put:
+      consumes:
+      - application/json
+      description: Переупорядочивает проекты портфолио согласно переданному порядку
+        ID проектов. Новый порядок заменяет старый полностью.
+      parameters:
+      - description: Новый порядок проектов (массив ID)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.ReorderPortfolioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Портфолио успешно переупорядочено
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка влидации: отсутствует или пустой массив ID проектов'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при переупорядочении портфолио
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Переупорядочить портфолио
+      tags:
+      - Owner - Портфолио
+  /company/profile:
+    get:
+      description: Получает полные данные профиля компании/студии владельца, включая
+        логотип, контактные данные, описание и специализацию
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль компании/студии
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Получение профиля компании
+      tags:
+      - Owner
+    put:
+      consumes:
+      - application/json
+      description: 'Обновляет все данные профиля компании/студии: логотип, контакты,
+        описание, специализацию, социальные сети и другую информацию.'
+      parameters:
+      - description: Данные для обновления профиля компании
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.UpdateCompanyProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль компании успешно обновлён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверные данные'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении профиля
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль компании
+      tags:
+      - Owner - Профиль компании
   /favorites:
     get:
+      consumes:
+      - application/json
+      description: Получает список студий, добавленных в избранное текущего пользователя,
+        с поддержкой пагинации
       parameters:
       - default: 1
         description: Номер страницы
@@ -175,107 +3307,1389 @@ paths:
         in: query
         name: per_page
         type: integer
+      produces:
+      - application/json
       responses:
         "200":
-          description: OK
+          description: Список избранных студий
           schema:
             $ref: '#/definitions/internal_modules_favorite.FavoriteListResponse'
-      security:
-      - BearerAuth: []
-      summary: Получить избранное
-      tags:
-      - Favorites
-  /favorites/{studioId}:
-    delete:
-      parameters:
-      - description: ID студии
-        in: path
-        name: studioId
-        required: true
-        type: integer
-      responses:
-        "204":
-          description: No Content
-        "404":
-          description: Favorite not found
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "500":
+          description: Ошибка при получении списка избранного
           schema:
             $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Удалить из избранного
+      summary: Получить список избранных студий
       tags:
-      - Favorites
-    post:
+      - Favorite
+  /favorites/{studioId}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет студию из списка избранного. Возвращает ошибку, если студия
+        не было в избранном
       parameters:
       - description: ID студии
+        format: int64
         in: path
         name: studioId
         required: true
         type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Студия успешно удалена из избранного
+        "400":
+          description: Некорректный ID студии
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "404":
+          description: Студия отсутствует в избранном
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "500":
+          description: Ошибка при удалении из избранного
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить студию из избранного
+      tags:
+      - Favorite
+    post:
+      consumes:
+      - application/json
+      description: Добавляет студию в список избранного. Возвращает ошибку, если студия
+        уже в избранном или не существует
+      parameters:
+      - description: ID студии
+        format: int64
+        in: path
+        name: studioId
+        required: true
+        type: integer
+      produces:
+      - application/json
       responses:
         "201":
-          description: Created
+          description: Студия успешно добавлена в избранное
           schema:
             $ref: '#/definitions/internal_modules_favorite.FavoriteResponse'
         "400":
-          description: Studio already in favorites
+          description: Студия уже находится в избранном или некорректный ID студии
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "401":
+          description: Пользователь не авторизован
           schema:
             $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
         "404":
-          description: Studio not found
+          description: Студия не найдена
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "500":
+          description: Ошибка при добавлении в избранное
           schema:
             $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Добавить в избранное
+      summary: Добавить студию в избранное
       tags:
-      - Favorites
+      - Favorite
   /favorites/{studioId}/check:
     get:
+      consumes:
+      - application/json
+      description: Проверяет наличие студии в списке избранного текущего пользователя
       parameters:
       - description: ID студии
+        format: int64
         in: path
         name: studioId
         required: true
         type: integer
+      produces:
+      - application/json
       responses:
         "200":
-          description: OK
+          description: Результат проверки наличия студии в избранном
           schema:
             $ref: '#/definitions/internal_modules_favorite.CheckFavoriteResponse'
+        "400":
+          description: Некорректный ID студии
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
+        "500":
+          description: Ошибка при проверке избранного
+          schema:
+            $ref: '#/definitions/internal_modules_favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Проверить избранное
+      summary: Проверить находится ли студия в избранном
       tags:
-      - Favorites
-  /studios/{id}/working-hours:
-    put:
+      - Favorite
+  /internal/mwork/users/sync:
+    post:
+      description: Внутренний API endpoint для синхронизации пользователя из платформы
+        Mwork. Создаёт или обновляет пользователя в PhotoStudio на основе данных из
+        Mwork. Доступно только для внутренних сервисов.
       parameters:
-      - description: ID студии
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Часы работы
+      - description: Данные пользователя из Mwork (mwork_user_id, email, full_name,
+          role, phone)
         in: body
-        name: body
+        name: request
         required: true
         schema:
-          items:
-            $ref: '#/definitions/photostudio_internal_domain.WorkingHours'
-          type: array
+          $ref: '#/definitions/internal_modules_mwork.SyncUserRequest'
       responses:
         "200":
-          description: OK
+          description: Пользователь синхронизирован успешно
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                status:
+                  type: string
+                user_id:
+                  type: integer
+              type: object
+        "201":
+          description: Новый пользователь создан
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                status:
+                  type: string
+                user_id:
+                  type: integer
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверные данные (invalid UUID, invalid role,
+            etc.)'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "409":
+          description: 'Конфликт: пользователь с этим email уже существует'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при синхронизации пользователя
           schema:
             $ref: '#/definitions/gin.H'
       security:
       - BearerAuth: []
-      summary: Обновить часы работы студии
+      summary: Синхронизация пользователя из Mwork
       tags:
-      - Catalog
-  /studios/{id}/working-hours/v2:
+      - Интеграции - Mwork
+  /manager/bookings:
     get:
+      description: Выводит список бронирований для всех студий владельца с деталями
+        с возможностью фильтрирования по статусу, дате, клиенту.
+      parameters:
+      - description: Фильтр по статусу (all, pending, confirmed, cancelled, completed)
+        in: query
+        name: status
+        type: string
+      - description: Фильтр по имени клиента
+        in: query
+        name: client
+        type: string
+      - description: Фильтр по ID студии
+        in: query
+        name: studio_id
+        type: integer
+      - description: Фильтр по ID комнаты
+        in: query
+        name: room_id
+        type: integer
+      - description: Начальная дата (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: Выконачая дата (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - description: Количество бронирований на странице (макс 100)
+        in: query
+        name: per_page
+        type: integer
+      responses:
+        "200":
+          description: Список бронирований с пагинацией
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                bookings: {}
+                page:
+                  type: integer
+                per_page:
+                  type: integer
+                total:
+                  type: integer
+              type: object
+        "400":
+          description: Ошибка в параметрах
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить отфильтрованные бронирования
+      tags:
+      - Менеджер - Управление бронированиями
+  /manager/bookings/:id:
+    get:
+      description: Получает подробную информацию о бронировании (клиент, студия, настройки,
+        цену, статус).
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Подробная информация о бронировании
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                booking: {}
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Бронирование не найдено или доступ запрещён
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Открыть детали бронирования
+      tags:
+      - Менеджер - Управление бронированиями
+  /manager/bookings/:id/deposit:
+    patch:
+      description: Обновляет внесённые средства (залог или авансовые платежи) для
+        бронирования.
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новая сумма залога
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_manager.UpdateDepositRequest'
+      responses:
+        "200":
+          description: Намавка депозита обновлена
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверные данные'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Бронирование не найдено
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить рассчётные средства
+      tags:
+      - Менеджер - Управление бронированиями
+  /manager/bookings/:id/status:
+    patch:
+      description: 'Меняет статус бронирования: pending -> confirmed -> completed
+        или cancelled.'
+      parameters:
+      - description: ID бронирования
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Новый статус (pending, confirmed, cancelled, completed)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_manager.UpdateStatusRequest'
+      responses:
+        "200":
+          description: Статус бронирования обновлен
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверные данные'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: Бронирование не найдено
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить статус бронирования
+      tags:
+      - Менеджер - Управление бронированиями
+  /manager/clients:
+    get:
+      description: Выводит список всех клиентов, которые бронировали студии владельца,
+        с возможностью поиска по имени.
+      parameters:
+      - description: Поиск по имени клиента
+        in: query
+        name: search
+        type: string
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      - description: Количество клиентов на странице (макс 100)
+        in: query
+        name: per_page
+        type: integer
+      responses:
+        "200":
+          description: Список клиентов с пагинацией
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                clients: {}
+                page:
+                  type: integer
+                per_page:
+                  type: integer
+                total:
+                  type: integer
+              type: object
+        "400":
+          description: Ошибка в параметрах
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить список клиентов
+      tags:
+      - Менеджер - Отношения с клиентами
+  /notifications:
+    get:
+      description: Возвращает список последних уведомлений пользователя и количество
+        непрочитанных. Поддерживает пагинацию через параметр limit.
+      parameters:
+      - description: Максимальное количество уведомлений (по умолчанию 20, макс 100)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: Список уведомлений и количество непрочитанных
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                notifications:
+                  items: {}
+                  type: array
+                unread_count:
+                  type: integer
+              type: object
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении уведомлений
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить уведомления
+      tags:
+      - Уведомления
+  /notifications/:id/read:
+    patch:
+      description: Отмечает конкретное уведомление как прочитанное. После этого оно
+        больше не будет учитываться в счётчике непрочитанных.
+      parameters:
+      - description: ID уведомления
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Уведомление отмечено как прочитанное
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                status:
+                  type: string
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID уведомления'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: 'Ошибка: уведомление не найдено'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении статуса
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Отметить уведомление как прочитанное
+      tags:
+      - Уведомления
+  /notifications/read-all:
+    patch:
+      description: Отмечает все непрочитанные уведомления пользователя как прочитанные
+        одним запросом.
+      responses:
+        "200":
+          description: Все уведомления отмечены как прочитанные
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                status:
+                  type: string
+              type: object
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении статуса
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Отметить все уведомления как прочитанные
+      tags:
+      - Уведомления
+  /owner/analytics:
+    get:
+      description: Получает аналитические данные о работе студии владельца, включая
+        статистику бронирований, доходы и другие метрики
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Аналитические данные студии
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Получение аналитики студии
+      tags:
+      - Owner
+  /owner/has-pin:
+    get:
+      description: Проверяет, установлен ли PIN код для текущего владельца студии
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус наличия PIN кода
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Проверка наличия PIN кода
+      tags:
+      - Owner
+  /owner/maintenance:
+    get:
+      description: 'Получает список записей об обслуживании оборудования и помещений
+        студии. Можно отфильтровать по статусу: all, pending, in_progress, completed'
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Фильтр по статусу (all, pending, in_progress, completed) - по
+          умолчанию all
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список записей об обслуживании и их количество
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Получение списка обслуживания
+      tags:
+      - Owner
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новую запись об обслуживании оборудования, помещений или
+        инженерных систем студии. При отсутствии приоритета устанавливается значение
+        medium. Статус по умолчанию - pending
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Данные для создания записи об обслуживании
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.CreateMaintenanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Запись об обслуживании успешно создана
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректные данные запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Создание новой записи об обслуживании
+      tags:
+      - Owner
+  /owner/maintenance/{id}:
+    delete:
+      description: Удаляет запись об обслуживании по ID. Может удалить только владелец
+        студии
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: ID записи об обслуживании
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Запись об обслуживании успешно удалена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный ID записи об обслуживании
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Запись об обслуживании не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Удаление записи об обслуживании
+      tags:
+      - Owner
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет данные существующей записи об обслуживании. Нельзя изменять
+        ID, владельца и дату создания
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: ID записи об обслуживании
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Запись об обслуживании успешно обновлена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный ID записи об обслуживании
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Запись об обслуживании не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Обновление записи об обслуживании
+      tags:
+      - Owner
+  /owner/procurement:
+    get:
+      description: Получает список закупок для студии владельца с опциональной фильтрацией
+        по статусу завершённости
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Показывать ли завершённые закупки (по умолчанию false)
+        in: query
+        name: show_completed
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список закупок и их количество
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Получение списка закупок
+      tags:
+      - Owner
+    post:
+      consumes:
+      - application/json
+      description: Создаёт новую запись о закупке оборудования или материалов для
+        студии. Приоритет по умолчанию - medium, количество - 1
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Данные для создания закупки
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.CreateProcurementRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Закупка успешно создана
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректные данные запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Создание новой закупки
+      tags:
+      - Owner
+  /owner/procurement/{id}:
+    delete:
+      description: Удаляет закупку по ID. Может удалить только владелец студии
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: ID закупки
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Закупка успешно удалена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный ID закупки
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Закупка не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Удаление закупки
+      tags:
+      - Owner
+    patch:
+      consumes:
+      - application/json
+      description: Обновляет данные существующей закупки. Нельзя изменять ID, владельца
+        и дату создания
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: ID закупки
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Поля для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Закупка успешно обновлена
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный ID закупки
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Закупка не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Обновление закупки
+      tags:
+      - Owner
+  /owner/set-pin:
+    post:
+      consumes:
+      - application/json
+      description: Устанавливает PIN код из 4-6 цифр для защиты CRM функций владельца
+        студии
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: PIN request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.SetPINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN успешно установлен
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат PIN (должен быть 4-6 цифр)
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Установка PIN кода
+      tags:
+      - Owner
+  /owner/verify-pin:
+    post:
+      consumes:
+      - application/json
+      description: Проверяет корректность введённого PIN кода владельцем студии
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: PIN request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_owner.VerifyPINRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: PIN успешно проверен
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: PIN неверен или требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: PIN не установлен
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - Bearer: []
+      summary: Проверка PIN кода
+      tags:
+      - Owner
+  /reviews:
+    post:
+      description: Пользователь может написать отзыв о студии только после завершённого
+        бронирования. Может написать только один отзыв от пользователя на студию.
+      parameters:
+      - description: Данные отзыва (studio_id, rating, text)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_review.CreateReviewRequest'
+      responses:
+        "201":
+          description: Отзыв успешно сохранён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                data: {}
+                success:
+                  type: boolean
+              type: object
+        "400":
+          description: Ошибка валидации данных
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "403":
+          description: 'Запрещено: не можно написать отзыв до завершения бронирования'
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "409":
+          description: 'Ошибка: отзыв уже существует'
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "500":
+          description: Ошибка сервера при сохранении отзыва
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Написать отзыв
+      tags:
+      - Отзывы
+  /reviews/:id/response:
+    post:
+      description: Владелец студии может добавить ответ на отзыв клиента. Ответ вы
+        ботается рядом с отзывом.
+      parameters:
+      - description: ID отзыва
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Текст ответа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_review.OwnerResponseRequest'
+      responses:
+        "200":
+          description: Ответ успешно добавлен
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                data: {}
+                success:
+                  type: boolean
+              type: object
+        "400":
+          description: Ошибка валидации данных
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "403":
+          description: 'Запрещено: вы не овнер студии'
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "404":
+          description: Отзыв не найден
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "500":
+          description: Ошибка сервера при добавлении ответа
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Ответить на отзыв
+      tags:
+      - Отзывы
+  /rooms/{id}/availability:
+    get:
+      description: Возвращает детальную информацию о доступности указанной комнаты
+        на определённую дату, включая забронированные временные слоты. Помогает пользователю
+        выбрать свободное время для создания новой брони. Ответ включает информацию
+        о всех занятых и свободных промежутках времени.
+      parameters:
+      - description: ID комнаты
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Дата в формате YYYY-MM-DD (обязательный параметр)
+        in: query
+        name: date
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Информация о доступности комнаты, включая забронированные слоты
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации - неверный ID, отсутствует дата или неправильный
+            формат
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при получении информации о доступности
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Проверить доступность комнаты на дату
+      tags:
+      - Бронирования
+  /rooms/{id}/busy-slots:
+    get:
+      description: Возвращает список всех занятых временных промежутков (слотов) для
+        указанной комнаты на определённую дату. Также включает информацию о времени
+        открытия и закрытия студии. Используется при выборе времени для новой брони.
+        Каждый слот содержит время начала и окончания в формате HH:MM.
+      parameters:
+      - description: ID комнаты
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Дата в формате YYYY-MM-DD (обязательный параметр)
+        in: query
+        name: date
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Список занятых временных слотов на указанную дату
+          schema:
+            $ref: '#/definitions/internal_modules_booking.BusySlotsResponse'
+        "400":
+          description: Ошибка валидации - неверный ID комнаты или формат даты
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при получении занятых слотов
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить занятые временные слоты
+      tags:
+      - Бронирования
+  /studios/:id/reviews:
+    get:
+      description: Возвращает постраничный список отзывов о студии. Отзывы отображаются
+        только если они не скрыты администратором.
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Максимум количество отзывов (дефолт: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: Офсет с какого рекорда начинать
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: Список отзывов
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                data: {}
+                success:
+                  type: boolean
+              type: object
+        "400":
+          description: 'Ошибка: неверный ID студии'
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+        "500":
+          description: Ошибка сервера при получении отзывов
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                error:
+                  type: object
+                success:
+                  type: boolean
+              type: object
+      summary: Получить отзывы студии
+      tags:
+      - Отзывы
+  /studios/{id}/bookings:
+    get:
+      description: Возвращает полный список всех бронирований, связанных с указанной
+        студией. Используется владельцами студий или администраторами для управления
+        и мониторинга бронирований. Включает информацию о клиентах, времени, статусах
+        и платежах.
       parameters:
       - description: ID студии
         in: path
@@ -284,12 +4698,176 @@ paths:
         type: integer
       responses:
         "200":
-          description: OK
+          description: Список всех бронирований студии
           schema:
-            $ref: '#/definitions/internal_modules_catalog.WorkingHoursResponse'
-      summary: Получить часы работы студии (новый формат)
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации - неверный ID студии
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при получении бронирований
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить бронирования студии
       tags:
-      - Catalog
+      - Бронирования
+  /users/me:
+    get:
+      description: Возвращает полный профиль текущего авторизованного пользователя
+        (клиента или владельца). Может включать статистику бронирований и недавние
+        брони. При include_stats=true добавляет количество бронирований.
+      parameters:
+      - description: Включить статистику бронирований (true/false)
+        in: query
+        name: include_stats
+        type: boolean
+      responses:
+        "200":
+          description: Профиль пользователя с информацией и статистикой
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                user: {}
+              type: object
+        "401":
+          description: 'Ошибка аутентификации: токен не предоставлен или истёк'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "404":
+          description: 'Ошибка: пользователь не найден'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при получении профиля
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Получить профиль пользователя
+      tags:
+      - Профиль и аутентификация
+    put:
+      description: 'Обновляет информацию о профиле: имя, телефон и другие поля. Email
+        не может быть изменён через этот эндпоинт. Требуется аутентификация.'
+      parameters:
+      - description: Данные для обновления (name, phone, avatar_url, etc.)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_auth.UpdateProfileRequest'
+      responses:
+        "200":
+          description: Профиль успешно обновлён
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                user: {}
+              type: object
+        "400":
+          description: 'Ошибка валидации: неверный формат данных'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при обновлении профиля
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль пользователя
+      tags:
+      - Профиль и аутентификация
+  /users/me/bookings:
+    get:
+      description: Возвращает полный список бронирований, сделанных текущим пользователем,
+        отфильтрованный по ID из токена аутентификации. Поддерживает пагинацию через
+        параметры limit и offset для управления объёмом данных. Максимальное значение
+        limit составляет 100 записей.
+      parameters:
+      - description: Максимальное количество записей (по умолчанию 20, максимум 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Смещение для пагинации, начиная с 0 (по умолчанию 0)
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: Список бронирований текущего пользователя с информацией о пагинации
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации - отсутствует или невалидный токен
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера при получении бронирований
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить мои бронирования
+      tags:
+      - Бронирования
+  /users/verification/documents:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает документы (паспорт, свидетельство о регистрации, и т.д.)
+        для верификации владельца студии. Документы необходимы для одобрения заявки
+        администратором. Максимальный размер файла 10MB.
+      parameters:
+      - description: Файлы документов для загрузки (несколько файлов допускаются)
+        in: formData
+        name: documents
+        required: true
+        type: file
+      responses:
+        "200":
+          description: Документы загружены успешно, возвращены URL для доступа
+          schema:
+            allOf:
+            - $ref: '#/definitions/gin.H'
+            - properties:
+                message:
+                  type: string
+                uploaded_urls: {}
+              type: object
+        "400":
+          description: 'Ошибка: отсутствуют файлы или неверный формат запроса'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "413":
+          description: 'Ошибка: файл слишком большой (макс 10MB)'
+          schema:
+            $ref: '#/definitions/gin.H'
+        "500":
+          description: Ошибка сервера при загрузке документов
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+      - BearerAuth: []
+      summary: Загрузить документы верификации
+      tags:
+      - Профиль и аутентификация
 securityDefinitions:
   BearerAuth:
     in: header
