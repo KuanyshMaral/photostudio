@@ -1,27 +1,25 @@
 package middleware
 
 import (
+	"github.com/gin-gonic/gin"
 	"net/http"
+	"photostudio/internal/domain/catalog"
 	"photostudio/internal/pkg/jwt"
-
 	"photostudio/internal/pkg/response"
-	"photostudio/internal/repository"
 	"strconv"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 // OwnershipChecker provides middleware to verify resource ownership
 type OwnershipChecker struct {
-	studioRepo *repository.StudioRepository
-	roomRepo   *repository.RoomRepository
+	studioRepo *catalog.StudioRepository
+	roomRepo   *catalog.RoomRepository
 }
 
 // NewOwnershipChecker creates a new ownership checker
 func NewOwnershipChecker(
-	studioRepo *repository.StudioRepository,
-	roomRepo *repository.RoomRepository,
+	studioRepo *catalog.StudioRepository,
+	roomRepo *catalog.RoomRepository,
 ) *OwnershipChecker {
 	return &OwnershipChecker{
 		studioRepo: studioRepo,
@@ -131,7 +129,7 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.Error(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
+			response.CustomError(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
 			c.Abort()
 			return
 		}
@@ -139,7 +137,7 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 		// Expected format: "Bearer <token>"
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			response.Error(c, http.StatusUnauthorized, "INVALID_AUTH_FORMAT", "Authorization header must be 'Bearer <token>'")
+			response.CustomError(c, http.StatusUnauthorized, "INVALID_AUTH_FORMAT", "Authorization header must be 'Bearer <token>'")
 			c.Abort()
 			return
 		}
@@ -149,13 +147,13 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 		claims, err := jwtService.ValidateToken(tokenString)
 
 		if err != nil {
-			response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or expired token")
+			response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or expired token")
 			c.Abort()
 			return
 		}
 
 		if claims.UserID <= 0 {
-			response.Error(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token subject is invalid")
+			response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token subject is invalid")
 			c.Abort()
 			return
 		}

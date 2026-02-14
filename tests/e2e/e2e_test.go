@@ -4,28 +4,26 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"photostudio/internal/database"
-	"photostudio/internal/domain"
+	"photostudio/internal/domain/admin"
+	"photostudio/internal/domain/auth"
+	"photostudio/internal/domain/booking"
+	"photostudio/internal/domain/catalog"
+	"photostudio/internal/domain/notification"
+	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
-	"photostudio/internal/modules/admin"
-	"photostudio/internal/modules/auth"
-	"photostudio/internal/modules/booking"
-	"photostudio/internal/modules/catalog"
-	"photostudio/internal/modules/notification"
-	"photostudio/internal/modules/review"
-	jwtsvc "photostudio/internal/pkg/jwt"
-	"photostudio/internal/repository"
+	"photostudio/internal/pkg/jwt"
 	"testing"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 )
 
 type E2ETestSuite struct {
@@ -73,14 +71,14 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 	// Auto-migrate all models
 	models := []interface{}{
-		&domain.User{},
-		&domain.StudioOwner{},
-		&domain.Studio{},
-		&domain.Room{},
-		&domain.Equipment{},
-		&domain.Booking{},
-		&domain.Review{},
-		&domain.Notification{},
+		&auth.User{},
+		&owner.StudioOwner{},
+		&catalog.Studio{},
+		&catalog.Room{},
+		&catalog.Equipment{},
+		&booking.Booking{},
+		&review.Review{},
+		&notification.Notification{},
 	}
 
 	for _, model := range models {
@@ -89,11 +87,11 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	}
 
 	// Setup repositories
-	userRepo := repository.NewUserRepository(db)
-	studioRepo := repository.NewStudioRepository(db)
-	roomRepo := repository.NewRoomRepository(db)
-	equipmentRepo := repository.NewEquipmentRepository(db)
-	bookingRepo := repository.NewBookingRepository(db)
+	userRepo := auth.NewUserRepository(db)
+	studioRepo := catalog.NewStudioRepository(db)
+	roomRepo := catalog.NewRoomRepository(db)
+	equipmentRepo := catalog.NewEquipmentRepository(db)
+	bookingRepo := booking.NewBookingRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	studioOwnerRepo := repository.NewOwnerRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
@@ -146,11 +144,11 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 		studios := protected.Group("/studios")
 		{
-			studios.GET("/my", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.GetMyStudios)
-			studios.POST("", middleware.RequireRole(string(domain.RoleStudioOwner)), catalogHandler.CreateStudio)
+			studios.GET("/my", middleware.RequireRole(string(auth.RoleStudioOwner)), catalogHandler.GetMyStudios)
+			studios.POST("", middleware.RequireRole(string(auth.RoleStudioOwner)), catalogHandler.CreateStudio)
 			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
 			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
-			studios.GET("/:id/bookings", middleware.RequireRole(string(domain.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
+			studios.GET("/:id/bookings", middleware.RequireRole(string(auth.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
 		}
 
 		// Equipment route (only AddEquipment exists)
@@ -167,15 +165,15 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 		bookings := protected.Group("/bookings")
 		{
-			bookings.PATCH("/:id/payment", middleware.RequireRole(string(domain.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
+			bookings.PATCH("/:id/payment", middleware.RequireRole(string(auth.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
 		}
 	}
 
 	// Create admin user for testing
-	adminUser := &domain.User{
+	adminUser := &auth.User{
 		Email:         "admin@test.com",
 		PasswordHash:  "$2a$10$dummy", // Will be properly hashed
-		Role:          domain.RoleAdmin,
+		Role:          auth.RoleAdmin,
 		Name:          "Admin User",
 		Phone:         "+77001234560",
 		EmailVerified: true,
@@ -241,7 +239,7 @@ func logErrorResponse(t *testing.T, resp *TestResponse, context string) {
 // Helper function to create a booking request body with all required fields
 func (s *E2ETestSuite) createBookingBody(roomID int64, userID int64, startTime, endTime time.Time) (map[string]interface{}, error) {
 	// Get studio ID from room
-	var room domain.Room
+	var room catalog.Room
 	err := s.db.First(&room, roomID).Error
 	if err != nil {
 		return nil, err
@@ -259,12 +257,12 @@ func (s *E2ETestSuite) createBookingBody(roomID int64, userID int64, startTime, 
 // Helper function to verify a studio owner (needed for studio creation)
 func (s *E2ETestSuite) verifyStudioOwner(t *testing.T, email string) {
 	// Find the user by email
-	var user domain.User
+	var user auth.User
 	err := s.db.Where("email = ?", email).First(&user).Error
 	require.NoError(t, err, "Failed to find user for verification")
 
 	// Update user status to verified
-	err = s.db.Model(&user).Update("studio_status", domain.StatusVerified).Error
+	err = s.db.Model(&user).Update("studio_status", auth.StatusVerified).Error
 	require.NoError(t, err, "Failed to verify studio owner")
 
 	t.Logf("✅ Verified studio owner: %s", email)
@@ -509,7 +507,7 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		endTime := startTime.Add(2 * time.Hour)
 
 		// Get user ID from context (would come from JWT in real app)
-		var client domain.User
+		var client auth.User
 		suite.db.Where("email = ?", "client@test.com").First(&client)
 
 		bookingBody, err := suite.createBookingBody(roomID, client.ID, startTime, endTime)
@@ -656,7 +654,7 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 		clientToken = resp.DataMap()["token"].(string)
 
 		// Get client user for ID
-		var client domain.User
+		var client auth.User
 		suite.db.Where("email = ?", "client3@test.com").First(&client)
 
 		startTime := time.Now().Add(24 * time.Hour)
@@ -724,7 +722,7 @@ func TestFlow4_AdminOperations(t *testing.T) {
 	// Get admin token
 	t.Run("Setup: Get admin token", func(t *testing.T) {
 		// Manually create admin user and generate token
-		adminUser := &domain.User{}
+		adminUser := &auth.User{}
 		err := suite.db.Where("email = ?", "admin@test.com").First(adminUser).Error
 		require.NoError(t, err)
 
@@ -1095,7 +1093,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		}
 
 		// Create booking (must be in future initially)
-		var client domain.User
+		var client auth.User
 		suite.db.Where("email = ?", "reviewclient@test.com").First(&client)
 
 		startTime := time.Now().Add(24 * time.Hour)
@@ -1120,7 +1118,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		// Manually update booking to be in the past and completed (for review testing)
 		pastStart := time.Now().Add(-48 * time.Hour)
 		pastEnd := time.Now().Add(-46 * time.Hour)
-		suite.db.Model(&domain.Booking{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
+		suite.db.Model(&booking.Booking{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
 			"start_time": pastStart,
 			"end_time":   pastEnd,
 			"status":     domain.BookingCompleted,
@@ -1192,19 +1190,19 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 	defer suite.testCleanup()
 
 	// Создаём owners напрямую в БД (для foreign key OwnerID)
-	owner1 := domain.User{
+	owner1 := auth.User{
 		Email:         "filter_owner1@test.com",
 		PasswordHash:  "$2a$10$dummy",
-		Role:          domain.RoleStudioOwner,
+		Role:          auth.RoleStudioOwner,
 		Name:          "Owner1",
 		EmailVerified: true,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
-	owner2 := domain.User{
+	owner2 := auth.User{
 		Email:         "filter_owner2@test.com",
 		PasswordHash:  "$2a$10$dummy",
-		Role:          domain.RoleStudioOwner,
+		Role:          auth.RoleStudioOwner,
 		Name:          "Owner2",
 		EmailVerified: true,
 		CreatedAt:     time.Now(),
@@ -1215,7 +1213,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 	require.NoError(t, suite.db.Create(&owner2).Error)
 
 	// Студии
-	s1 := domain.Studio{
+	s1 := catalog.Studio{
 		OwnerID:   owner1.ID,
 		Name:      "Loft Алматы",
 		City:      "Алматы",
@@ -1224,7 +1222,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	s2 := domain.Studio{
+	s2 := catalog.Studio{
 		OwnerID:   owner2.ID,
 		Name:      "Portrait Astana",
 		City:      "Астана",
@@ -1233,7 +1231,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	s3 := domain.Studio{
+	s3 := catalog.Studio{
 		OwnerID:   owner1.ID,
 		Name:      "Cheap Алматы",
 		City:      "Алматы",
@@ -1248,7 +1246,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 	require.NoError(t, suite.db.Create(&s3).Error)
 
 	// Комнаты (цены/тип/active)
-	r1 := domain.Room{
+	r1 := catalog.Room{
 		StudioID:        s1.ID,
 		Name:            "Room1",
 		AreaSqm:         10,
@@ -1259,7 +1257,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	r2 := domain.Room{
+	r2 := catalog.Room{
 		StudioID:        s2.ID,
 		Name:            "Room2",
 		AreaSqm:         10,
@@ -1270,7 +1268,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
 	}
-	r3 := domain.Room{
+	r3 := catalog.Room{
 		StudioID:        s3.ID,
 		Name:            "Room3",
 		AreaSqm:         10,

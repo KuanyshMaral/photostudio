@@ -2,15 +2,18 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"math/rand"
-	"time"
-
-	"photostudio/internal/database"
-	"photostudio/internal/domain"
-
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"log"
+	"math/rand"
+	"photostudio/internal/database"
+	"photostudio/internal/domain/auth"
+	"photostudio/internal/domain/booking"
+	"photostudio/internal/domain/catalog"
+	"photostudio/internal/domain/notification"
+	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/review"
+	"time"
 )
 
 func main() {
@@ -24,15 +27,15 @@ func main() {
 	// AutoMigrate to ensure schema is up to date
 	log.Println("Running AutoMigrate...")
 	if err := db.AutoMigrate(
-		&domain.User{},
-		&domain.StudioOwner{},
-		&domain.Studio{},
-		&domain.Room{},
-		&domain.Equipment{},
-		&domain.Booking{},
-		&domain.Review{},
-		&domain.Notification{},
-		&domain.StudioWorkingHours{},
+		&auth.User{},
+		&owner.StudioOwner{},
+		&catalog.Studio{},
+		&catalog.Room{},
+		&catalog.Equipment{},
+		&booking.Booking{},
+		&review.Review{},
+		&notification.Notification{},
+		&catalog.StudioWorkingHours{},
 	); err != nil {
 		log.Fatal("AutoMigrate failed:", err)
 	}
@@ -54,10 +57,10 @@ func main() {
 
 	// Admin
 	adminHash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-	admin := domain.User{
+	admin := auth.User{
 		Email:         "admin@photostudio.kz",
 		PasswordHash:  string(adminHash),
-		Role:          domain.RoleAdmin,
+		Role:          auth.RoleAdmin,
 		Name:          "Администратор",
 		EmailVerified: true,
 	}
@@ -67,14 +70,14 @@ func main() {
 	log.Println("Admin created: admin@photostudio.kz / admin123")
 
 	// Clients (3 users)
-	clients := []domain.User{}
+	clients := []auth.User{}
 	clientEmails := []string{"asel@mail.kz", "bekzat@gmail.com", "dina@yandex.kz"}
 	for i, email := range clientEmails {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("client123"), bcrypt.DefaultCost)
-		client := domain.User{
+		client := auth.User{
 			Email:         email,
 			PasswordHash:  string(hash),
-			Role:          domain.RoleClient,
+			Role:          auth.RoleClient,
 			Name:          fmt.Sprintf("Клиент %d", i+1),
 			Phone:         fmt.Sprintf("+7 777 123 45%02d", i+67),
 			EmailVerified: true,
@@ -86,26 +89,26 @@ func main() {
 	}
 
 	// Studio Owners (3 users)
-	owners := []domain.User{}
+	owners := []auth.User{}
 	ownerEmails := []string{"aidar@lightpro.kz", "gulnaz@creativespace.kz", "yerlan@fashionstudio.kz"}
 	for i, email := range ownerEmails {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("owner123"), bcrypt.DefaultCost)
-		owner := domain.User{
+		u := auth.User{
 			Email:         email,
 			PasswordHash:  string(hash),
-			Role:          domain.RoleStudioOwner,
+			Role:          auth.RoleStudioOwner,
 			Name:          fmt.Sprintf("Владелец %d", i+1),
 			StudioStatus:  "verified",
 			EmailVerified: true,
 		}
-		if err := db.Create(&owner).Error; err != nil {
+		if err := db.Create(&u).Error; err != nil {
 			log.Fatal("Failed to create owner:", err)
 		}
-		owners = append(owners, owner)
+		owners = append(owners, u)
 
 		// StudioOwner details
-		studioOwner := domain.StudioOwner{
-			UserID:      owner.ID,
+		studioOwner := owner.StudioOwner{
+			UserID:      u.ID,
 			CompanyName: fmt.Sprintf("Studio Company %d", i+1),
 			BIN:         fmt.Sprintf("1234567890%02d", i+12),
 		}
@@ -116,10 +119,10 @@ func main() {
 
 	// ================== STUDIOS ==================
 	log.Println("Creating studios...")
-	studios := make([]domain.Studio, 0, 5)
+	studios := make([]catalog.Studio, 0, 5)
 	for i := 0; i < 5; i++ {
 		ownerIdx := i % len(owners)
-		studio := domain.Studio{
+		studio := catalog.Studio{
 			OwnerID:      owners[ownerIdx].ID,
 			Name:         fmt.Sprintf("Studio %d Pro", i+1),
 			Description:  "Профессиональная студия с современным оборудованием",
@@ -138,7 +141,7 @@ func main() {
 		}
 
 		// Перезагружаем студию из БД, чтобы убедиться что все поля заполнены
-		var loadedStudio domain.Studio
+		var loadedStudio catalog.Studio
 		if err := db.First(&loadedStudio, studio.ID).Error; err != nil {
 			log.Fatal("Failed to load studio after creation:", err)
 		}
@@ -152,7 +155,7 @@ func main() {
 
 	for _, studio := range studios {
 		// Создаем структурированные рабочие часы
-		workingHours := []domain.WorkingHours{
+		workingHours := []catalog.WorkingHours{
 			{DayOfWeek: 0, OpenTime: "00:00", CloseTime: "00:00", IsClosed: true},  // Вс
 			{DayOfWeek: 1, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Пн
 			{DayOfWeek: 2, OpenTime: "10:00", CloseTime: "20:00", IsClosed: false}, // Вт
@@ -162,7 +165,7 @@ func main() {
 			{DayOfWeek: 6, OpenTime: "12:00", CloseTime: "18:00", IsClosed: false}, // Сб
 		}
 
-		studioHours := &domain.StudioWorkingHours{
+		studioHours := &catalog.StudioWorkingHours{
 			StudioID: studio.ID,
 			Hours:    workingHours, // Прямой массив WorkingHours
 		}
@@ -178,16 +181,16 @@ func main() {
 
 	// ================== ROOMS ==================
 	log.Println("Creating rooms...")
-	allRooms := []domain.Room{}
+	allRooms := []catalog.Room{}
 	for _, studio := range studios {
 		for j := 1; j <= 3; j++ {
-			room := domain.Room{
+			room := catalog.Room{
 				StudioID:        studio.ID,
 				Name:            fmt.Sprintf("Зал %d", j),
 				Description:     "Комфортный зал для съёмок",
 				AreaSqm:         40 + rand.Intn(40),
 				Capacity:        5 + rand.Intn(10),
-				RoomType:        domain.ValidRoomTypes()[rand.Intn(len(domain.ValidRoomTypes()))],
+				RoomType:        catalog.ValidRoomTypes()[rand.Intn(len(catalog.ValidRoomTypes()))],
 				PricePerHourMin: 5000 + float64(rand.Intn(10000)),
 				IsActive:        true,
 			}
@@ -205,7 +208,7 @@ func main() {
 		client := clients[rand.Intn(len(clients))]
 
 		// Найдем комнату, принадлежащую этой студии
-		var studioRooms []domain.Room
+		var studioRooms []catalog.Room
 		if err := db.Where("studio_id = ?", studio.ID).Find(&studioRooms).Error; err != nil || len(studioRooms) == 0 {
 			log.Println("No rooms found for studio, skipping booking")
 			continue
@@ -220,15 +223,15 @@ func main() {
 		start := time.Now().AddDate(0, 0, days).Truncate(24 * time.Hour).Add(time.Duration(startHour) * time.Hour)
 		end := start.Add(time.Duration(duration) * time.Hour)
 
-		booking := domain.Booking{
+		booking := booking.Booking{
 			RoomID:        room.ID,
 			StudioID:      studio.ID,
 			UserID:        client.ID,
 			StartTime:     start,
 			EndTime:       end,
 			TotalPrice:    float64(duration) * 5000,
-			Status:        domain.BookingStatus([]string{"pending", "confirmed", "completed"}[rand.Intn(3)]),
-			PaymentStatus: domain.PaymentStatus([]string{"unpaid", "paid"}[rand.Intn(2)]),
+			Status:        booking.BookingStatus([]string{"pending", "confirmed", "completed"}[rand.Intn(3)]),
+			PaymentStatus: booking.PaymentStatus([]string{"unpaid", "paid"}[rand.Intn(2)]),
 			Notes:         fmt.Sprintf("Бронирование %d", i+1),
 		}
 		if err := db.Create(&booking).Error; err != nil {
@@ -241,11 +244,11 @@ func main() {
 
 	// Создаем демо пользователя
 	demoHash, _ := bcrypt.GenerateFromPassword([]byte("demo123"), bcrypt.DefaultCost)
-	demoUser := domain.User{
+	demoUser := auth.User{
 		Email:         "demo@studiobooking.kz",
 		PasswordHash:  string(demoHash),
 		Name:          "Алексей Петров",
-		Role:          domain.RoleClient,
+		Role:          auth.RoleClient,
 		EmailVerified: true,
 	}
 
@@ -271,7 +274,7 @@ func main() {
 		studio := studios[rand.Intn(len(studios))]
 		client := clients[rand.Intn(len(clients))]
 
-		review := domain.Review{
+		review := review.Review{
 			StudioID: studio.ID,
 			UserID:   client.ID,
 			Rating:   3 + rand.Intn(3),
@@ -285,9 +288,9 @@ func main() {
 	// ================== NOTIFICATIONS ==================
 	log.Println("Creating notifications...")
 	for _, owner := range owners {
-		notification := domain.Notification{
+		notification := notification.Notification{
 			UserID:  owner.ID,
-			Type:    domain.NotifVerificationApproved,
+			Type:    notification.NotifVerificationApproved,
 			Title:   "Студия верифицирована",
 			Message: "Ваша студия готова к работе!",
 			IsRead:  rand.Intn(2) == 0,
@@ -306,7 +309,7 @@ func main() {
 	log.Printf("\nCreated %d studios, %d rooms, %d bookings", len(studios), len(allRooms), 10+7)
 }
 
-func createDemoBooking(db *gorm.DB, userID int64, room domain.Room, dateStr, startStr, endStr, status string, price float64) {
+func createDemoBooking(db *gorm.DB, userID int64, room catalog.Room, dateStr, startStr, endStr, status string, price float64) {
 	date, _ := time.Parse("2006-01-02", dateStr)
 	startTime, _ := time.Parse("15:04", startStr)
 	endTime, _ := time.Parse("15:04", endStr)
@@ -314,15 +317,15 @@ func createDemoBooking(db *gorm.DB, userID int64, room domain.Room, dateStr, sta
 	start := time.Date(date.Year(), date.Month(), date.Day(), startTime.Hour(), startTime.Minute(), 0, 0, time.Local)
 	end := time.Date(date.Year(), date.Month(), date.Day(), endTime.Hour(), endTime.Minute(), 0, 0, time.Local)
 
-	booking := domain.Booking{
+	booking := booking.Booking{
 		RoomID:        room.ID,
 		StudioID:      room.StudioID,
 		UserID:        userID,
 		StartTime:     start,
 		EndTime:       end,
 		TotalPrice:    price,
-		Status:        domain.BookingStatus(status),
-		PaymentStatus: domain.PaymentPaid, // Исправлено с PaymentStatusPaid на PaymentPaid
+		Status:        booking.BookingStatus(status),
+		PaymentStatus: booking.PaymentPaid, // Исправлено с PaymentStatusPaid на PaymentPaid
 		Notes:         "Demo booking",
 	}
 

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	jwtlib "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type Service struct {
@@ -17,7 +17,7 @@ type Service struct {
 
 type Claims struct {
 	// Legacy fallback during migration.
-	UserID int64 `json:"user_id,omitempty"`
+	UserID int64  `json:"user_id,omitempty"`
 	Role   string `json:"role"`
 
 	TokenType string `json:"type,omitempty"`
