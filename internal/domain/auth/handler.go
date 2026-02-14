@@ -130,15 +130,17 @@ func (h *Handler) Logout(c *gin.Context) {
 }
 
 // RegisterClient регистрирует нового клиента на платформе.
-// @Summary		Зарегистрировать клиента
-// @Description	Создаёт новый аккаунт клиента на платформе. Клиент получает возможность искать студии и делать бронирования. Автоматически генерируется JWT токен для сессии.
-// @Tags		Автентификация
-// @Param		request	body	RegisterClientRequest	true	"Данные для регистрации (email, password, name, phone)"
-// @Success		201	{object}		map[string]interface{} "Клиент успешно зарегистрирован, возвращается JWT токен"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
-// @Failure		409	{object}		map[string]interface{} "Ошибка: email уже зарегистрирован на платформе"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при создании аккаунта"
-// @Router		/auth/register/client [POST]
+// @Summary		Register client
+// @Description	Creates a new client account and returns registration payload with user data and verification flag.
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		body	body	RegisterClientRequest	true	"payload"
+// @Success		201	{object}		RegisterClientResponseSwagger
+// @Failure		400	{object}		ErrorResponseSwagger
+// @Failure		409	{object}		ErrorResponseSwagger
+// @Failure		500	{object}		ErrorResponseSwagger
+// @Router		/auth/register/client [post]
 func (h *Handler) RegisterClient(c *gin.Context) {
 	var req RegisterClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,15 +172,17 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 }
 
 // RegisterStudioOwner регистрирует нового владельца студии на платформе.
-// @Summary		Зарегистрировать владельца студии
-// @Description	Создаёт новый аккаунт владельца студии. После регистрации требуется модерация администратором перед открытием студии. Владелец получает токен для доступа к личному кабинету.
-// @Tags		Автентификация
-// @Param		request	body	RegisterStudioRequest	true	"Данные для регистрации владельца (email, password, name, phone, studio_name, description, etc.)"
-// @Success		201	{object}		map[string]interface{} "Владелец зарегистрирован, статус studio_status=pending, возвращается JWT токен"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
-// @Failure		409	{object}		map[string]interface{} "Ошибка: email уже зарегистрирован на платформе"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при создании аккаунта владельца"
-// @Router		/auth/register/studio [POST]
+// @Summary		Register studio owner
+// @Description	Creates a new studio-owner account and returns registration payload with user data and verification flag.
+// @Tags		auth
+// @Accept		json
+// @Produce		json
+// @Param		body	body	RegisterStudioRequest	true	"payload"
+// @Success		201	{object}		RegisterStudioResponseSwagger
+// @Failure		400	{object}		ErrorResponseSwagger
+// @Failure		409	{object}		ErrorResponseSwagger
+// @Failure		500	{object}		ErrorResponseSwagger
+// @Router		/auth/register/studio [post]
 func (h *Handler) RegisterStudioOwner(c *gin.Context) {
 	var req RegisterStudioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
