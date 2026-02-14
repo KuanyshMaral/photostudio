@@ -3,33 +3,29 @@ package main
 import (
 	"log"
 	"os"
+	_ "photostudio/docs"
 	"photostudio/internal/config"
-	"photostudio/internal/domain"
+	"photostudio/internal/database"
+	"photostudio/internal/domain/admin"
+	"photostudio/internal/domain/auth"
+	"photostudio/internal/domain/booking"
+	"photostudio/internal/domain/catalog"
+	"photostudio/internal/domain/chat"
+	"photostudio/internal/domain/favorite"
+	"photostudio/internal/domain/manager"
+	"photostudio/internal/domain/mwork"
+	"photostudio/internal/domain/notification"
+	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/payment"
+	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
-	"photostudio/internal/modules/favorite"
-	"photostudio/internal/modules/mwork"
-
-	"github.com/joho/godotenv"
+	jwtsvc "photostudio/internal/pkg/jwt"
+	"photostudio/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
-
-	"photostudio/internal/database"
-	"photostudio/internal/modules/admin"
-	"photostudio/internal/modules/auth"
-	"photostudio/internal/modules/booking"
-	"photostudio/internal/modules/catalog"
-	"photostudio/internal/modules/chat"
-	"photostudio/internal/modules/manager"
-	"photostudio/internal/modules/notification"
-	"photostudio/internal/modules/owner"
-	"photostudio/internal/modules/payment"
-	"photostudio/internal/modules/review"
-	jwtsvc "photostudio/internal/pkg/jwt"
-	"photostudio/internal/repository"
-
+	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
-	_ "photostudio/docs"
 )
 
 // @title           PhotoStudio API
@@ -63,25 +59,25 @@ func main() {
 	}
 
 	models := []interface{}{
-		&domain.User{},
-		&domain.StudioOwner{},
-		&domain.Studio{},
-		&domain.Room{},
-		&domain.Equipment{},
-		&domain.Booking{},
-		&domain.Review{},
-		&domain.Notification{},
-		&domain.Conversation{},
-		&domain.Message{},
-		&domain.BlockedUser{},
-		&domain.Favorite{},
-		&domain.OwnerPIN{},
-		&domain.ProcurementItem{},
-		&domain.MaintenanceItem{},
-		&domain.CompanyProfile{},
-		&domain.PortfolioProject{},
-		&domain.StudioWorkingHours{}, // Добавляем новую таблицу
-		&domain.RobokassaPayment{},
+		&auth.User{},
+		&owner.StudioOwner{},
+		&catalog.Studio{},
+		&catalog.Room{},
+		&catalog.Equipment{},
+		&booking.Booking{},
+		&review.Review{},
+		&notification.Notification{},
+		&chat.Conversation{},
+		&chat.Message{},
+		&chat.BlockedUser{},
+		&favorite.Favorite{},
+		&owner.OwnerPIN{},
+		&owner.ProcurementItem{},
+		&owner.MaintenanceItem{},
+		&owner.CompanyProfile{},
+		&owner.PortfolioProject{},
+		&catalog.StudioWorkingHours{}, // Добавляем новую таблицу
+		&payment.RobokassaPayment{},
 	}
 
 	// Check if migrations should be run via environment variable
@@ -99,20 +95,20 @@ func main() {
 	}
 
 	// Repositories
-	userRepo := repository.NewUserRepository(db)
-	studioRepo := repository.NewStudioRepository(db)
-	roomRepo := repository.NewRoomRepository(db)
-	equipmentRepo := repository.NewEquipmentRepository(db)
-	bookingRepo := repository.NewBookingRepository(db)
-	reviewRepo := repository.NewReviewRepository(db)
-	studioOwnerRepo := repository.NewOwnerRepository(db)
-	studioWorkingHoursRepo := repository.NewStudioWorkingHoursRepository(db)
+	userRepo := auth.NewUserRepository(db)
+	studioRepo := catalog.NewStudioRepository(db)
+	roomRepo := catalog.NewRoomRepository(db)
+	equipmentRepo := catalog.NewEquipmentRepository(db)
+	bookingRepo := booking.NewBookingRepository(db)
+	reviewRepo := review.NewReviewRepository(db)
+	studioOwnerRepo := owner.NewOwnerRepository(db)
+	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
 
-	notificationRepo := repository.NewNotificationRepository(db)
-	chatRepo := repository.NewChatRepository(db)
-	favoriteRepo := repository.NewFavoriteRepository(db)
-	ownerCRMRepo := repository.NewOwnerCRMRepository(db)
-	robokassaPaymentRepo := repository.NewRobokassaPaymentRepository(db)
+	notificationRepo := notification.NewNotificationRepository(db)
+	chatRepo := chat.NewChatRepository(db)
+	favoriteRepo := favorite.NewFavoriteRepository(db)
+	ownerCRMRepo := owner.NewOwnerCRMRepository(db)
+	robokassaPaymentRepo := payment.NewRobokassaPaymentRepository(db)
 	// Shared services
 	jwtService := jwtsvc.NewWithLegacy(authConfig.JWTSecret, authConfig.JWTAccessTTL, authConfig.JWTAllowLegacyClaims)
 
@@ -168,6 +164,22 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	// === SWAGGER END ===
 
+	// Set debug mode for detailed errors (as requested by user)
+	// Ideally this should be config-driven, but we enable it for now to expose errors
+	response.SetDebug(true)
+
+	// Custom 404 handler for detailed response
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(404, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "NOT_FOUND",
+				"message": "Route not found",
+				"details": "The requested URL " + c.Request.URL.String() + " was not found on this server.",
+			},
+		})
+	})
+
 	r.GET("/healthz", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
@@ -215,21 +227,21 @@ func main() {
 
 		// Owner routes (for GetMyStudios)
 		ownerGroup := protected.Group("/studios")
-		ownerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		ownerGroup.Use(middleware.RequireRole(string(auth.RoleStudioOwner)))
 		{
 			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
 		}
 
 		// Owner CRM routes (require studio_owner role)
 		ownerCRMGroup := protected.Group("")
-		ownerCRMGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		ownerCRMGroup.Use(middleware.RequireRole(string(auth.RoleStudioOwner)))
 		{
 			ownerHandler.RegisterRoutes(ownerCRMGroup)
 			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
 		}
 
 		managerGroup := protected.Group("")
-		managerGroup.Use(middleware.RequireRole(string(domain.RoleStudioOwner)))
+		managerGroup.Use(middleware.RequireRole(string(auth.RoleStudioOwner)))
 		{
 			managerHandler.RegisterRoutes(managerGroup)
 		}

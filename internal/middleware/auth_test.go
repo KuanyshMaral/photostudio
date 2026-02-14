@@ -1,14 +1,13 @@
 package middleware
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
-
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
 	"photostudio/internal/pkg/jwt"
+	"testing"
+	"time"
 )
 
 func TestJWTAuth_ValidToken(t *testing.T) {

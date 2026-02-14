@@ -16,8 +16,20 @@ func ErrorLogger() gin.HandlerFunc {
 		start := time.Now()
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				logRequestError(c, start, "panic", fmt.Sprintf("%v", recovered), debug.Stack())
-				c.AbortWithStatus(http.StatusInternalServerError)
+				err := fmt.Errorf("%v", recovered)
+				logRequestError(c, start, "panic", err.Error(), debug.Stack())
+
+				// Return JSON response for panic
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"success": false,
+					"error": gin.H{
+						"code":    "INTERNAL_SERVER_ERROR",
+						"message": "Internal Server Error (Panic)",
+						"details": err.Error(),           // Always show panic details for now as per request "detailed response"
+						"stack":   string(debug.Stack()), // Optional: maybe too much, but requested "detailed"
+					},
+				})
+				c.Abort()
 				return
 			}
 

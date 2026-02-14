@@ -1,12 +1,11 @@
 package middleware
 
 import (
+	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 // InternalTokenAuth protects internal endpoints using a static bearer token.
