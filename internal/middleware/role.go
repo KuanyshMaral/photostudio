@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"photostudio/internal/pkg/response"
+
+	"github.com/gin-gonic/gin"
 )
 
 // RequireRole ensures that the authenticated user has the specified role
@@ -24,4 +25,9 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+// AdminOnly middleware requires admin role
+func AdminOnly() gin.HandlerFunc {
+	return RequireRole("admin")
 }

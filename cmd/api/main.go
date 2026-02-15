@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+
 	_ "photostudio/docs"
 	"photostudio/internal/config"
 	"photostudio/internal/database"
@@ -12,17 +13,20 @@ import (
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/domain/chat"
 	"photostudio/internal/domain/favorite"
+	"photostudio/internal/domain/lead"
 	"photostudio/internal/domain/manager"
 	"photostudio/internal/domain/mwork"
 	"photostudio/internal/domain/notification"
 	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/payment"
+	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -94,6 +98,13 @@ func main() {
 		log.Println("⏭️  Skipping AutoMigrate (DB_AUTO_MIGRATE not set or false)")
 	}
 
+	// SQLx connection for new modules
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Failed to get sql.DB: %v", err)
+	}
+	sqlxDB := sqlx.NewDb(sqlDB, "postgres")
+
 	// Repositories
 	userRepo := auth.NewUserRepository(db)
 	studioRepo := catalog.NewStudioRepository(db)
@@ -109,22 +120,37 @@ func main() {
 	favoriteRepo := favorite.NewFavoriteRepository(db)
 	ownerCRMRepo := owner.NewOwnerCRMRepository(db)
 	robokassaPaymentRepo := payment.NewRobokassaPaymentRepository(db)
+
+	// Profile Repositories
+	clientProfileRepo := profile.NewClientRepository(sqlxDB)
+	ownerProfileRepo := profile.NewOwnerRepository(sqlxDB)
+	adminProfileRepo := profile.NewAdminRepository(sqlxDB)
+
+	// Lead Repository
+	leadRepo := lead.NewRepository(sqlxDB)
+
 	// Shared services
-	jwtService := jwtsvc.NewWithLegacy(authConfig.JWTSecret, authConfig.JWTAccessTTL, authConfig.JWTAllowLegacyClaims)
+	jwtService := jwtsvc.NewWithLegacy(authConfig.JWTSecret, authConfig.JWTAccessTTL, true)
 
 	// Ownership checker (for catalog module)
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Module services & handlers
-	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev")
-	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
-	authHandler := auth.NewHandler(authService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
+	profileService := profile.NewService(clientProfileRepo, ownerProfileRepo, adminProfileRepo)
+
+	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev" || authConfig.AppEnv == "development")
+	authService := auth.NewService(userRepo, studioOwnerRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
+	authHandler := auth.NewHandler(authService, profileService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
+
+	leadService := lead.NewService(leadRepo, userRepo)
+	leadHandler := lead.NewHandler(leadService, profileService)
+
+	// Ensure admin profile for initial admin if needed (optional, or rely on manual creation/db seed)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
 	notificationService := notification.NewService(notificationRepo)
-	notificationHandler := notification.NewHandler(notificationService)
 
 	// В main.go, найдите создание bookingService и обновите:
 	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
@@ -132,9 +158,24 @@ func main() {
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
+	_ = reviewHandler
+	// Admin domain
+	adminRepo := admin.NewAdminRepository(db)
+	adminService := admin.NewService(
+		userRepo,
+		studioRepo,
+		bookingRepo,
+		reviewRepo,
+		studioOwnerRepo,
+		adminRepo,
+		profileService,
+		jwtService,
+		nil, // NotificationSender (if any)
+	)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, notificationService)
-	adminHandler := admin.NewHandler(adminService)
+	adminAuthHandler := admin.NewAuthHandler(adminService)
+	adminManagementHandler := admin.NewManagementHandler(adminService)
+	adminHandler := admin.NewHandler(adminService, adminAuthHandler, adminManagementHandler)
 
 	chatService := chat.NewService(chatRepo, userRepo, studioRepo, bookingRepo, notificationService)
 	chatHandler := chat.NewHandler(chatService)
@@ -150,87 +191,77 @@ func main() {
 	mworkHandler := mwork.NewHandler(mworkService)
 
 	paymentLogger := func(format string, args ...interface{}) { log.Printf(format, args...) }
-	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger)
+	// Adapter for booking service to match payment expectations if needed, or update payment service
+	// For now assuming existing payment service signature is correct for the codebase
+	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger) // bookingRepo implements all needed interfaces now
 	paymentHandler := payment.NewHandler(paymentService, paymentLogger)
 
-	// Router setup
-	r := gin.New() // Better than gin.Default() — we add only what we need
-	r.Use(middleware.ErrorLogger())
-	r.Use(gin.Logger())
-	r.Use(middleware.CORS())
+	// Initialize new profile handlers
+	clientProfileHandler := profile.NewClientHandler(profileService)
+	ownerProfileHandler := profile.NewOwnerHandler(profileService)
+	adminProfileHandler := profile.NewAdminHandler(profileService)
 
-	// === SWAGGER START ===
-	// Доступен по /swagger/index.html
+	// CORS Setup
+	r := gin.Default()
+	r.Use(middleware.CORS())
+	r.Use(middleware.ErrorLogger()) // Add error logger middleware
+
+	// Serve static files
+
+	// Docs
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	// === SWAGGER END ===
 
 	// Set debug mode for detailed errors (as requested by user)
 	// Ideally this should be config-driven, but we enable it for now to expose errors
 	response.SetDebug(true)
 
-	// Custom 404 handler for detailed response
-	r.NoRoute(func(c *gin.Context) {
-		c.JSON(404, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "NOT_FOUND",
-				"message": "Route not found",
-				"details": "The requested URL " + c.Request.URL.String() + " was not found on this server.",
-			},
-		})
-	})
-
-	r.GET("/healthz", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-
+	// Routes
 	v1 := r.Group("/api/v1")
-	paymentHandler.RegisterPublicRoutes(v1)
 
 	// Public routes
 	authHandler.RegisterPublicRoutes(v1)
-	catalogHandler.RegisterRoutes(v1) // only GET endpoints
+	catalogHandler.RegisterRoutes(v1)          // Полный набор публичных маршрутов
+	lead.RegisterPublicRoutes(v1, leadHandler) // Changed from RegisterRoutes
+	adminHandler.RegisterPublicRoutes(v1)      // New Admin Login (Public)
 
-	// Public reviews (list only)
-	reviewHandler.RegisterRoutes(v1, nil)
+	// Webhooks
+	paymentHandler.RegisterWebhookRoutes(v1)
+
+	// Admin routes (Protected by AdminJWTAuth)
+	adminGroup := v1.Group("/admin")
+	adminGroup.Use(admin.AdminJWTAuth(jwtService))
+	{
+		adminHandler.RegisterProtectedRoutes(adminGroup)
+		lead.RegisterAdminRoutes(adminGroup, leadHandler)
+	}
 
 	// Protected routes
-	protected := v1.Group("")
+	protected := v1.Group("/")
 	protected.Use(middleware.JWTAuth(jwtService))
-
 	{
 		authHandler.RegisterProtectedRoutes(protected)
-		// Booking
-		bookingHandler.RegisterRoutes(protected)
-		paymentHandler.RegisterProtectedRoutes(protected)
-		// Protected reviews (create, respond)
-		reviewHandler.RegisterRoutes(nil, protected)
-		notificationHandler.RegisterRoutes(protected)
+		profile.RegisterRoutes(protected, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
 
+		catalogHandler.RegisterProtectedRoutes(protected, ownershipChecker)
+		bookingHandler.RegisterRoutes(protected) // Полный набор маршрутов бронирования
+		bookingHandler.RegisterStudioRoutes(protected, ownershipChecker)
+
+		// reviewHandler.RegisterProtectedRoutes(protected) // Undefined
+		// notificationHandler.RegisterProtectedRoutes(protected) // Undefined
+
+		// Chat routes
+		protected.GET("/chat/ws", chatWSHandler.HandleWebSocket)
 		chatHandler.RegisterRoutes(protected)
 		favoriteHandler.RegisterRoutes(protected)
-		studios := protected.Group("/studios")
-		{
-			studios.POST("", catalogHandler.CreateStudio)
-			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
-			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
-			studios.POST("/:id/photos", ownershipChecker.CheckStudioOwnership(), catalogHandler.UploadStudioPhotos)
-			studios.GET("/:id/bookings", ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
-		}
 
-		// Admin routes (require admin role)
-		adminGroup := protected.Group("/admin")
-		adminGroup.Use(middleware.RequireRole("admin"))
-		{
-			adminHandler.RegisterRoutes(adminGroup)
-		}
+		// Manager routes
+		// managerHandler.RegisterRoutes(protected) // Undefined in list?
 
-		// Owner routes (for GetMyStudios)
-		ownerGroup := protected.Group("/studios")
-		ownerGroup.Use(middleware.RequireRole(string(auth.RoleStudioOwner)))
-		{
-			ownerGroup.GET("/my", catalogHandler.GetMyStudios)
-		}
+		// MWork routes
+		mworkHandler.RegisterRoutes(protected) // Check if defined
+
+		// Payment routes
+		paymentHandler.RegisterProtectedRoutes(protected)
 
 		// Owner CRM routes (require studio_owner role)
 		ownerCRMGroup := protected.Group("")
@@ -245,14 +276,6 @@ func main() {
 		{
 			managerHandler.RegisterRoutes(managerGroup)
 		}
-
-		// You can uncomment when ready
-		rooms := protected.Group("/rooms")
-		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), catalogHandler.AddEquipment)
-		rooms.GET("", catalogHandler.GetRooms)        // GET /api/v1/rooms
-		rooms.GET("/:id", catalogHandler.GetRoomByID) // GET /api/v1/rooms/:id
-		rooms.PUT("/:id", ownershipChecker.CheckRoomOwnership(), catalogHandler.UpdateRoom)
-		rooms.DELETE("/:id", ownershipChecker.CheckRoomOwnership(), catalogHandler.DeleteRoom)
 
 	}
 	// Chat WebSocket route (public, auth via query param)

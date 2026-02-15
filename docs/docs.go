@@ -15,6 +15,152 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/admins": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of administrators",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "List admins",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new administrator account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "Create admin",
+                "parameters": [
+                    {
+                        "description": "Admin details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_admin.CreateAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/admins/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update administrator details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Management"
+                ],
+                "summary": "Update admin",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Admin UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_admin.UpdateAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/ads": {
             "get": {
                 "security": [
@@ -83,7 +229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/admin.Ad"
+                            "$ref": "#/definitions/internal_domain_admin.Ad"
                         }
                     }
                 ],
@@ -272,6 +418,534 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/auth/login": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Authenticate as admin and get JWT token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Admin Login",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_admin.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get current authenticated admin profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Auth"
+                ],
+                "summary": "Get current admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to list all leads with optional filtering",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "List leads",
+                "parameters": [
+                    {
+                        "enum": [
+                            "new",
+                            "contacted",
+                            "qualified",
+                            "converted",
+                            "rejected",
+                            "lost"
+                        ],
+                        "type": "string",
+                        "description": "Filter by status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_lead.LeadListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to get lead counts by status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Get lead statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to view lead details",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Get lead by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/assign": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to assign lead to an admin user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Assign lead to admin",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Assignment data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_lead.AssignLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/contacted": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update lead status to contacted and increment follow-up count",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Mark lead as contacted",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/convert": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create studio owner account from lead",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Convert lead to owner",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Conversion data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_lead.ConvertLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark lead as rejected with reason",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Reject lead",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_lead.UpdateLeadStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin endpoint to update lead status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Update lead status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Lead ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_lead.UpdateLeadStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reviews": {
             "get": {
                 "security": [
@@ -310,7 +984,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список отзывов с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/admin.ReviewListResponse"
+                            "$ref": "#/definitions/internal_domain_admin.ReviewListResponse"
                         }
                     },
                     "400": {
@@ -767,7 +1441,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/admin.RejectStudioRequest"
+                            "$ref": "#/definitions/internal_domain_admin.RejectStudioRequest"
                         }
                     }
                 ],
@@ -829,7 +1503,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/admin.VerifyStudioRequest"
+                            "$ref": "#/definitions/internal_domain_admin.VerifyStudioRequest"
                         }
                     }
                 ],
@@ -1027,7 +1701,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список пользователей с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/admin.UserListResponse"
+                            "$ref": "#/definitions/internal_domain_admin.UserListResponse"
                         }
                     },
                     "400": {
@@ -1080,7 +1754,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/admin.BlockUserRequest"
+                            "$ref": "#/definitions/internal_domain_admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -1142,7 +1816,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/admin.BlockUserRequest"
+                            "$ref": "#/definitions/internal_domain_admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -1428,7 +2102,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.UpdateRoomRequest"
+                            "$ref": "#/definitions/internal_domain_catalog.UpdateRoomRequest"
                         }
                     }
                 ],
@@ -1555,7 +2229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.CreateEquipmentRequest"
+                            "$ref": "#/definitions/internal_domain_catalog.CreateEquipmentRequest"
                         }
                     }
                 ],
@@ -1731,7 +2405,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.CreateStudioRequest"
+                            "$ref": "#/definitions/internal_domain_catalog.CreateStudioRequest"
                         }
                     }
                 ],
@@ -1903,7 +2577,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
+                            "$ref": "#/definitions/internal_domain_catalog.UpdateStudioRequest"
                         }
                     }
                 ],
@@ -2057,7 +2731,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.CreateRoomRequest"
+                            "$ref": "#/definitions/internal_domain_catalog.CreateRoomRequest"
                         }
                     }
                 ],
@@ -2296,7 +2970,7 @@ const docTemplate = `{
             "post": {
                 "description": "Авторизует пользователя (клиента или владельца студии) по email и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.",
                 "tags": [
-                    "Автентификация"
+                    "Auth"
                 ],
                 "summary": "Войти в аккаунт",
                 "parameters": [
@@ -2306,7 +2980,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.LoginRequest"
+                            "$ref": "#/definitions/internal_domain_auth.LoginRequest"
                         }
                     }
                 ],
@@ -2342,48 +3016,33 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/client": {
+        "/auth/logout": {
             "post": {
-                "description": "Создаёт новый аккаунт клиента на платформе. Клиент получает возможность искать студии и делать бронирования. Автоматически генерируется JWT токен для сессии.",
+                "description": "Invalidates the current session and clears the refresh token cookie.",
                 "tags": [
-                    "Автентификация"
+                    "Auth"
                 ],
-                "summary": "Зарегистрировать клиента",
-                "parameters": [
-                    {
-                        "description": "Данные для регистрации (email, password, name, phone)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/auth.RegisterClientRequest"
-                        }
-                    }
-                ],
+                "summary": "Logout",
                 "responses": {
-                    "201": {
-                        "description": "Клиент успешно зарегистрирован, возвращается JWT токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: неверный формат данных",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Ошибка: email уже зарегистрирован на платформе",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при создании аккаунта",
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Refreshes the session using the refresh token stored in the cookie.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2392,48 +3051,120 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/register/studio": {
+        "/auth/register/client": {
             "post": {
-                "description": "Создаёт новый аккаунт владельца студии. После регистрации требуется модерация администратором перед открытием студии. Владелец получает токен для доступа к личному кабинету.",
-                "tags": [
-                    "Автентификация"
+                "description": "Creates a new client account and returns registration payload with user data and verification flag.",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Зарегистрировать владельца студии",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register client",
                 "parameters": [
                     {
-                        "description": "Данные для регистрации владельца (email, password, name, phone, studio_name, description, etc.)",
-                        "name": "request",
+                        "description": "payload",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.RegisterStudioRequest"
+                            "$ref": "#/definitions/internal_domain_auth.RegisterClientRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Владелец зарегистрирован, статус studio_status=pending, возвращается JWT токен",
+                        "description": "Created",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_domain_auth.RegisterClientResponseSwagger"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации: неверный формат данных",
+                        "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
                         }
                     },
                     "409": {
-                        "description": "Ошибка: email уже зарегистрирован на платформе",
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify/confirm": {
+            "post": {
+                "description": "Verifies the email using the provided 6-digit code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Confirm email verification",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_auth.VerifyConfirmDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при создании аккаунта владельца",
+                    }
+                }
+            }
+        },
+        "/auth/verify/request": {
+            "post": {
+                "description": "Sends a verification code to the specified email.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request email verification",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_auth.VerifyRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2461,7 +3192,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/booking.CreateBookingRequest"
+                            "$ref": "#/definitions/internal_domain_booking.CreateBookingRequest"
                         }
                     }
                 ],
@@ -2530,7 +3261,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/booking.CancelBookingRequest"
+                            "$ref": "#/definitions/internal_domain_booking.CancelBookingRequest"
                         }
                     }
                 ],
@@ -2712,7 +3443,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/booking.UpdateDepositRequest"
+                            "$ref": "#/definitions/internal_domain_booking.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -2834,7 +3565,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/booking.UpdatePaymentStatusRequest"
+                            "$ref": "#/definitions/internal_domain_booking.UpdatePaymentStatusRequest"
                         }
                     }
                 ],
@@ -2903,7 +3634,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/booking.UpdateBookingStatusRequest"
+                            "$ref": "#/definitions/internal_domain_booking.UpdateBookingStatusRequest"
                         }
                     }
                 ],
@@ -3030,7 +3761,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/chat.CreateConversationRequest"
+                            "$ref": "#/definitions/internal_domain_chat.CreateConversationRequest"
                         }
                     }
                 ],
@@ -3147,7 +3878,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/chat.SendMessageRequest"
+                            "$ref": "#/definitions/internal_domain_chat.SendMessageRequest"
                         }
                     }
                 ],
@@ -3334,7 +4065,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/chat.BlockUserRequest"
+                            "$ref": "#/definitions/internal_domain_chat.BlockUserRequest"
                         }
                     }
                 ],
@@ -3471,7 +4202,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.AddPortfolioRequest"
+                            "$ref": "#/definitions/internal_domain_owner.AddPortfolioRequest"
                         }
                     }
                 ],
@@ -3595,7 +4326,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.ReorderPortfolioRequest"
+                            "$ref": "#/definitions/internal_domain_owner.ReorderPortfolioRequest"
                         }
                     }
                 ],
@@ -3703,7 +4434,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.UpdateCompanyProfileRequest"
+                            "$ref": "#/definitions/internal_domain_owner.UpdateCompanyProfileRequest"
                         }
                     }
                 ],
@@ -3777,19 +4508,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Список избранных студий",
                         "schema": {
-                            "$ref": "#/definitions/favorite.FavoriteListResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.FavoriteListResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при получении списка избранного",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     }
                 }
@@ -3827,31 +4558,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Студия успешно добавлена в избранное",
                         "schema": {
-                            "$ref": "#/definitions/favorite.FavoriteResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.FavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Студия уже находится в избранном или некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия не найдена",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при добавлении в избранное",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     }
                 }
@@ -3890,25 +4621,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия отсутствует в избранном",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при удалении из избранного",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     }
                 }
@@ -3946,25 +4677,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Результат проверки наличия студии в избранном",
                         "schema": {
-                            "$ref": "#/definitions/favorite.CheckFavoriteResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.CheckFavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при проверке избранного",
                         "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
                         }
                     }
                 }
@@ -3989,7 +4720,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/mwork.SyncUserRequest"
+                            "$ref": "#/definitions/internal_domain_mwork.SyncUserRequest"
                         }
                     }
                 ],
@@ -4027,6 +4758,70 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/leads/submit": {
+            "post": {
+                "description": "Public endpoint for potential studio owners to submit their application",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Leads"
+                ],
+                "summary": "Submit studio owner lead",
+                "parameters": [
+                    {
+                        "description": "Lead submission data",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_lead.SubmitLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
                         }
                     }
                 }
@@ -4212,7 +5007,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/manager.UpdateDepositRequest"
+                            "$ref": "#/definitions/internal_domain_manager.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -4281,7 +5076,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/manager.UpdateStatusRequest"
+                            "$ref": "#/definitions/internal_domain_manager.UpdateStatusRequest"
                         }
                     }
                 ],
@@ -4713,7 +5508,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.CreateMaintenanceRequest"
+                            "$ref": "#/definitions/internal_domain_owner.CreateMaintenanceRequest"
                         }
                     }
                 ],
@@ -4987,7 +5782,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.CreateProcurementRequest"
+                            "$ref": "#/definitions/internal_domain_owner.CreateProcurementRequest"
                         }
                     }
                 ],
@@ -5208,7 +6003,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.SetPINRequest"
+                            "$ref": "#/definitions/internal_domain_owner.SetPINRequest"
                         }
                     }
                 ],
@@ -5276,7 +6071,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.VerifyPINRequest"
+                            "$ref": "#/definitions/internal_domain_owner.VerifyPINRequest"
                         }
                     }
                 ],
@@ -5344,7 +6139,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payment.InitPaymentRequest"
+                            "$ref": "#/definitions/internal_domain_payment.InitPaymentRequest"
                         }
                     }
                 ],
@@ -5352,19 +6147,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/payment.InitPaymentResponse"
+                            "$ref": "#/definitions/internal_domain_payment.InitPaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
                         }
                     }
                 }
@@ -5468,25 +6263,391 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/payment.SuccessCallbackResponse"
+                            "$ref": "#/definitions/internal_domain_payment.SuccessCallbackResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/admin": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get authenticated admin's profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Profile"
+                ],
+                "summary": "Get admin profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.AdminProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update authenticated admin's profile (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Profile"
+                ],
+                "summary": "Update admin profile",
+                "parameters": [
+                    {
+                        "description": "Profile update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_profile.UpdateAdminProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.AdminProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/client": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get authenticated client's profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Client Profile"
+                ],
+                "summary": "Get client profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.ClientProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update authenticated client's profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Client Profile"
+                ],
+                "summary": "Update client profile",
+                "parameters": [
+                    {
+                        "description": "Profile update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_profile.UpdateClientProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.ClientProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/profile/owner": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get authenticated owner's profile",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Get owner profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.OwnerProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update authenticated owner's profile",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Update owner profile",
+                "parameters": [
+                    {
+                        "description": "Profile update",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_domain_profile.UpdateOwnerProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/internal_domain_profile.OwnerProfile"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
                         }
                     }
                 }
@@ -5511,7 +6672,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/review.CreateReviewRequest"
+                            "$ref": "#/definitions/internal_domain_review.CreateReviewRequest"
                         }
                     }
                 ],
@@ -5587,7 +6748,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/review.OwnerResponseRequest"
+                            "$ref": "#/definitions/internal_domain_review.OwnerResponseRequest"
                         }
                     }
                 ],
@@ -5712,7 +6873,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список занятых временных слотов на указанную дату",
                         "schema": {
-                            "$ref": "#/definitions/booking.BusySlotsResponse"
+                            "$ref": "#/definitions/internal_domain_booking.BusySlotsResponse"
                         }
                     },
                     "400": {
@@ -5835,7 +6996,7 @@ const docTemplate = `{
                 ],
                 "description": "Возвращает полный профиль текущего авторизованного пользователя (клиента или владельца). Может включать статистику бронирований и недавние брони. При include_stats=true добавляет количество бронирований.",
                 "tags": [
-                    "Профиль и аутентификация"
+                    "Auth"
                 ],
                 "summary": "Получить профиль пользователя",
                 "parameters": [
@@ -5885,7 +7046,7 @@ const docTemplate = `{
                 ],
                 "description": "Обновляет информацию о профиле: имя, телефон и другие поля. Email не может быть изменён через этот эндпоинт. Требуется аутентификация.",
                 "tags": [
-                    "Профиль и аутентификация"
+                    "Auth"
                 ],
                 "summary": "Обновить профиль пользователя",
                 "parameters": [
@@ -5895,7 +7056,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.UpdateProfileRequest"
+                            "$ref": "#/definitions/internal_domain_auth.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -5994,7 +7155,7 @@ const docTemplate = `{
                     "multipart/form-data"
                 ],
                 "tags": [
-                    "Профиль и аутентификация"
+                    "Auth"
                 ],
                 "summary": "Загрузить документы верификации",
                 "parameters": [
@@ -6047,7 +7208,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "admin.Ad": {
+        "internal_domain_admin.Ad": {
             "type": "object",
             "properties": {
                 "clicks": {
@@ -6088,7 +7249,7 @@ const docTemplate = `{
                 }
             }
         },
-        "admin.BlockUserRequest": {
+        "internal_domain_admin.BlockUserRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -6099,66 +7260,32 @@ const docTemplate = `{
                 }
             }
         },
-        "admin.RejectStudioRequest": {
+        "internal_domain_admin.CreateAdminRequest": {
             "type": "object",
             "required": [
-                "reason"
+                "email",
+                "name",
+                "password",
+                "role"
             ],
             "properties": {
-                "reason": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "role": {
+                    "description": "super_admin, support, moderator",
                     "type": "string"
                 }
             }
         },
-        "admin.ReviewListResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Review"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "admin.UserListResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.User"
-                    }
-                }
-            }
-        },
-        "admin.VerifyStudioRequest": {
-            "type": "object",
-            "properties": {
-                "admin_notes": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.LoginRequest": {
+        "internal_domain_admin.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -6173,7 +7300,132 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.RegisterClientRequest": {
+        "internal_domain_admin.RejectStudioRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_admin.ReviewListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/photostudio_internal_domain_review.Review"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_domain_admin.UpdateAdminRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "description": "optional",
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_admin.UserListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/photostudio_internal_domain_auth.User"
+                    }
+                }
+            }
+        },
+        "internal_domain_admin.VerifyStudioRequest": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_auth.ErrorDetailsSwagger": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_auth.ErrorResponseSwagger": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/internal_domain_auth.ErrorDetailsSwagger"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_domain_auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_auth.RegisterClientDataSwagger": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/internal_domain_auth.RegisterUserSwagger"
+                },
+                "verification_sent": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_domain_auth.RegisterClientRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -6196,49 +7448,41 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.RegisterStudioRequest": {
+        "internal_domain_auth.RegisterClientResponseSwagger": {
             "type": "object",
-            "required": [
-                "bin",
-                "company_name",
-                "email",
-                "name",
-                "password",
-                "phone"
-            ],
             "properties": {
-                "bin": {
-                    "type": "string"
+                "data": {
+                    "$ref": "#/definitions/internal_domain_auth.RegisterClientDataSwagger"
                 },
-                "company_name": {
-                    "type": "string"
-                },
-                "contact_person": {
-                    "type": "string"
-                },
-                "contact_position": {
-                    "type": "string"
-                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "internal_domain_auth.RegisterUserSwagger": {
+            "type": "object",
+            "properties": {
                 "email": {
                     "type": "string"
                 },
-                "legal_address": {
-                    "type": "string"
+                "id": {
+                    "type": "integer"
                 },
                 "name": {
-                    "type": "string",
-                    "minLength": 2
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8
+                    "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "studio_status": {
                     "type": "string"
                 }
             }
         },
-        "auth.UpdateProfileRequest": {
+        "internal_domain_auth.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "name": {
@@ -6251,7 +7495,33 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.BusySlot": {
+        "internal_domain_auth.VerifyConfirmDTO": {
+            "type": "object",
+            "required": [
+                "code",
+                "email"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_auth.VerifyRequestDTO": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_booking.BusySlotDTO": {
             "type": "object",
             "properties": {
                 "end": {
@@ -6264,13 +7534,13 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.BusySlotsResponse": {
+        "internal_domain_booking.BusySlotsResponse": {
             "type": "object",
             "properties": {
                 "busy_slots": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/booking.BusySlot"
+                        "$ref": "#/definitions/internal_domain_booking.BusySlotDTO"
                     }
                 },
                 "close_time": {
@@ -6287,7 +7557,7 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.CancelBookingRequest": {
+        "internal_domain_booking.CancelBookingRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -6299,7 +7569,7 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.CreateBookingRequest": {
+        "internal_domain_booking.CreateBookingRequest": {
             "type": "object",
             "required": [
                 "end_time",
@@ -6329,7 +7599,20 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.UpdateBookingStatusRequest": {
+        "internal_domain_booking.PaymentStatus": {
+            "type": "string",
+            "enum": [
+                "unpaid",
+                "paid",
+                "refunded"
+            ],
+            "x-enum-varnames": [
+                "PaymentUnpaid",
+                "PaymentPaid",
+                "PaymentRefunded"
+            ]
+        },
+        "internal_domain_booking.UpdateBookingStatusRequest": {
             "type": "object",
             "properties": {
                 "status": {
@@ -6337,7 +7620,7 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.UpdateDepositRequest": {
+        "internal_domain_booking.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -6349,7 +7632,7 @@ const docTemplate = `{
                 }
             }
         },
-        "booking.UpdatePaymentStatusRequest": {
+        "internal_domain_booking.UpdatePaymentStatusRequest": {
             "type": "object",
             "required": [
                 "payment_status"
@@ -6363,13 +7646,13 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/domain.PaymentStatus"
+                            "$ref": "#/definitions/internal_domain_booking.PaymentStatus"
                         }
                     ]
                 }
             }
         },
-        "catalog.CreateEquipmentRequest": {
+        "internal_domain_catalog.CreateEquipmentRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -6396,7 +7679,7 @@ const docTemplate = `{
                 }
             }
         },
-        "catalog.CreateRoomRequest": {
+        "internal_domain_catalog.CreateRoomRequest": {
             "type": "object",
             "required": [
                 "area_sqm",
@@ -6442,7 +7725,7 @@ const docTemplate = `{
                 }
             }
         },
-        "catalog.CreateStudioRequest": {
+        "internal_domain_catalog.CreateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -6475,11 +7758,24 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/domain.WorkingHoursMap"
+                    "$ref": "#/definitions/internal_domain_catalog.WorkingHoursMap"
                 }
             }
         },
-        "catalog.UpdateRoomRequest": {
+        "internal_domain_catalog.DaySchedule": {
+            "type": "object",
+            "properties": {
+                "close": {
+                    "description": "\"22:00\"",
+                    "type": "string"
+                },
+                "open": {
+                    "description": "\"09:00\"",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_catalog.UpdateRoomRequest": {
             "type": "object",
             "properties": {
                 "amenities": {
@@ -6517,7 +7813,7 @@ const docTemplate = `{
                 }
             }
         },
-        "catalog.UpdateStudioRequest": {
+        "internal_domain_catalog.UpdateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -6550,11 +7846,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/domain.WorkingHoursMap"
+                    "$ref": "#/definitions/internal_domain_catalog.WorkingHoursMap"
                 }
             }
         },
-        "chat.BlockUserRequest": {
+        "internal_domain_catalog.WorkingHoursMap": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/internal_domain_catalog.DaySchedule"
+            }
+        },
+        "internal_domain_chat.BlockUserRequest": {
             "type": "object",
             "properties": {
                 "reason": {
@@ -6562,7 +7864,7 @@ const docTemplate = `{
                 }
             }
         },
-        "chat.CreateConversationRequest": {
+        "internal_domain_chat.CreateConversationRequest": {
             "type": "object",
             "required": [
                 "recipient_id"
@@ -6582,7 +7884,7 @@ const docTemplate = `{
                 }
             }
         },
-        "chat.SendMessageRequest": {
+        "internal_domain_chat.SendMessageRequest": {
             "type": "object",
             "required": [
                 "content"
@@ -6594,152 +7896,7 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.DaySchedule": {
-            "type": "object",
-            "properties": {
-                "close": {
-                    "description": "\"22:00\"",
-                    "type": "string"
-                },
-                "open": {
-                    "description": "\"09:00\"",
-                    "type": "string"
-                }
-            }
-        },
-        "domain.PaymentStatus": {
-            "type": "string",
-            "enum": [
-                "unpaid",
-                "paid",
-                "refunded"
-            ],
-            "x-enum-varnames": [
-                "PaymentUnpaid",
-                "PaymentPaid",
-                "PaymentRefunded"
-            ]
-        },
-        "domain.Review": {
-            "type": "object",
-            "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
-                "comment": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_hidden": {
-                    "type": "boolean"
-                },
-                "is_verified": {
-                    "type": "boolean"
-                },
-                "owner_response": {
-                    "type": "string"
-                },
-                "photos": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "responded_at": {
-                    "type": "string"
-                },
-                "studio_id": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.StudioStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "blocked"
-            ],
-            "x-enum-varnames": [
-                "StatusPending",
-                "StatusVerified",
-                "StatusRejected",
-                "StatusBlocked"
-            ]
-        },
-        "domain.User": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "email_verified": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/domain.UserRole"
-                },
-                "studio_status": {
-                    "$ref": "#/definitions/domain.StudioStatus"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.UserRole": {
-            "type": "string",
-            "enum": [
-                "client",
-                "studio_owner",
-                "admin"
-            ],
-            "x-enum-varnames": [
-                "RoleClient",
-                "RoleStudioOwner",
-                "RoleAdmin"
-            ]
-        },
-        "domain.WorkingHoursMap": {
-            "type": "object",
-            "additionalProperties": {
-                "$ref": "#/definitions/domain.DaySchedule"
-            }
-        },
-        "favorite.CheckFavoriteResponse": {
+        "internal_domain_favorite.CheckFavoriteResponse": {
             "type": "object",
             "properties": {
                 "is_favorite": {
@@ -6747,7 +7904,7 @@ const docTemplate = `{
                 }
             }
         },
-        "favorite.ErrorResponse": {
+        "internal_domain_favorite.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -6755,13 +7912,13 @@ const docTemplate = `{
                 }
             }
         },
-        "favorite.FavoriteListResponse": {
+        "internal_domain_favorite.FavoriteListResponse": {
             "type": "object",
             "properties": {
                 "favorites": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/favorite.FavoriteResponse"
+                        "$ref": "#/definitions/internal_domain_favorite.FavoriteResponse"
                     }
                 },
                 "page": {
@@ -6778,7 +7935,7 @@ const docTemplate = `{
                 }
             }
         },
-        "favorite.FavoriteResponse": {
+        "internal_domain_favorite.FavoriteResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -6788,14 +7945,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "studio": {
-                    "$ref": "#/definitions/favorite.StudioBrief"
+                    "$ref": "#/definitions/internal_domain_favorite.StudioBrief"
                 },
                 "studio_id": {
                     "type": "integer"
                 }
             }
         },
-        "favorite.StudioBrief": {
+        "internal_domain_favorite.StudioBrief": {
             "type": "object",
             "properties": {
                 "address": {
@@ -6821,7 +7978,285 @@ const docTemplate = `{
                 }
             }
         },
-        "manager.UpdateDepositRequest": {
+        "internal_domain_lead.AssignLeadRequest": {
+            "type": "object",
+            "required": [
+                "admin_id"
+            ],
+            "properties": {
+                "admin_id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_domain_lead.ConvertLeadRequest": {
+            "type": "object",
+            "required": [
+                "bin",
+                "legal_address",
+                "legal_name",
+                "org_type",
+                "password"
+            ],
+            "properties": {
+                "bin": {
+                    "type": "string"
+                },
+                "legal_address": {
+                    "type": "string"
+                },
+                "legal_name": {
+                    "type": "string"
+                },
+                "org_type": {
+                    "type": "string",
+                    "enum": [
+                        "ip",
+                        "llp"
+                    ]
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "internal_domain_lead.LeadListResponse": {
+            "type": "object",
+            "properties": {
+                "leads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_domain_lead.OwnerLead": {
+            "type": "object",
+            "properties": {
+                "assigned_to": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "bin": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "company_name": {
+                    "description": "Company info",
+                    "type": "string"
+                },
+                "contact_email": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "description": "Contact person",
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "contact_position": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "converted_at": {
+                    "description": "Conversion",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullTime"
+                        }
+                    ]
+                },
+                "converted_user_id": {
+                    "$ref": "#/definitions/sql.NullInt64"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "follow_up_count": {
+                    "type": "integer"
+                },
+                "how_found_us": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "last_contacted_at": {
+                    "description": "Follow-up",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullTime"
+                        }
+                    ]
+                },
+                "legal_address": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "next_follow_up_at": {
+                    "$ref": "#/definitions/sql.NullTime"
+                },
+                "notes": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "referrer_url": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "rejection_reason": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "source": {
+                    "description": "UTM tracking",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullString"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "Lead management",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_domain_lead.Status"
+                        }
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "use_case": {
+                    "description": "Application details",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullString"
+                        }
+                    ]
+                },
+                "utm_campaign": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "utm_medium": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "utm_source": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "website": {
+                    "$ref": "#/definitions/sql.NullString"
+                }
+            }
+        },
+        "internal_domain_lead.Status": {
+            "type": "string",
+            "enum": [
+                "new",
+                "contacted",
+                "qualified",
+                "converted",
+                "rejected",
+                "lost"
+            ],
+            "x-enum-varnames": [
+                "StatusNew",
+                "StatusContacted",
+                "StatusQualified",
+                "StatusConverted",
+                "StatusRejected",
+                "StatusLost"
+            ]
+        },
+        "internal_domain_lead.SubmitLeadRequest": {
+            "type": "object",
+            "required": [
+                "company_name",
+                "contact_email",
+                "contact_name",
+                "contact_phone"
+            ],
+            "properties": {
+                "bin": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "description": "Company info",
+                    "type": "string"
+                },
+                "contact_email": {
+                    "type": "string"
+                },
+                "contact_name": {
+                    "description": "Contact person",
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "contact_position": {
+                    "type": "string"
+                },
+                "how_found_us": {
+                    "type": "string"
+                },
+                "legal_address": {
+                    "type": "string"
+                },
+                "use_case": {
+                    "description": "Application details",
+                    "type": "string"
+                },
+                "utm_campaign": {
+                    "type": "string"
+                },
+                "utm_medium": {
+                    "type": "string"
+                },
+                "utm_source": {
+                    "description": "UTM parameters (optional, from query params)",
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_lead.UpdateLeadStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "notes": {
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "For rejection",
+                    "type": "string"
+                },
+                "status": {
+                    "enum": [
+                        "new",
+                        "contacted",
+                        "qualified",
+                        "rejected",
+                        "lost"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_domain_lead.Status"
+                        }
+                    ]
+                }
+            }
+        },
+        "internal_domain_manager.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -6833,7 +8268,7 @@ const docTemplate = `{
                 }
             }
         },
-        "manager.UpdateStatusRequest": {
+        "internal_domain_manager.UpdateStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -6850,7 +8285,7 @@ const docTemplate = `{
                 }
             }
         },
-        "mwork.SyncUserRequest": {
+        "internal_domain_mwork.SyncUserRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -6869,7 +8304,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.AddPortfolioRequest": {
+        "internal_domain_owner.AddPortfolioRequest": {
             "type": "object",
             "required": [
                 "image_url"
@@ -6886,7 +8321,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.CreateMaintenanceRequest": {
+        "internal_domain_owner.CreateMaintenanceRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -6909,7 +8344,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.CreateProcurementRequest": {
+        "internal_domain_owner.CreateProcurementRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -6937,7 +8372,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.ReorderPortfolioRequest": {
+        "internal_domain_owner.ReorderPortfolioRequest": {
             "type": "object",
             "required": [
                 "project_ids"
@@ -6951,7 +8386,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.SetPINRequest": {
+        "internal_domain_owner.SetPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -6964,7 +8399,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.UpdateCompanyProfileRequest": {
+        "internal_domain_owner.UpdateCompanyProfileRequest": {
             "type": "object",
             "properties": {
                 "city": {
@@ -7020,7 +8455,7 @@ const docTemplate = `{
                 }
             }
         },
-        "owner.VerifyPINRequest": {
+        "internal_domain_owner.VerifyPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -7031,7 +8466,7 @@ const docTemplate = `{
                 }
             }
         },
-        "payment.ErrorResponse": {
+        "internal_domain_payment.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -7040,7 +8475,7 @@ const docTemplate = `{
                 }
             }
         },
-        "payment.InitPaymentRequest": {
+        "internal_domain_payment.InitPaymentRequest": {
             "type": "object",
             "required": [
                 "booking_id",
@@ -7070,7 +8505,7 @@ const docTemplate = `{
                 }
             }
         },
-        "payment.InitPaymentResponse": {
+        "internal_domain_payment.InitPaymentResponse": {
             "type": "object",
             "properties": {
                 "inv_id": {
@@ -7091,7 +8526,7 @@ const docTemplate = `{
                 }
             }
         },
-        "payment.SuccessCallbackResponse": {
+        "internal_domain_payment.SuccessCallbackResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -7104,7 +8539,210 @@ const docTemplate = `{
                 }
             }
         },
-        "review.CreateReviewRequest": {
+        "internal_domain_profile.AdminProfile": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "$ref": "#/definitions/sql.NullInt64"
+                },
+                "full_name": {
+                    "description": "Admin info",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "description": "Access",
+                    "type": "boolean"
+                },
+                "last_login_at": {
+                    "$ref": "#/definitions/sql.NullTime"
+                },
+                "last_login_ip": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "phone": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "position": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_domain_profile.ClientProfile": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Basic info",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullString"
+                        }
+                    ]
+                },
+                "nickname": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "phone": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_domain_profile.OwnerProfile": {
+            "type": "object",
+            "properties": {
+                "admin_notes": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "bin": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "company_name": {
+                    "description": "Company info",
+                    "type": "string"
+                },
+                "contact_person": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "contact_position": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "legal_address": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "phone": {
+                    "description": "Contact",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/sql.NullString"
+                        }
+                    ]
+                },
+                "rejected_reason": {
+                    "$ref": "#/definitions/sql.NullString"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                },
+                "verification_docs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "verification_status": {
+                    "description": "Verification",
+                    "type": "string"
+                },
+                "verified_at": {
+                    "$ref": "#/definitions/sql.NullTime"
+                },
+                "verified_by": {
+                    "$ref": "#/definitions/sql.NullInt64"
+                },
+                "website": {
+                    "$ref": "#/definitions/sql.NullString"
+                }
+            }
+        },
+        "internal_domain_profile.UpdateAdminProfileRequest": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_profile.UpdateClientProfileRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nickname": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_profile.UpdateOwnerProfileRequest": {
+            "type": "object",
+            "properties": {
+                "bin": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "contact_person": {
+                    "type": "string"
+                },
+                "contact_position": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "legal_address": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "website": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_domain_review.CreateReviewRequest": {
             "type": "object",
             "required": [
                 "rating",
@@ -7133,7 +8771,7 @@ const docTemplate = `{
                 }
             }
         },
-        "review.OwnerResponseRequest": {
+        "internal_domain_review.OwnerResponseRequest": {
             "type": "object",
             "required": [
                 "response"
@@ -7141,6 +8779,230 @@ const docTemplate = `{
             "properties": {
                 "response": {
                     "type": "string"
+                }
+            }
+        },
+        "photostudio_internal_domain_auth.StudioStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "blocked"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusVerified",
+                "StatusRejected",
+                "StatusBlocked"
+            ]
+        },
+        "photostudio_internal_domain_auth.User": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "ban_reason": {
+                    "type": "string"
+                },
+                "banned_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "email_verified_at": {
+                    "type": "string"
+                },
+                "failed_login_attempts": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_banned": {
+                    "type": "boolean"
+                },
+                "locked_until": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/photostudio_internal_domain_auth.UserRole"
+                },
+                "studio_status": {
+                    "$ref": "#/definitions/photostudio_internal_domain_auth.StudioStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "photostudio_internal_domain_auth.UserRole": {
+            "type": "string",
+            "enum": [
+                "client",
+                "studio_owner",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "RoleClient",
+                "RoleStudioOwner",
+                "RoleAdmin"
+            ]
+        },
+        "photostudio_internal_domain_lead.ConvertLeadRequest": {
+            "type": "object",
+            "required": [
+                "bin",
+                "legal_address",
+                "legal_name",
+                "org_type",
+                "password"
+            ],
+            "properties": {
+                "bin": {
+                    "type": "string"
+                },
+                "legal_address": {
+                    "type": "string"
+                },
+                "legal_name": {
+                    "type": "string"
+                },
+                "org_type": {
+                    "type": "string",
+                    "enum": [
+                        "ip",
+                        "llp"
+                    ]
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "photostudio_internal_domain_review.Review": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_hidden": {
+                    "type": "boolean"
+                },
+                "is_verified": {
+                    "type": "boolean"
+                },
+                "owner_response": {
+                    "type": "string"
+                },
+                "photos": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "responded_at": {
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "photostudio_internal_pkg_response.ErrorData": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "photostudio_internal_pkg_response.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "error": {
+                    "$ref": "#/definitions/photostudio_internal_pkg_response.ErrorData"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullInt64": {
+            "type": "object",
+            "properties": {
+                "int64": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "valid": {
+                    "description": "Valid is true if Int64 is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullString": {
+            "type": "object",
+            "properties": {
+                "string": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if String is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "sql.NullTime": {
+            "type": "object",
+            "properties": {
+                "time": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
                 }
             }
         }

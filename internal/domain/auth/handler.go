@@ -3,18 +3,20 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"path/filepath"
 	"photostudio/internal/pkg/response"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Handler manages all HTTP interactions for authentication
 type Handler struct {
 	service        *Service
+	profileService ProfileService
 	bookingReader  BookingStatsReader
 	cookieSecure   bool
 	cookieSameSite string
@@ -22,9 +24,10 @@ type Handler struct {
 }
 
 // NewHandler creates a new auth handler with injected service
-func NewHandler(service *Service, bookingReader BookingStatsReader, cookieSecure bool, cookieSameSite, cookiePath string) *Handler {
+func NewHandler(service *Service, profileService ProfileService, bookingReader BookingStatsReader, cookieSecure bool, cookieSameSite, cookiePath string) *Handler {
 	return &Handler{
 		service:        service,
+		profileService: profileService,
 		bookingReader:  bookingReader,
 		cookieSecure:   cookieSecure,
 		cookieSameSite: cookieSameSite,
@@ -32,6 +35,15 @@ func NewHandler(service *Service, bookingReader BookingStatsReader, cookieSecure
 	}
 }
 
+// RequestEmailVerification запрашивает код подтверждения.
+// @Summary		Request email verification
+// @Description	Sends a verification code to the specified email.
+// @Tags		Auth
+// @Accept		json
+// @Produce		json
+// @Param		body	body	VerifyRequestDTO	true	"payload"
+// @Success		200	{object}		map[string]interface{}
+// @Router		/auth/verify/request [post]
 func (h *Handler) RequestEmailVerification(c *gin.Context) {
 	var req VerifyRequestDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -54,6 +66,15 @@ func (h *Handler) RequestEmailVerification(c *gin.Context) {
 	})
 }
 
+// ConfirmEmailVerification подтверждает email по коду.
+// @Summary		Confirm email verification
+// @Description	Verifies the email using the provided 6-digit code.
+// @Tags		Auth
+// @Accept		json
+// @Produce		json
+// @Param		body	body	VerifyConfirmDTO	true	"payload"
+// @Success		200	{object}		map[string]interface{}
+// @Router		/auth/verify/confirm [post]
 func (h *Handler) ConfirmEmailVerification(c *gin.Context) {
 	var req VerifyConfirmDTO
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -81,6 +102,13 @@ func (h *Handler) ConfirmEmailVerification(c *gin.Context) {
 	})
 }
 
+// Refresh обновляет access токен по refresh токену из куки.
+// @Summary		Refresh token
+// @Description	Refreshes the session using the refresh token stored in the cookie.
+// @Tags		Auth
+// @Produce		json
+// @Success		200	{object}		map[string]interface{}
+// @Router		/auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	refreshRaw, err := c.Cookie("refresh_token")
 	if err != nil || strings.TrimSpace(refreshRaw) == "" {
@@ -115,6 +143,12 @@ func (h *Handler) Refresh(c *gin.Context) {
 	})
 }
 
+// Logout завершает сессию пользователя.
+// @Summary		Logout
+// @Description	Invalidates the current session and clears the refresh token cookie.
+// @Tags		Auth
+// @Success		204	"No Content"
+// @Router		/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	refreshRaw, err := c.Cookie("refresh_token")
 	if err == nil && strings.TrimSpace(refreshRaw) != "" {
@@ -132,7 +166,7 @@ func (h *Handler) Logout(c *gin.Context) {
 // RegisterClient регистрирует нового клиента на платформе.
 // @Summary		Register client
 // @Description	Creates a new client account and returns registration payload with user data and verification flag.
-// @Tags		auth
+// @Tags		Auth
 // @Accept		json
 // @Produce		json
 // @Param		body	body	RegisterClientRequest	true	"payload"
@@ -171,52 +205,10 @@ func (h *Handler) RegisterClient(c *gin.Context) {
 	})
 }
 
-// RegisterStudioOwner регистрирует нового владельца студии на платформе.
-// @Summary		Register studio owner
-// @Description	Creates a new studio-owner account and returns registration payload with user data and verification flag.
-// @Tags		auth
-// @Accept		json
-// @Produce		json
-// @Param		body	body	RegisterStudioRequest	true	"payload"
-// @Success		201	{object}		RegisterStudioResponseSwagger
-// @Failure		400	{object}		ErrorResponseSwagger
-// @Failure		409	{object}		ErrorResponseSwagger
-// @Failure		500	{object}		ErrorResponseSwagger
-// @Router		/auth/register/studio [post]
-func (h *Handler) RegisterStudioOwner(c *gin.Context) {
-	var req RegisterStudioRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body")
-		return
-	}
-
-	user, verificationSent, err := h.service.RegisterStudioOwner(c.Request.Context(), req)
-	if err != nil {
-		if err == ErrEmailAlreadyExists {
-			response.CustomError(c, http.StatusConflict, "EMAIL_EXISTS", "This email is already registered")
-			return
-		}
-		response.CustomError(c, http.StatusInternalServerError, "REGISTRATION_FAILED", "Failed to register studio owner")
-		return
-	}
-
-	response.Success(c, http.StatusCreated, gin.H{
-		"user": gin.H{
-			"id":            user.ID,
-			"email":         user.Email,
-			"name":          user.Name,
-			"role":          user.Role,
-			"phone":         user.Phone,
-			"studio_status": user.StudioStatus,
-		},
-		"verification_sent": verificationSent,
-	})
-}
-
 // Login авторизует пользователя на платформе и выдаёт JWT токен.
 // @Summary		Войти в аккаунт
 // @Description	Авторизует пользователя (клиента или владельца студии) по email и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.
-// @Tags		Автентификация
+// @Tags		Auth
 // @Param		request	body	LoginRequest		true	"Учётные данные (email, password)"
 // @Success		200	{object}		map[string]interface{} "Успешная авторизация, возвращается JWT токен"
 // @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверный формат данных"
@@ -268,7 +260,7 @@ func (h *Handler) Login(c *gin.Context) {
 // GetMe получает профиль текущего авторизованного пользователя.
 // @Summary		Получить профиль пользователя
 // @Description	Возвращает полный профиль текущего авторизованного пользователя (клиента или владельца). Может включать статистику бронирований и недавние брони. При include_stats=true добавляет количество бронирований.
-// @Tags		Профиль и аутентификация
+// @Tags		Auth
 // @Security	BearerAuth
 // @Param		include_stats	query	boolean	false	"Включить статистику бронирований (true/false)"
 // @Success		200	{object}		map[string]interface{} "Профиль пользователя с информацией и статистикой"
@@ -290,54 +282,45 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	includeStats := c.Query("include_stats") == "true"
-
-	profile := UserProfileResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		Name:      user.Name,
-		Phone:     user.Phone,
-		Role:      string(user.Role),
-		AvatarURL: user.AvatarURL,
-		CreatedAt: user.CreatedAt.Format("2006-01-02"),
-	}
-
-	if includeStats && h.bookingReader != nil {
-		stats, err := h.bookingReader.GetStatsByUserID(userID)
-		if err == nil && stats != nil {
-			profile.Stats = &UserStats{
-				TotalBookings:     int(stats.Total),
-				UpcomingBookings:  int(stats.Upcoming),
-				CompletedBookings: int(stats.Completed),
-				CancelledBookings: int(stats.Cancelled),
-			}
-		}
-
-		recent, err := h.bookingReader.GetRecentByUserID(userID, 3)
-		if err == nil {
-			profile.RecentBookings = make([]RecentBooking, 0, len(recent))
-			for _, r := range recent {
-				profile.RecentBookings = append(profile.RecentBookings, RecentBooking{
-					ID:         r.ID,
-					StudioName: r.StudioName,
-					RoomName:   r.RoomName,
-					Date:       r.StartTime.Format("02.01.2006"),
-					Status:     r.Status,
-				})
+	// Fetch user stats
+	var stats *UserStats
+	if h.bookingReader != nil {
+		s, err := h.bookingReader.GetStatsByUserID(user.ID)
+		if err == nil && s != nil {
+			stats = &UserStats{
+				TotalBookings:     int(s.Total),
+				UpcomingBookings:  int(s.Upcoming),
+				CompletedBookings: int(s.Completed),
+				CancelledBookings: int(s.Cancelled),
 			}
 		}
 	}
 
-	// Сохраняем стиль проекта (response.Success)
-	response.Success(c, http.StatusOK, gin.H{
-		"user": profile,
+	// Fetch profile data
+	var profileData interface{}
+	if h.profileService != nil {
+		switch user.Role {
+		case RoleClient:
+			profileData, _ = h.profileService.EnsureClientProfile(c.Request.Context(), user.ID)
+		case RoleStudioOwner:
+			// Note: Lead conversion handles initial owner profile, but EnsureOwnerProfile
+			// can be used here as a fallback if we decide on a default structure.
+			// For now, only client and admin (if requested) are auto-created from scratch.
+			profileData, _ = h.profileService.GetOwnerProfile(c.Request.Context(), user.ID)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user":    user,
+		"stats":   stats,
+		"profile": profileData,
 	})
 }
 
 // UpdateProfile обновляет информацию профиля текущего пользователя.
 // @Summary		Обновить профиль пользователя
 // @Description	Обновляет информацию о профиле: имя, телефон и другие поля. Email не может быть изменён через этот эндпоинт. Требуется аутентификация.
-// @Tags		Профиль и аутентификация
+// @Tags		Auth
 // @Security	BearerAuth
 // @Param		request	body	UpdateProfileRequest	true	"Данные для обновления (name, phone, avatar_url, etc.)"
 // @Success		200	{object}		map[string]interface{} "Профиль успешно обновлён"
@@ -374,7 +357,7 @@ func (h *Handler) UpdateProfile(c *gin.Context) {
 // UploadVerificationDocuments загружает документы для верификации владельца студии.
 // @Summary		Загрузить документы верификации
 // @Description	Загружает документы (паспорт, свидетельство о регистрации, и т.д.) для верификации владельца студии. Документы необходимы для одобрения заявки администратором. Максимальный размер файла 10MB.
-// @Tags		Профиль и аутентификация
+// @Tags		Auth
 // @Security	BearerAuth
 // @Accept		multipart/form-data
 // @Param		documents	formData	file		true	"Файлы документов для загрузки (несколько файлов допускаются)"

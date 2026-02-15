@@ -2,11 +2,14 @@ package admin
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type UserRepository interface {
@@ -27,14 +30,19 @@ type BookingRepository interface {
 }
 
 type ReviewRepository interface {
+	DB() *gorm.DB
 	GetByID(ctx context.Context, id int64) (*review.Review, error)
 	Update(ctx context.Context, r *review.Review) error
-	DB() *gorm.DB
+	// count/find by studio/user...
+}
+
+type ProfileService interface {
+	EnsureAdminProfile(ctx context.Context, userID uuid.UUID, req *profile.CreateAdminProfileRequest) (*profile.AdminProfile, error)
 }
 
 type NotificationSender interface {
-	NotifyVerificationApproved(ctx context.Context, ownerUserID, studioID int64) error
-	NotifyVerificationRejected(ctx context.Context, ownerUserID, studioID int64, reason string) error
+	NotifyVerificationApproved(ctx context.Context, userID, studioID int64) error
+	NotifyVerificationRejected(ctx context.Context, userID, studioID int64, reason string) error
 }
 
 type StudioOwnerRepository interface {

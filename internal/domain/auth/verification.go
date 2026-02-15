@@ -7,12 +7,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"gorm.io/gorm"
 	"log"
 	"math/big"
 	"regexp"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 var codeRegex = regexp.MustCompile(`^\d{6}$`)
@@ -166,7 +167,7 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 		return ErrInvalidVerificationCode
 	}
 
-	return s.users.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	err = s.users.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table("users").Where("id = ?", user.ID).Updates(map[string]any{
 			"email_verified":    true,
 			"email_verified_at": now,
@@ -183,6 +184,21 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	// Auto-create client profile if role is Client
+	if user.Role == RoleClient {
+		if _, err := s.profileService.EnsureClientProfile(ctx, user.ID); err != nil {
+			// Log error for debugging
+			log.Printf("Failed to create client profile for user %d: %v", user.ID, err)
+		} else {
+			log.Printf("Successfully created client profile for user %d", user.ID)
+		}
+	}
+
+	return nil
 }
 
 func generateVerificationCode() (string, error) {

@@ -6,7 +6,7 @@ func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
 	authGroup := v1.Group("/auth")
 	{
 		authGroup.POST("/register/client", h.RegisterClient)
-		authGroup.POST("/register/studio", h.RegisterStudioOwner)
+
 		authGroup.POST("/login", h.Login)
 		authGroup.POST("/verify/request", h.RequestEmailVerification)
 		authGroup.POST("/verify/confirm", h.ConfirmEmailVerification)
@@ -23,4 +23,3 @@ func (h *Handler) RegisterProtectedRoutes(protected *gin.RouterGroup) {
 		userGroup.POST("/verification/documents", h.UploadVerificationDocuments)
 	}
 }
-

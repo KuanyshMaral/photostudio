@@ -3,13 +3,16 @@ package admin
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/auth"
-	"photostudio/internal/domain/catalog"
-	"photostudio/internal/domain/review"
 	"photostudio/internal/domain/booking"
+	"photostudio/internal/domain/catalog"
+	"photostudio/internal/domain/profile"
+	"photostudio/internal/domain/review"
+	"photostudio/internal/pkg/jwt"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Service struct {
@@ -18,6 +21,9 @@ type Service struct {
 	bookingRepo     BookingRepository
 	reviewRepo      ReviewRepository
 	studioOwnerRepo StudioOwnerRepository
+	adminRepo       AdminRepository
+	profileService  ProfileService
+	jwt             *jwt.Service
 	notifs          NotificationSender
 }
 
@@ -27,6 +33,9 @@ func NewService(
 	bookingRepo BookingRepository,
 	reviewRepo ReviewRepository,
 	studioOwnerRepo StudioOwnerRepository,
+	adminRepo AdminRepository,
+	profileService ProfileService,
+	jwt *jwt.Service,
 	notifs NotificationSender,
 ) *Service {
 	return &Service{
@@ -35,6 +44,9 @@ func NewService(
 		bookingRepo:     bookingRepo,
 		reviewRepo:      reviewRepo,
 		studioOwnerRepo: studioOwnerRepo,
+		adminRepo:       adminRepo,
+		profileService:  profileService,
+		jwt:             jwt,
 		notifs:          notifs,
 	}
 }
@@ -722,4 +734,134 @@ func (s *Service) DeleteReview(ctx context.Context, reviewID int64) error {
 		Table("reviews").
 		Where("id = ?", reviewID).
 		Delete(nil).Error
+}
+
+// -------------------- Admin Auth --------------------
+
+func (s *Service) Login(ctx context.Context, email, password string) (string, *AdminUser, error) {
+	admin, err := s.adminRepo.GetByEmail(ctx, email)
+	if err != nil {
+		return "", nil, errors.New("invalid credentials")
+	}
+
+	if !admin.IsActive {
+		return "", nil, errors.New("account is disabled")
+	}
+
+	// Verify password (bcrypt)
+	if err := auth.CheckPassword(password, admin.PasswordHash); err != nil {
+		return "", nil, errors.New("invalid credentials")
+	}
+
+	// Generate Token
+	token, err := s.jwt.GenerateAdminToken(admin.ID.String(), admin.Role)
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Update last login
+	now := time.Now()
+	admin.LastLoginAt = &now
+	_ = s.adminRepo.Update(ctx, admin)
+
+	return token, admin, nil
+}
+
+func (s *Service) GetAdminByID(ctx context.Context, id string) (*AdminUser, error) {
+	return s.adminRepo.GetByID(ctx, id)
+}
+
+// -------------------- Admin Management --------------------
+
+func (s *Service) CreateAdmin(ctx context.Context, email, password, name, role string) (*AdminUser, error) {
+	// Check if exists
+	if _, err := s.adminRepo.GetByEmail(ctx, email); err == nil {
+		return nil, errors.New("admin with this email already exists")
+	}
+
+	hashedPassword, err := auth.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	admin := &AdminUser{
+		Email:        email,
+		PasswordHash: hashedPassword,
+		Name:         name,
+		Role:         role,
+		IsActive:     true,
+	}
+
+	if err := s.adminRepo.Create(ctx, admin); err != nil {
+		return nil, err
+	}
+
+	// Create profile
+	_, err = s.profileService.EnsureAdminProfile(ctx, admin.ID, &profile.CreateAdminProfileRequest{
+		FullName: name,
+		// Position: role?
+		// Phone: not available
+	})
+	if err != nil {
+		// Log error but don't fail admin creation? Or fail?
+		// Better to fail or ensure consistency.
+		// For now, return error.
+		return nil, err
+	}
+
+	admin.PasswordHash = ""
+	return admin, nil
+}
+
+func (s *Service) ListAdmins(ctx context.Context, page, limit int) ([]AdminUser, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
+	admins, total, err := s.adminRepo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for i := range admins {
+		admins[i].PasswordHash = ""
+	}
+
+	return admins, total, nil
+}
+
+func (s *Service) UpdateAdmin(ctx context.Context, id string, updates map[string]interface{}) (*AdminUser, error) {
+	admin, err := s.adminRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updates
+	// Simplify: only allow specific fields
+	if name, ok := updates["name"].(string); ok && name != "" {
+		admin.Name = name
+	}
+	if role, ok := updates["role"].(string); ok && role != "" {
+		admin.Role = role
+	}
+	if isActive, ok := updates["is_active"].(bool); ok {
+		admin.IsActive = isActive
+	}
+	if password, ok := updates["password"].(string); ok && password != "" {
+		hash, err := auth.HashPassword(password)
+		if err == nil {
+			admin.PasswordHash = hash
+		}
+	}
+
+	if err := s.adminRepo.Update(ctx, admin); err != nil {
+		return nil, err
+	}
+
+	admin.PasswordHash = ""
+	return admin, nil
 }

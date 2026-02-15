@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"photostudio/internal/domain/booking"
 	"context"
 	"crypto/md5"
 	"encoding/hex"
@@ -11,6 +10,7 @@ import (
 	"math/big"
 	"net/url"
 	"os"
+	"photostudio/internal/domain/booking"
 	"sort"
 	"strconv"
 	"strings"
@@ -98,7 +98,7 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 		OutSum:       req.OutSum,
 		InvID:        invID,
 		Description:  req.Description,
-		Status: RobokassaPaymentStatus(booking.PaymentUnpaid),
+		Status:       RobokassaPaymentStatus(booking.PaymentUnpaid),
 		Signature:    signature,
 		RobokassaURL: paymentURL,
 		ShpParams:    string(shpRaw),
@@ -106,7 +106,7 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	if err := s.payments.Create(ctx, p); err != nil {
 		return nil, fmt.Errorf("save payment failed: %w", err)
 	}
-	if _, err := s.bookingWriter.UpdatePaymentStatus(ctx, req.BookingID, booking.PaymentUnpaid); err != nil {
+	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, req.BookingID, booking.PaymentUnpaid); err != nil {
 		s.loggerf("level=error msg=failed to sync booking payment status on init booking_id=%d err=%v", req.BookingID, err)
 	}
 
@@ -135,9 +135,8 @@ func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID
 	if err != nil {
 		return "", err
 	}
-	_, berr := s.bookingWriter.UpdatePaymentStatus(ctx, p.BookingID, booking.PaymentPaid)
-	if berr != nil {
-		s.loggerf("level=error msg=failed to update booking payment status to paid booking_id=%d err=%v", p.BookingID, berr)
+	if _, err = s.bookingWriter.UpdatePaymentStatusSystem(ctx, p.BookingID, booking.PaymentPaid); err != nil {
+		s.loggerf("level=error msg=failed to update booking payment status to paid booking_id=%d err=%v", p.BookingID, err)
 	}
 
 	if !changed {

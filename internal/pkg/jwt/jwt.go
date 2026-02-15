@@ -17,8 +17,9 @@ type Service struct {
 
 type Claims struct {
 	// Legacy fallback during migration.
-	UserID int64  `json:"user_id,omitempty"`
-	Role   string `json:"role"`
+	UserID  int64  `json:"user_id,omitempty"`
+	AdminID string `json:"admin_id,omitempty"` // For UUID support
+	Role    string `json:"role"`
 
 	TokenType string `json:"type,omitempty"`
 
@@ -54,6 +55,24 @@ func (s *Service) GenerateToken(userID int64, role string) (string, error) {
 	return token.SignedString(s.secret)
 }
 
+func (s *Service) GenerateAdminToken(adminID string, role string) (string, error) {
+	now := time.Now()
+	claims := Claims{
+		Role:      role,
+		AdminID:   adminID,
+		TokenType: "access_admin",
+		RegisteredClaims: jwtlib.RegisteredClaims{
+			Subject:   adminID,
+			ID:        uuid.NewString(),
+			ExpiresAt: jwtlib.NewNumericDate(now.Add(s.ttl)),
+			IssuedAt:  jwtlib.NewNumericDate(now),
+		},
+	}
+
+	token := jwtlib.NewWithClaims(jwtlib.SigningMethodHS256, claims)
+	return token.SignedString(s.secret)
+}
+
 func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	token, err := jwtlib.ParseWithClaims(tokenStr, &Claims{}, func(t *jwtlib.Token) (any, error) {
 		return s.secret, nil
@@ -74,6 +93,18 @@ func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 			return nil, errors.New("invalid token type")
 		}
 	}
+
+	// Separate validation for admin tokens
+	if claims.TokenType == "access_admin" {
+		if claims.AdminID == "" && claims.Subject != "" {
+			claims.AdminID = claims.Subject
+		}
+		if claims.AdminID == "" {
+			return nil, errors.New("invalid admin token")
+		}
+		return claims, nil
+	}
+
 	if claims.TokenType != "access" {
 		return nil, errors.New("invalid token type")
 	}

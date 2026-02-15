@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -21,9 +17,13 @@ import (
 	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
-	"photostudio/internal/pkg/jwt"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 type E2ETestSuite struct {
@@ -113,8 +113,12 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 	notificationService := notification.NewService(notificationRepo)
 
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, notificationService)
-	adminHandler := admin.NewHandler(adminService)
+	// Admin domain
+	adminRepo := admin.NewAdminRepository(db)
+	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, adminRepo, jwtService, notificationService)
+	adminAuthHandler := admin.NewAuthHandler(adminService)
+	adminManagementHandler := admin.NewManagementHandler(adminService)
+	adminHandler := admin.NewHandler(adminService, adminAuthHandler, adminManagementHandler)
 
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 

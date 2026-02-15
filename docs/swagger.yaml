@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  admin.Ad:
+  internal_domain_admin.Ad:
     properties:
       clicks:
         type: integer
@@ -27,52 +27,32 @@ definitions:
       updated_at:
         type: string
     type: object
-  admin.BlockUserRequest:
+  internal_domain_admin.BlockUserRequest:
     properties:
       reason:
         type: string
     required:
     - reason
     type: object
-  admin.RejectStudioRequest:
+  internal_domain_admin.CreateAdminRequest:
     properties:
-      reason:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        description: super_admin, support, moderator
         type: string
     required:
-    - reason
+    - email
+    - name
+    - password
+    - role
     type: object
-  admin.ReviewListResponse:
-    properties:
-      limit:
-        type: integer
-      page:
-        type: integer
-      reviews:
-        items:
-          $ref: '#/definitions/domain.Review'
-        type: array
-      total:
-        type: integer
-    type: object
-  admin.UserListResponse:
-    properties:
-      limit:
-        type: integer
-      page:
-        type: integer
-      total:
-        type: integer
-      users:
-        items:
-          $ref: '#/definitions/domain.User'
-        type: array
-    type: object
-  admin.VerifyStudioRequest:
-    properties:
-      admin_notes:
-        type: string
-    type: object
-  auth.LoginRequest:
+  internal_domain_admin.LoginRequest:
     properties:
       email:
         type: string
@@ -82,7 +62,88 @@ definitions:
     - email
     - password
     type: object
-  auth.RegisterClientRequest:
+  internal_domain_admin.RejectStudioRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  internal_domain_admin.ReviewListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      reviews:
+        items:
+          $ref: '#/definitions/photostudio_internal_domain_review.Review'
+        type: array
+      total:
+        type: integer
+    type: object
+  internal_domain_admin.UpdateAdminRequest:
+    properties:
+      is_active:
+        type: boolean
+      name:
+        type: string
+      password:
+        description: optional
+        type: string
+      role:
+        type: string
+    type: object
+  internal_domain_admin.UserListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/photostudio_internal_domain_auth.User'
+        type: array
+    type: object
+  internal_domain_admin.VerifyStudioRequest:
+    properties:
+      admin_notes:
+        type: string
+    type: object
+  internal_domain_auth.ErrorDetailsSwagger:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  internal_domain_auth.ErrorResponseSwagger:
+    properties:
+      error:
+        $ref: '#/definitions/internal_domain_auth.ErrorDetailsSwagger'
+      success:
+        type: boolean
+    type: object
+  internal_domain_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_domain_auth.RegisterClientDataSwagger:
+    properties:
+      user:
+        $ref: '#/definitions/internal_domain_auth.RegisterUserSwagger'
+      verification_sent:
+        type: boolean
+    type: object
+  internal_domain_auth.RegisterClientRequest:
     properties:
       email:
         type: string
@@ -98,37 +159,29 @@ definitions:
     - name
     - password
     type: object
-  auth.RegisterStudioRequest:
+  internal_domain_auth.RegisterClientResponseSwagger:
     properties:
-      bin:
-        type: string
-      company_name:
-        type: string
-      contact_person:
-        type: string
-      contact_position:
-        type: string
+      data:
+        $ref: '#/definitions/internal_domain_auth.RegisterClientDataSwagger'
+      success:
+        type: boolean
+    type: object
+  internal_domain_auth.RegisterUserSwagger:
+    properties:
       email:
         type: string
-      legal_address:
-        type: string
+      id:
+        type: integer
       name:
-        minLength: 2
-        type: string
-      password:
-        minLength: 8
         type: string
       phone:
         type: string
-    required:
-    - bin
-    - company_name
-    - email
-    - name
-    - password
-    - phone
+      role:
+        type: string
+      studio_status:
+        type: string
     type: object
-  auth.UpdateProfileRequest:
+  internal_domain_auth.UpdateProfileRequest:
     properties:
       name:
         minLength: 2
@@ -137,7 +190,24 @@ definitions:
         description: 'optional: use phone validation'
         type: string
     type: object
-  booking.BusySlot:
+  internal_domain_auth.VerifyConfirmDTO:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  internal_domain_auth.VerifyRequestDTO:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  internal_domain_booking.BusySlotDTO:
     properties:
       end:
         description: '"12:00"'
@@ -146,11 +216,11 @@ definitions:
         description: '"10:00"'
         type: string
     type: object
-  booking.BusySlotsResponse:
+  internal_domain_booking.BusySlotsResponse:
     properties:
       busy_slots:
         items:
-          $ref: '#/definitions/booking.BusySlot'
+          $ref: '#/definitions/internal_domain_booking.BusySlotDTO'
         type: array
       close_time:
         type: string
@@ -161,7 +231,7 @@ definitions:
       room_id:
         type: integer
     type: object
-  booking.CancelBookingRequest:
+  internal_domain_booking.CancelBookingRequest:
     properties:
       reason:
         minLength: 10
@@ -169,7 +239,7 @@ definitions:
     required:
     - reason
     type: object
-  booking.CreateBookingRequest:
+  internal_domain_booking.CreateBookingRequest:
     properties:
       end_time:
         type: string
@@ -190,12 +260,22 @@ definitions:
     - start_time
     - studio_id
     type: object
-  booking.UpdateBookingStatusRequest:
+  internal_domain_booking.PaymentStatus:
+    enum:
+    - unpaid
+    - paid
+    - refunded
+    type: string
+    x-enum-varnames:
+    - PaymentUnpaid
+    - PaymentPaid
+    - PaymentRefunded
+  internal_domain_booking.UpdateBookingStatusRequest:
     properties:
       status:
         type: string
     type: object
-  booking.UpdateDepositRequest:
+  internal_domain_booking.UpdateDepositRequest:
     properties:
       deposit_amount:
         minimum: 0
@@ -203,11 +283,11 @@ definitions:
     required:
     - deposit_amount
     type: object
-  booking.UpdatePaymentStatusRequest:
+  internal_domain_booking.UpdatePaymentStatusRequest:
     properties:
       payment_status:
         allOf:
-        - $ref: '#/definitions/domain.PaymentStatus'
+        - $ref: '#/definitions/internal_domain_booking.PaymentStatus'
         enum:
         - unpaid
         - paid
@@ -215,7 +295,7 @@ definitions:
     required:
     - payment_status
     type: object
-  catalog.CreateEquipmentRequest:
+  internal_domain_catalog.CreateEquipmentRequest:
     properties:
       brand:
         type: string
@@ -233,7 +313,7 @@ definitions:
     - name
     - quantity
     type: object
-  catalog.CreateRoomRequest:
+  internal_domain_catalog.CreateRoomRequest:
     properties:
       amenities:
         items:
@@ -265,7 +345,7 @@ definitions:
     - price_per_hour_min
     - room_type
     type: object
-  catalog.CreateStudioRequest:
+  internal_domain_catalog.CreateStudioRequest:
     properties:
       address:
         type: string
@@ -284,13 +364,22 @@ definitions:
       website:
         type: string
       working_hours:
-        $ref: '#/definitions/domain.WorkingHoursMap'
+        $ref: '#/definitions/internal_domain_catalog.WorkingHoursMap'
     required:
     - address
     - city
     - name
     type: object
-  catalog.UpdateRoomRequest:
+  internal_domain_catalog.DaySchedule:
+    properties:
+      close:
+        description: '"22:00"'
+        type: string
+      open:
+        description: '"09:00"'
+        type: string
+    type: object
+  internal_domain_catalog.UpdateRoomRequest:
     properties:
       amenities:
         items:
@@ -315,7 +404,7 @@ definitions:
       room_type:
         type: string
     type: object
-  catalog.UpdateStudioRequest:
+  internal_domain_catalog.UpdateStudioRequest:
     properties:
       address:
         type: string
@@ -334,18 +423,22 @@ definitions:
       website:
         type: string
       working_hours:
-        $ref: '#/definitions/domain.WorkingHoursMap'
+        $ref: '#/definitions/internal_domain_catalog.WorkingHoursMap'
     required:
     - address
     - city
     - name
     type: object
-  chat.BlockUserRequest:
+  internal_domain_catalog.WorkingHoursMap:
+    additionalProperties:
+      $ref: '#/definitions/internal_domain_catalog.DaySchedule'
+    type: object
+  internal_domain_chat.BlockUserRequest:
     properties:
       reason:
         type: string
     type: object
-  chat.CreateConversationRequest:
+  internal_domain_chat.CreateConversationRequest:
     properties:
       booking_id:
         type: integer
@@ -358,7 +451,7 @@ definitions:
     required:
     - recipient_id
     type: object
-  chat.SendMessageRequest:
+  internal_domain_chat.SendMessageRequest:
     properties:
       content:
         maxLength: 4000
@@ -366,122 +459,21 @@ definitions:
     required:
     - content
     type: object
-  domain.DaySchedule:
-    properties:
-      close:
-        description: '"22:00"'
-        type: string
-      open:
-        description: '"09:00"'
-        type: string
-    type: object
-  domain.PaymentStatus:
-    enum:
-    - unpaid
-    - paid
-    - refunded
-    type: string
-    x-enum-varnames:
-    - PaymentUnpaid
-    - PaymentPaid
-    - PaymentRefunded
-  domain.Review:
-    properties:
-      booking_id:
-        type: integer
-      comment:
-        type: string
-      created_at:
-        type: string
-      id:
-        type: integer
-      is_hidden:
-        type: boolean
-      is_verified:
-        type: boolean
-      owner_response:
-        type: string
-      photos:
-        items:
-          type: string
-        type: array
-      rating:
-        type: integer
-      responded_at:
-        type: string
-      studio_id:
-        type: integer
-      updated_at:
-        type: string
-      user_id:
-        type: integer
-    type: object
-  domain.StudioStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - blocked
-    type: string
-    x-enum-varnames:
-    - StatusPending
-    - StatusVerified
-    - StatusRejected
-    - StatusBlocked
-  domain.User:
-    properties:
-      avatar_url:
-        type: string
-      created_at:
-        type: string
-      email:
-        type: string
-      email_verified:
-        type: boolean
-      id:
-        type: integer
-      name:
-        type: string
-      phone:
-        type: string
-      role:
-        $ref: '#/definitions/domain.UserRole'
-      studio_status:
-        $ref: '#/definitions/domain.StudioStatus'
-      updated_at:
-        type: string
-    required:
-    - email
-    type: object
-  domain.UserRole:
-    enum:
-    - client
-    - studio_owner
-    - admin
-    type: string
-    x-enum-varnames:
-    - RoleClient
-    - RoleStudioOwner
-    - RoleAdmin
-  domain.WorkingHoursMap:
-    additionalProperties:
-      $ref: '#/definitions/domain.DaySchedule'
-    type: object
-  favorite.CheckFavoriteResponse:
+  internal_domain_favorite.CheckFavoriteResponse:
     properties:
       is_favorite:
         type: boolean
     type: object
-  favorite.ErrorResponse:
+  internal_domain_favorite.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  favorite.FavoriteListResponse:
+  internal_domain_favorite.FavoriteListResponse:
     properties:
       favorites:
         items:
-          $ref: '#/definitions/favorite.FavoriteResponse'
+          $ref: '#/definitions/internal_domain_favorite.FavoriteResponse'
         type: array
       page:
         type: integer
@@ -492,18 +484,18 @@ definitions:
       total_pages:
         type: integer
     type: object
-  favorite.FavoriteResponse:
+  internal_domain_favorite.FavoriteResponse:
     properties:
       created_at:
         type: string
       id:
         type: integer
       studio:
-        $ref: '#/definitions/favorite.StudioBrief'
+        $ref: '#/definitions/internal_domain_favorite.StudioBrief'
       studio_id:
         type: integer
     type: object
-  favorite.StudioBrief:
+  internal_domain_favorite.StudioBrief:
     properties:
       address:
         type: string
@@ -520,7 +512,192 @@ definitions:
       rating:
         type: number
     type: object
-  manager.UpdateDepositRequest:
+  internal_domain_lead.AssignLeadRequest:
+    properties:
+      admin_id:
+        type: string
+      priority:
+        type: integer
+    required:
+    - admin_id
+    type: object
+  internal_domain_lead.ConvertLeadRequest:
+    properties:
+      bin:
+        type: string
+      legal_address:
+        type: string
+      legal_name:
+        type: string
+      org_type:
+        enum:
+        - ip
+        - llp
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - bin
+    - legal_address
+    - legal_name
+    - org_type
+    - password
+    type: object
+  internal_domain_lead.LeadListResponse:
+    properties:
+      leads:
+        items:
+          $ref: '#/definitions/internal_domain_lead.OwnerLead'
+        type: array
+      total:
+        type: integer
+    type: object
+  internal_domain_lead.OwnerLead:
+    properties:
+      assigned_to:
+        $ref: '#/definitions/sql.NullString'
+      bin:
+        $ref: '#/definitions/sql.NullString'
+      company_name:
+        description: Company info
+        type: string
+      contact_email:
+        type: string
+      contact_name:
+        description: Contact person
+        type: string
+      contact_phone:
+        type: string
+      contact_position:
+        $ref: '#/definitions/sql.NullString'
+      converted_at:
+        allOf:
+        - $ref: '#/definitions/sql.NullTime'
+        description: Conversion
+      converted_user_id:
+        $ref: '#/definitions/sql.NullInt64'
+      created_at:
+        type: string
+      follow_up_count:
+        type: integer
+      how_found_us:
+        $ref: '#/definitions/sql.NullString'
+      id:
+        type: integer
+      last_contacted_at:
+        allOf:
+        - $ref: '#/definitions/sql.NullTime'
+        description: Follow-up
+      legal_address:
+        $ref: '#/definitions/sql.NullString'
+      next_follow_up_at:
+        $ref: '#/definitions/sql.NullTime'
+      notes:
+        $ref: '#/definitions/sql.NullString'
+      priority:
+        type: integer
+      referrer_url:
+        $ref: '#/definitions/sql.NullString'
+      rejection_reason:
+        $ref: '#/definitions/sql.NullString'
+      source:
+        allOf:
+        - $ref: '#/definitions/sql.NullString'
+        description: UTM tracking
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_domain_lead.Status'
+        description: Lead management
+      updated_at:
+        type: string
+      use_case:
+        allOf:
+        - $ref: '#/definitions/sql.NullString'
+        description: Application details
+      utm_campaign:
+        $ref: '#/definitions/sql.NullString'
+      utm_medium:
+        $ref: '#/definitions/sql.NullString'
+      utm_source:
+        $ref: '#/definitions/sql.NullString'
+      website:
+        $ref: '#/definitions/sql.NullString'
+    type: object
+  internal_domain_lead.Status:
+    enum:
+    - new
+    - contacted
+    - qualified
+    - converted
+    - rejected
+    - lost
+    type: string
+    x-enum-varnames:
+    - StatusNew
+    - StatusContacted
+    - StatusQualified
+    - StatusConverted
+    - StatusRejected
+    - StatusLost
+  internal_domain_lead.SubmitLeadRequest:
+    properties:
+      bin:
+        type: string
+      company_name:
+        description: Company info
+        type: string
+      contact_email:
+        type: string
+      contact_name:
+        description: Contact person
+        type: string
+      contact_phone:
+        type: string
+      contact_position:
+        type: string
+      how_found_us:
+        type: string
+      legal_address:
+        type: string
+      use_case:
+        description: Application details
+        type: string
+      utm_campaign:
+        type: string
+      utm_medium:
+        type: string
+      utm_source:
+        description: UTM parameters (optional, from query params)
+        type: string
+      website:
+        type: string
+    required:
+    - company_name
+    - contact_email
+    - contact_name
+    - contact_phone
+    type: object
+  internal_domain_lead.UpdateLeadStatusRequest:
+    properties:
+      notes:
+        type: string
+      reason:
+        description: For rejection
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_domain_lead.Status'
+        enum:
+        - new
+        - contacted
+        - qualified
+        - rejected
+        - lost
+    required:
+    - status
+    type: object
+  internal_domain_manager.UpdateDepositRequest:
     properties:
       deposit_amount:
         minimum: 0
@@ -528,7 +705,7 @@ definitions:
     required:
     - deposit_amount
     type: object
-  manager.UpdateStatusRequest:
+  internal_domain_manager.UpdateStatusRequest:
     properties:
       status:
         enum:
@@ -540,7 +717,7 @@ definitions:
     required:
     - status
     type: object
-  mwork.SyncUserRequest:
+  internal_domain_mwork.SyncUserRequest:
     properties:
       email:
         type: string
@@ -553,7 +730,7 @@ definitions:
     - mwork_user_id
     - role
     type: object
-  owner.AddPortfolioRequest:
+  internal_domain_owner.AddPortfolioRequest:
     properties:
       category:
         type: string
@@ -564,7 +741,7 @@ definitions:
     required:
     - image_url
     type: object
-  owner.CreateMaintenanceRequest:
+  internal_domain_owner.CreateMaintenanceRequest:
     properties:
       assigned_to:
         type: string
@@ -579,7 +756,7 @@ definitions:
     required:
     - title
     type: object
-  owner.CreateProcurementRequest:
+  internal_domain_owner.CreateProcurementRequest:
     properties:
       description:
         type: string
@@ -598,7 +775,7 @@ definitions:
     required:
     - title
     type: object
-  owner.ReorderPortfolioRequest:
+  internal_domain_owner.ReorderPortfolioRequest:
     properties:
       project_ids:
         items:
@@ -607,7 +784,7 @@ definitions:
     required:
     - project_ids
     type: object
-  owner.SetPINRequest:
+  internal_domain_owner.SetPINRequest:
     properties:
       pin:
         maxLength: 6
@@ -616,7 +793,7 @@ definitions:
     required:
     - pin
     type: object
-  owner.UpdateCompanyProfileRequest:
+  internal_domain_owner.UpdateCompanyProfileRequest:
     properties:
       city:
         type: string
@@ -653,20 +830,20 @@ definitions:
       years_experience:
         type: integer
     type: object
-  owner.VerifyPINRequest:
+  internal_domain_owner.VerifyPINRequest:
     properties:
       pin:
         type: string
     required:
     - pin
     type: object
-  payment.ErrorResponse:
+  internal_domain_payment.ErrorResponse:
     properties:
       error:
         example: invalid request
         type: string
     type: object
-  payment.InitPaymentRequest:
+  internal_domain_payment.InitPaymentRequest:
     properties:
       booking_id:
         example: 123
@@ -687,7 +864,7 @@ definitions:
     - booking_id
     - out_sum
     type: object
-  payment.InitPaymentResponse:
+  internal_domain_payment.InitPaymentResponse:
     properties:
       inv_id:
         example: 1700000000000000000
@@ -702,7 +879,7 @@ definitions:
         example: created
         type: string
     type: object
-  payment.SuccessCallbackResponse:
+  internal_domain_payment.SuccessCallbackResponse:
     properties:
       status:
         example: ok
@@ -711,7 +888,139 @@ definitions:
         example: true
         type: boolean
     type: object
-  review.CreateReviewRequest:
+  internal_domain_profile.AdminProfile:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        $ref: '#/definitions/sql.NullInt64'
+      full_name:
+        description: Admin info
+        type: string
+      id:
+        type: integer
+      is_active:
+        description: Access
+        type: boolean
+      last_login_at:
+        $ref: '#/definitions/sql.NullTime'
+      last_login_ip:
+        $ref: '#/definitions/sql.NullString'
+      phone:
+        $ref: '#/definitions/sql.NullString'
+      position:
+        $ref: '#/definitions/sql.NullString'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  internal_domain_profile.ClientProfile:
+    properties:
+      avatar_url:
+        $ref: '#/definitions/sql.NullString'
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        allOf:
+        - $ref: '#/definitions/sql.NullString'
+        description: Basic info
+      nickname:
+        $ref: '#/definitions/sql.NullString'
+      phone:
+        $ref: '#/definitions/sql.NullString'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  internal_domain_profile.OwnerProfile:
+    properties:
+      admin_notes:
+        $ref: '#/definitions/sql.NullString'
+      bin:
+        $ref: '#/definitions/sql.NullString'
+      company_name:
+        description: Company info
+        type: string
+      contact_person:
+        $ref: '#/definitions/sql.NullString'
+      contact_position:
+        $ref: '#/definitions/sql.NullString'
+      created_at:
+        type: string
+      email:
+        $ref: '#/definitions/sql.NullString'
+      id:
+        type: integer
+      legal_address:
+        $ref: '#/definitions/sql.NullString'
+      phone:
+        allOf:
+        - $ref: '#/definitions/sql.NullString'
+        description: Contact
+      rejected_reason:
+        $ref: '#/definitions/sql.NullString'
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+      verification_docs:
+        items:
+          type: string
+        type: array
+      verification_status:
+        description: Verification
+        type: string
+      verified_at:
+        $ref: '#/definitions/sql.NullTime'
+      verified_by:
+        $ref: '#/definitions/sql.NullInt64'
+      website:
+        $ref: '#/definitions/sql.NullString'
+    type: object
+  internal_domain_profile.UpdateAdminProfileRequest:
+    properties:
+      full_name:
+        type: string
+      phone:
+        type: string
+      position:
+        type: string
+    type: object
+  internal_domain_profile.UpdateClientProfileRequest:
+    properties:
+      avatar_url:
+        type: string
+      name:
+        type: string
+      nickname:
+        type: string
+      phone:
+        type: string
+    type: object
+  internal_domain_profile.UpdateOwnerProfileRequest:
+    properties:
+      bin:
+        type: string
+      company_name:
+        type: string
+      contact_person:
+        type: string
+      contact_position:
+        type: string
+      email:
+        type: string
+      legal_address:
+        type: string
+      phone:
+        type: string
+      website:
+        type: string
+    type: object
+  internal_domain_review.CreateReviewRequest:
     properties:
       booking_id:
         type: integer
@@ -731,12 +1040,166 @@ definitions:
     - rating
     - studio_id
     type: object
-  review.OwnerResponseRequest:
+  internal_domain_review.OwnerResponseRequest:
     properties:
       response:
         type: string
     required:
     - response
+    type: object
+  photostudio_internal_domain_auth.StudioStatus:
+    enum:
+    - pending
+    - verified
+    - rejected
+    - blocked
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusVerified
+    - StatusRejected
+    - StatusBlocked
+  photostudio_internal_domain_auth.User:
+    properties:
+      avatar_url:
+        type: string
+      ban_reason:
+        type: string
+      banned_at:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      email_verified_at:
+        type: string
+      failed_login_attempts:
+        type: integer
+      id:
+        type: integer
+      is_banned:
+        type: boolean
+      locked_until:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/photostudio_internal_domain_auth.UserRole'
+      studio_status:
+        $ref: '#/definitions/photostudio_internal_domain_auth.StudioStatus'
+      updated_at:
+        type: string
+    required:
+    - email
+    type: object
+  photostudio_internal_domain_auth.UserRole:
+    enum:
+    - client
+    - studio_owner
+    - admin
+    type: string
+    x-enum-varnames:
+    - RoleClient
+    - RoleStudioOwner
+    - RoleAdmin
+  photostudio_internal_domain_lead.ConvertLeadRequest:
+    properties:
+      bin:
+        type: string
+      legal_address:
+        type: string
+      legal_name:
+        type: string
+      org_type:
+        enum:
+        - ip
+        - llp
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - bin
+    - legal_address
+    - legal_name
+    - org_type
+    - password
+    type: object
+  photostudio_internal_domain_review.Review:
+    properties:
+      booking_id:
+        type: integer
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: integer
+      is_hidden:
+        type: boolean
+      is_verified:
+        type: boolean
+      owner_response:
+        type: string
+      photos:
+        items:
+          type: string
+        type: array
+      rating:
+        type: integer
+      responded_at:
+        type: string
+      studio_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  photostudio_internal_pkg_response.ErrorData:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+    type: object
+  photostudio_internal_pkg_response.Response:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/photostudio_internal_pkg_response.ErrorData'
+      success:
+        type: boolean
+    type: object
+  sql.NullInt64:
+    properties:
+      int64:
+        format: int64
+        type: integer
+      valid:
+        description: Valid is true if Int64 is not NULL
+        type: boolean
+    type: object
+  sql.NullString:
+    properties:
+      string:
+        type: string
+      valid:
+        description: Valid is true if String is not NULL
+        type: boolean
+    type: object
+  sql.NullTime:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
     type: object
 info:
   contact: {}
@@ -744,6 +1207,98 @@ info:
   title: PhotoStudio API
   version: "1.0"
 paths:
+  /admin/admins:
+    get:
+      description: Get list of administrators
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List admins
+      tags:
+      - Admin Management
+    post:
+      consumes:
+      - application/json
+      description: Create a new administrator account
+      parameters:
+      - description: Admin details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_admin.CreateAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create admin
+      tags:
+      - Admin Management
+  /admin/admins/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update administrator details
+      parameters:
+      - description: Admin UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_admin.UpdateAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update admin
+      tags:
+      - Admin Management
   /admin/ads:
     get:
       description: Возвращает список баннеров и объявлений с фильтром по месту размещения
@@ -789,7 +1344,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/admin.Ad'
+          $ref: '#/definitions/internal_domain_admin.Ad'
       responses:
         "201":
           description: Объявление успешно создано
@@ -921,6 +1476,337 @@ paths:
       summary: Получить аналитику платформы
       tags:
       - Admin - Статистика и аналитика
+  /admin/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate as admin and get JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_admin.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Admin Login
+      tags:
+      - Admin Auth
+  /admin/auth/me:
+    get:
+      description: Get current authenticated admin profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get current admin
+      tags:
+      - Admin Auth
+  /admin/leads:
+    get:
+      description: Admin endpoint to list all leads with optional filtering
+      parameters:
+      - description: Filter by status
+        enum:
+        - new
+        - contacted
+        - qualified
+        - converted
+        - rejected
+        - lost
+        in: query
+        name: status
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_lead.LeadListResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: List leads
+      tags:
+      - Admin Leads
+  /admin/leads/{id}:
+    get:
+      description: Admin endpoint to view lead details
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_lead.OwnerLead'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get lead by ID
+      tags:
+      - Admin Leads
+  /admin/leads/{id}/assign:
+    patch:
+      consumes:
+      - application/json
+      description: Admin endpoint to assign lead to an admin user
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Assignment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_lead.AssignLeadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Assign lead to admin
+      tags:
+      - Admin Leads
+  /admin/leads/{id}/contacted:
+    post:
+      description: Update lead status to contacted and increment follow-up count
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Mark lead as contacted
+      tags:
+      - Admin Leads
+  /admin/leads/{id}/convert:
+    post:
+      consumes:
+      - application/json
+      description: Create studio owner account from lead
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Conversion data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_lead.ConvertLeadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Convert lead to owner
+      tags:
+      - Admin Leads
+  /admin/leads/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      description: Mark lead as rejected with reason
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_lead.UpdateLeadStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject lead
+      tags:
+      - Admin Leads
+  /admin/leads/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Admin endpoint to update lead status
+      parameters:
+      - description: Lead ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_lead.UpdateLeadStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update lead status
+      tags:
+      - Admin Leads
+  /admin/leads/stats:
+    get:
+      description: Admin endpoint to get lead counts by status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get lead statistics
+      tags:
+      - Admin Leads
   /admin/reviews:
     get:
       description: Возвращает постраничный список всех отзывов на платформе с фильтром
@@ -944,7 +1830,7 @@ paths:
         "200":
           description: Список отзывов с общим количеством и параметрами страницы
           schema:
-            $ref: '#/definitions/admin.ReviewListResponse'
+            $ref: '#/definitions/internal_domain_admin.ReviewListResponse'
         "400":
           description: Ошибка валидации параметров запроса
           schema:
@@ -1255,7 +2141,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/admin.RejectStudioRequest'
+          $ref: '#/definitions/internal_domain_admin.RejectStudioRequest'
       responses:
         "200":
           description: Заявка успешно отклонена
@@ -1297,7 +2183,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/admin.VerifyStudioRequest'
+          $ref: '#/definitions/internal_domain_admin.VerifyStudioRequest'
       responses:
         "200":
           description: Студия успешно верифицирована
@@ -1431,7 +2317,7 @@ paths:
         "200":
           description: Список пользователей с общим количеством и параметрами страницы
           schema:
-            $ref: '#/definitions/admin.UserListResponse'
+            $ref: '#/definitions/internal_domain_admin.UserListResponse'
         "400":
           description: Ошибка валидации параметров запроса
           schema:
@@ -1467,7 +2353,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/admin.BlockUserRequest'
+          $ref: '#/definitions/internal_domain_admin.BlockUserRequest'
       responses:
         "200":
           description: Пользователь успешно заблокирован
@@ -1509,7 +2395,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/admin.BlockUserRequest'
+          $ref: '#/definitions/internal_domain_admin.BlockUserRequest'
       responses:
         "200":
           description: Пользователь успешно заблокирован
@@ -1746,7 +2632,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/catalog.UpdateRoomRequest'
+          $ref: '#/definitions/internal_domain_catalog.UpdateRoomRequest'
       produces:
       - application/json
       responses:
@@ -1794,7 +2680,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/catalog.CreateEquipmentRequest'
+          $ref: '#/definitions/internal_domain_catalog.CreateEquipmentRequest'
       produces:
       - application/json
       responses:
@@ -1920,7 +2806,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/catalog.CreateStudioRequest'
+          $ref: '#/definitions/internal_domain_catalog.CreateStudioRequest'
       produces:
       - application/json
       responses:
@@ -2011,7 +2897,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/catalog.UpdateStudioRequest'
+          $ref: '#/definitions/internal_domain_catalog.UpdateStudioRequest'
       produces:
       - application/json
       responses:
@@ -2121,7 +3007,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/catalog.CreateRoomRequest'
+          $ref: '#/definitions/internal_domain_catalog.CreateRoomRequest'
       produces:
       - application/json
       responses:
@@ -2331,7 +3217,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.LoginRequest'
+          $ref: '#/definitions/internal_domain_auth.LoginRequest'
       responses:
         "200":
           description: Успешная авторизация, возвращается JWT токен
@@ -2355,81 +3241,111 @@ paths:
             type: object
       summary: Войти в аккаунт
       tags:
-      - Автентификация
+      - Auth
+  /auth/logout:
+    post:
+      description: Invalidates the current session and clears the refresh token cookie.
+      responses:
+        "204":
+          description: No Content
+      summary: Logout
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      description: Refreshes the session using the refresh token stored in the cookie.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh token
+      tags:
+      - Auth
   /auth/register/client:
     post:
-      description: Создаёт новый аккаунт клиента на платформе. Клиент получает возможность
-        искать студии и делать бронирования. Автоматически генерируется JWT токен
-        для сессии.
+      consumes:
+      - application/json
+      description: Creates a new client account and returns registration payload with
+        user data and verification flag.
       parameters:
-      - description: Данные для регистрации (email, password, name, phone)
+      - description: payload
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/auth.RegisterClientRequest'
+          $ref: '#/definitions/internal_domain_auth.RegisterClientRequest'
+      produces:
+      - application/json
       responses:
         "201":
-          description: Клиент успешно зарегистрирован, возвращается JWT токен
+          description: Created
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/internal_domain_auth.RegisterClientResponseSwagger'
         "400":
-          description: 'Ошибка валидации: неверный формат данных'
+          description: Bad Request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
         "409":
-          description: 'Ошибка: email уже зарегистрирован на платформе'
+          description: Conflict
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
         "500":
-          description: Ошибка сервера при создании аккаунта
+          description: Internal Server Error
           schema:
-            additionalProperties: true
-            type: object
-      summary: Зарегистрировать клиента
+            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
+      summary: Register client
       tags:
-      - Автентификация
-  /auth/register/studio:
+      - Auth
+  /auth/verify/confirm:
     post:
-      description: Создаёт новый аккаунт владельца студии. После регистрации требуется
-        модерация администратором перед открытием студии. Владелец получает токен
-        для доступа к личному кабинету.
+      consumes:
+      - application/json
+      description: Verifies the email using the provided 6-digit code.
       parameters:
-      - description: Данные для регистрации владельца (email, password, name, phone,
-          studio_name, description, etc.)
+      - description: payload
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/auth.RegisterStudioRequest'
+          $ref: '#/definitions/internal_domain_auth.VerifyConfirmDTO'
+      produces:
+      - application/json
       responses:
-        "201":
-          description: Владелец зарегистрирован, статус studio_status=pending, возвращается
-            JWT токен
+        "200":
+          description: OK
           schema:
             additionalProperties: true
             type: object
-        "400":
-          description: 'Ошибка валидации: неверный формат данных'
-          schema:
-            additionalProperties: true
-            type: object
-        "409":
-          description: 'Ошибка: email уже зарегистрирован на платформе'
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Ошибка сервера при создании аккаунта владельца
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Зарегистрировать владельца студии
+      summary: Confirm email verification
       tags:
-      - Автентификация
+      - Auth
+  /auth/verify/request:
+    post:
+      consumes:
+      - application/json
+      description: Sends a verification code to the specified email.
+      parameters:
+      - description: payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_auth.VerifyRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Request email verification
+      tags:
+      - Auth
   /bookings:
     post:
       description: Создаёт новое бронирование на указанную дату и время в выбранной
@@ -2444,7 +3360,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/booking.CreateBookingRequest'
+          $ref: '#/definitions/internal_domain_booking.CreateBookingRequest'
       responses:
         "201":
           description: Бронирование успешно создано
@@ -2494,7 +3410,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/booking.CancelBookingRequest'
+          $ref: '#/definitions/internal_domain_booking.CancelBookingRequest'
       responses:
         "200":
           description: Бронирование успешно отменено с указанной причиной
@@ -2627,7 +3543,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/booking.UpdateDepositRequest'
+          $ref: '#/definitions/internal_domain_booking.UpdateDepositRequest'
       responses:
         "200":
           description: Размер залога успешно обновлен
@@ -2716,7 +3632,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/booking.UpdatePaymentStatusRequest'
+          $ref: '#/definitions/internal_domain_booking.UpdatePaymentStatusRequest'
       responses:
         "200":
           description: Статус платежа успешно обновлен
@@ -2766,7 +3682,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/booking.UpdateBookingStatusRequest'
+          $ref: '#/definitions/internal_domain_booking.UpdateBookingStatusRequest'
       responses:
         "200":
           description: Статус бронирования успешно обновлен
@@ -2848,7 +3764,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.CreateConversationRequest'
+          $ref: '#/definitions/internal_domain_chat.CreateConversationRequest'
       produces:
       - application/json
       responses:
@@ -2927,7 +3843,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.SendMessageRequest'
+          $ref: '#/definitions/internal_domain_chat.SendMessageRequest'
       produces:
       - application/json
       responses:
@@ -3085,7 +4001,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.BlockUserRequest'
+          $ref: '#/definitions/internal_domain_chat.BlockUserRequest'
       produces:
       - application/json
       responses:
@@ -3145,7 +4061,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.AddPortfolioRequest'
+          $ref: '#/definitions/internal_domain_owner.AddPortfolioRequest'
       produces:
       - application/json
       responses:
@@ -3229,7 +4145,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.ReorderPortfolioRequest'
+          $ref: '#/definitions/internal_domain_owner.ReorderPortfolioRequest'
       produces:
       - application/json
       responses:
@@ -3302,7 +4218,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.UpdateCompanyProfileRequest'
+          $ref: '#/definitions/internal_domain_owner.UpdateCompanyProfileRequest'
       produces:
       - application/json
       responses:
@@ -3354,15 +4270,15 @@ paths:
         "200":
           description: Список избранных студий
           schema:
-            $ref: '#/definitions/favorite.FavoriteListResponse'
+            $ref: '#/definitions/internal_domain_favorite.FavoriteListResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "500":
           description: Ошибка при получении списка избранного
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить список избранных студий
@@ -3389,19 +4305,19 @@ paths:
         "400":
           description: Некорректный ID студии
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "404":
           description: Студия отсутствует в избранном
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "500":
           description: Ошибка при удалении из избранного
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить студию из избранного
@@ -3425,23 +4341,23 @@ paths:
         "201":
           description: Студия успешно добавлена в избранное
           schema:
-            $ref: '#/definitions/favorite.FavoriteResponse'
+            $ref: '#/definitions/internal_domain_favorite.FavoriteResponse'
         "400":
           description: Студия уже находится в избранном или некорректный ID студии
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "404":
           description: Студия не найдена
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "500":
           description: Ошибка при добавлении в избранное
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Добавить студию в избранное
@@ -3465,19 +4381,19 @@ paths:
         "200":
           description: Результат проверки наличия студии в избранном
           schema:
-            $ref: '#/definitions/favorite.CheckFavoriteResponse'
+            $ref: '#/definitions/internal_domain_favorite.CheckFavoriteResponse'
         "400":
           description: Некорректный ID студии
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
         "500":
           description: Ошибка при проверке избранного
           schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
+            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Проверить находится ли студия в избранном
@@ -3495,7 +4411,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/mwork.SyncUserRequest'
+          $ref: '#/definitions/internal_domain_mwork.SyncUserRequest'
       responses:
         "200":
           description: Пользователь синхронизирован успешно
@@ -3528,6 +4444,45 @@ paths:
       summary: Синхронизация пользователя из Mwork
       tags:
       - Интеграции - Mwork
+  /leads/submit:
+    post:
+      consumes:
+      - application/json
+      description: Public endpoint for potential studio owners to submit their application
+      parameters:
+      - description: Lead submission data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_lead.SubmitLeadRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_lead.OwnerLead'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      summary: Submit studio owner lead
+      tags:
+      - Leads
   /manager/bookings:
     get:
       description: Выводит список бронирований для всех студий владельца с деталями
@@ -3647,7 +4602,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/manager.UpdateDepositRequest'
+          $ref: '#/definitions/internal_domain_manager.UpdateDepositRequest'
       responses:
         "200":
           description: Намавка депозита обновлена
@@ -3694,7 +4649,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/manager.UpdateStatusRequest'
+          $ref: '#/definitions/internal_domain_manager.UpdateStatusRequest'
       responses:
         "200":
           description: Статус бронирования обновлен
@@ -3985,7 +4940,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.CreateMaintenanceRequest'
+          $ref: '#/definitions/internal_domain_owner.CreateMaintenanceRequest'
       produces:
       - application/json
       responses:
@@ -4173,7 +5128,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.CreateProcurementRequest'
+          $ref: '#/definitions/internal_domain_owner.CreateProcurementRequest'
       produces:
       - application/json
       responses:
@@ -4324,7 +5279,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.SetPINRequest'
+          $ref: '#/definitions/internal_domain_owner.SetPINRequest'
       produces:
       - application/json
       responses:
@@ -4369,7 +5324,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/owner.VerifyPINRequest'
+          $ref: '#/definitions/internal_domain_owner.VerifyPINRequest'
       produces:
       - application/json
       responses:
@@ -4414,22 +5369,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/payment.InitPaymentRequest'
+          $ref: '#/definitions/internal_domain_payment.InitPaymentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/payment.InitPaymentResponse'
+            $ref: '#/definitions/internal_domain_payment.InitPaymentResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Initialize Robokassa payment
@@ -4501,22 +5456,238 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/payment.SuccessCallbackResponse'
+            $ref: '#/definitions/internal_domain_payment.SuccessCallbackResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
       summary: Robokassa SuccessURL callback
       tags:
       - Payments
+  /profile/admin:
+    get:
+      description: Get authenticated admin's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.AdminProfile'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get admin profile
+      tags:
+      - Admin Profile
+    put:
+      consumes:
+      - application/json
+      description: Update authenticated admin's profile (admin only)
+      parameters:
+      - description: Profile update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_profile.UpdateAdminProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.AdminProfile'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update admin profile
+      tags:
+      - Admin Profile
+  /profile/client:
+    get:
+      description: Get authenticated client's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.ClientProfile'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get client profile
+      tags:
+      - Client Profile
+    put:
+      consumes:
+      - application/json
+      description: Update authenticated client's profile
+      parameters:
+      - description: Profile update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_profile.UpdateClientProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.ClientProfile'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update client profile
+      tags:
+      - Client Profile
+  /profile/owner:
+    get:
+      description: Get authenticated owner's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.OwnerProfile'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get owner profile
+      tags:
+      - Owner Profile
+    put:
+      consumes:
+      - application/json
+      description: Update authenticated owner's profile
+      parameters:
+      - description: Profile update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_domain_profile.UpdateOwnerProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/internal_domain_profile.OwnerProfile'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update owner profile
+      tags:
+      - Owner Profile
   /reviews:
     post:
       description: Пользователь может написать отзыв о студии только после завершённого
@@ -4527,7 +5698,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/review.CreateReviewRequest'
+          $ref: '#/definitions/internal_domain_review.CreateReviewRequest'
       responses:
         "201":
           description: Отзыв успешно сохранён
@@ -4579,7 +5750,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/review.OwnerResponseRequest'
+          $ref: '#/definitions/internal_domain_review.OwnerResponseRequest'
       responses:
         "200":
           description: Ответ успешно добавлен
@@ -4674,7 +5845,7 @@ paths:
         "200":
           description: Список занятых временных слотов на указанную дату
           schema:
-            $ref: '#/definitions/booking.BusySlotsResponse'
+            $ref: '#/definitions/internal_domain_booking.BusySlotsResponse'
         "400":
           description: Ошибка валидации - неверный ID комнаты или формат даты
           schema:
@@ -4791,7 +5962,7 @@ paths:
       - BearerAuth: []
       summary: Получить профиль пользователя
       tags:
-      - Профиль и аутентификация
+      - Auth
     put:
       description: 'Обновляет информацию о профиле: имя, телефон и другие поля. Email
         не может быть изменён через этот эндпоинт. Требуется аутентификация.'
@@ -4801,7 +5972,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.UpdateProfileRequest'
+          $ref: '#/definitions/internal_domain_auth.UpdateProfileRequest'
       responses:
         "200":
           description: Профиль успешно обновлён
@@ -4827,7 +5998,7 @@ paths:
       - BearerAuth: []
       summary: Обновить профиль пользователя
       tags:
-      - Профиль и аутентификация
+      - Auth
   /users/me/bookings:
     get:
       description: Возвращает полный список бронирований, сделанных текущим пользователем,
@@ -4907,7 +6078,7 @@ paths:
       - BearerAuth: []
       summary: Загрузить документы верификации
       tags:
-      - Профиль и аутентификация
+      - Auth
 securityDefinitions:
   BearerAuth:
     in: header
