@@ -9,6 +9,20 @@ import (
 
 var debugMode = false
 
+// Response is a generic response structure for Swagger documentation
+type Response struct {
+	Success bool        `json:"success"`
+	Data    interface{} `json:"data,omitempty"`
+	Error   *ErrorData  `json:"error,omitempty"`
+}
+
+// ErrorData represents error details in the response
+type ErrorData struct {
+	Code    string      `json:"code"`
+	Message string      `json:"message"`
+	Details interface{} `json:"details,omitempty"`
+}
+
 // SetDebug enables or disables detailed error responses
 func SetDebug(debug bool) {
 	debugMode = debug

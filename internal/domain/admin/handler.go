@@ -1,19 +1,27 @@
 package admin
 
 import (
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"photostudio/internal/pkg/response"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	service *Service
+	service           *Service
+	authHandler       *AuthHandler
+	managementHandler *ManagementHandler
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+// NewHandler creates a new admin handler
+func NewHandler(service *Service, authHandler *AuthHandler, managementHandler *ManagementHandler) *Handler {
+	return &Handler{
+		service:           service,
+		authHandler:       authHandler,
+		managementHandler: managementHandler,
+	}
 }
 
 // GetPendingStudios получает список студий ожидающих одобрения администратором.
@@ -25,7 +33,7 @@ func NewHandler(service *Service) *Handler {
 // @Param		limit	query	int		false	"Количество записей на странице (по умолчанию 20)"	default(20)
 // @Success		200	{object}		map[string]interface{} "Список ожидающих студий"
 // @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
-	// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении данных"
+// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении данных"
 // @Router		/admin/studios/pending [GET]
 func (h *Handler) GetPendingStudios(c *gin.Context) {
 	if !isAdmin(c) {
@@ -56,8 +64,8 @@ func (h *Handler) GetPendingStudios(c *gin.Context) {
 // @Param		id	path	int	true	"ID владельца студии"
 // @Success		200	{object}		map[string]interface{} "Студия успешно одобрена"
 // @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID владельца или студия уже одобрена"
-	// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-	// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
+// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
+// @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
 // @Router		/admin/studios/:id/approve [POST]
 func (h *Handler) ApproveStudio(c *gin.Context) {
 	if !isAdmin(c) {
@@ -176,6 +184,7 @@ func (h *Handler) RejectStudio(c *gin.Context) {
 
 	response.Success(c, http.StatusOK, gin.H{"message": "Application rejected"})
 }
+
 // GetStatistics получает расширённую статистику платформы.
 // @Summary		Получить расширённую статистику
 // @Description	Возвращает детальную статистику платформы. Алиас для GetStats с альтернативным путём (для обратной совместимости).

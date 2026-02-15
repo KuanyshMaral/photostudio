@@ -3,12 +3,13 @@ package booking
 import (
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v5/pgconn"
 	"math"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
 	"sort"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type TimeSlot struct {
@@ -541,4 +542,27 @@ func (s *Service) GetWorkingHoursForDate(ctx context.Context, studioID int64, da
 		CloseTime: "21:00",
 		IsClosed:  false,
 	}, nil
+}
+
+// UpdatePaymentStatusSystem updates payment status without user check (for system/webhooks)
+func (s *Service) UpdatePaymentStatusSystem(ctx context.Context, bookingID int64, status PaymentStatus) (*Booking, error) {
+	b, err := s.bookings.GetByID(ctx, bookingID)
+	if err != nil {
+		return nil, err
+	}
+
+	b.PaymentStatus = status
+	if _, err := s.bookings.UpdatePaymentStatus(ctx, bookingID, status); err != nil {
+		return nil, err
+	}
+
+	// Notify owner if paid
+	if status == PaymentPaid && s.notifs != nil {
+		ownerID, _, err := s.bookings.GetStudioOwnerForBooking(ctx, b.ID)
+		if err == nil && ownerID > 0 {
+			_ = s.notifs.NotifyBookingCreated(ctx, ownerID, b.ID, b.StudioID, b.RoomID, b.StartTime)
+		}
+	}
+
+	return b, nil
 }

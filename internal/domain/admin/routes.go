@@ -2,11 +2,25 @@ package admin
 
 import "github.com/gin-gonic/gin"
 
-func (h *Handler) RegisterRoutes(admin *gin.RouterGroup) {
+func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
+	admin := v1.Group("/admin")
+	admin.POST("/auth/login", h.authHandler.Login)
+}
+
+func (h *Handler) RegisterProtectedRoutes(admin *gin.RouterGroup) {
 	// studios moderation
 	admin.GET("/studios/pending", h.GetPendingStudios)
 	admin.POST("/studios/:id/approve", h.ApproveStudio)
 	admin.POST("/studios/:id/reject", h.RejectStudio)
+
+	// Admin Auth
+	// GET /admin/auth/me is protected
+	admin.GET("/auth/me", h.authHandler.GetMe)
+
+	// Admin Management
+	admin.GET("/admins", h.managementHandler.ListAdmins)
+	admin.POST("/admins", h.managementHandler.CreateAdmin)
+	admin.PATCH("/admins/:id", h.managementHandler.UpdateAdmin)
 
 	// statistics
 	admin.GET("/stats", h.GetStats)
@@ -46,4 +60,3 @@ func (h *Handler) RegisterRoutes(admin *gin.RouterGroup) {
 	admin.DELETE("/reviews/:id", h.DeleteReview)
 
 }
-

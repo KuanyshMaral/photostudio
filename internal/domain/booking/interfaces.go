@@ -1,11 +1,12 @@
 package booking
 
 import (
-	"photostudio/internal/domain/auth"
-	"gorm.io/gorm"
 	"context"
+	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // BookingRepository defines the interface for booking operations
@@ -20,6 +21,7 @@ type BookingRepository interface {
 	GetByStudioID(ctx context.Context, studioID int64) ([]Booking, error)
 	IsBookingOwnedByUser(ctx context.Context, bookingID, ownerID int64) (bool, error)
 	UpdatePaymentStatus(ctx context.Context, bookingID int64, status PaymentStatus) (*Booking, error)
+	UpdatePaymentStatusSystem(ctx context.Context, bookingID int64, status PaymentStatus) (*Booking, error)
 	// Block 9: Cancel with reason
 	CancelWithReason(ctx context.Context, bookingID int64, reason string) error
 	// Block 10: Update deposit
@@ -28,7 +30,7 @@ type BookingRepository interface {
 	// Manager methods
 	GetManagerBookings(ctx context.Context, ownerID int64, filters ManagerBookingFilters) ([]ManagerBookingRow, int64, error)
 	GetBookingForManager(ctx context.Context, ownerID, bookingID int64) (*ManagerBookingRow, error)
-	
+
 	GetRecentByUserID(userID int64, limit int) ([]auth.RecentBookingRow, error)
 	GetStatsByUserID(userID int64) (*auth.BookingStats, error)
 	HasCompletedBookingForStudio(ctx context.Context, userID, studioID int64) (bool, error)

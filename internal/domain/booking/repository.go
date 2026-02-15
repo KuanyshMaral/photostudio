@@ -3,9 +3,10 @@ package booking
 import (
 	"context"
 	"errors"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/auth"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type bookingRepository struct {
@@ -279,13 +280,14 @@ func (r *bookingRepository) IsBookingOwnedByUser(ctx context.Context, bookingID,
 		Count(&count).Error
 	return count > 0, err
 }
+
+// UpdatePaymentStatus updates the payment status of a booking
 func (r *bookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID int64, status PaymentStatus) (*Booking, error) {
 	var m bookingModel
 	if err := r.db.WithContext(ctx).First(&m, bookingID).Error; err != nil {
 		return nil, err
 	}
 
-	// если в bookingModel PaymentStatus string
 	m.PaymentStatus = string(status)
 
 	if err := r.db.WithContext(ctx).Save(&m).Error; err != nil {
@@ -293,6 +295,11 @@ func (r *bookingRepository) UpdatePaymentStatus(ctx context.Context, bookingID i
 	}
 
 	return toDomainBooking(m), nil
+}
+
+// UpdatePaymentStatusSystem updates the payment status (system usage, e.g. from payment gateway)
+func (r *bookingRepository) UpdatePaymentStatusSystem(ctx context.Context, bookingID int64, status PaymentStatus) (*Booking, error) {
+	return r.UpdatePaymentStatus(ctx, bookingID, status)
 }
 
 func (r *bookingRepository) DB() *gorm.DB {

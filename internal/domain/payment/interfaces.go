@@ -21,4 +21,5 @@ type paymentRepo interface {
 
 type bookingPaymentWriter interface {
 	UpdatePaymentStatus(ctx context.Context, bookingID int64, status booking.PaymentStatus) (*booking.Booking, error)
+	UpdatePaymentStatusSystem(ctx context.Context, bookingID int64, status booking.PaymentStatus) (*booking.Booking, error)
 }

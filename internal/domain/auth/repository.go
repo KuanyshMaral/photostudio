@@ -208,3 +208,13 @@ func (r *UserRepository) Update(ctx context.Context, u *User) error {
 }
 
 var _ UserRepositoryInterface = (*UserRepository)(nil)
+
+// CreateWithPassword creates a new user with password (wrapper for lead service compatibility)
+func (r *UserRepository) CreateWithPassword(ctx context.Context, user *User, password string) error {
+	hashedPassword, err := HashPassword(password)
+	if err != nil {
+		return err
+	}
+	user.PasswordHash = hashedPassword
+	return r.Create(ctx, user)
+}

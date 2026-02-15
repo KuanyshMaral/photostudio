@@ -6,13 +6,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"photostudio/internal/domain/profile"
+	"strings"
+	"time"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"photostudio/internal/domain/owner"
-	"strings"
-	"time"
 )
 
 const (
@@ -24,10 +25,20 @@ type jwtService interface {
 	GenerateToken(userID int64, role string) (string, error)
 }
 
+type ProfileService interface {
+	EnsureClientProfile(ctx context.Context, userID int64) (*profile.ClientProfile, error)
+	EnsureOwnerProfile(ctx context.Context, userID int64, req *profile.CreateOwnerProfileRequest) (*profile.OwnerProfile, error)
+	EnsureAdminProfile(ctx context.Context, userID uuid.UUID, req *profile.CreateAdminProfileRequest) (*profile.AdminProfile, error)
+	GetClientProfile(ctx context.Context, userID int64) (*profile.ClientProfile, error)
+	GetOwnerProfile(ctx context.Context, userID int64) (*profile.OwnerProfile, error)
+	GetAdminProfile(ctx context.Context, userID uuid.UUID) (*profile.AdminProfile, error)
+}
+
 // Service contains all business logic for authentication
 type Service struct {
 	users                  UserRepositoryInterface
 	studioOwners           StudioOwnerRepositoryInterface
+	profileService         ProfileService
 	jwt                    jwtService
 	mailer                 Mailer
 	verificationCodePepper string
@@ -69,6 +80,7 @@ func (refreshTokenRow) TableName() string { return "refresh_tokens" }
 func NewService(
 	users UserRepositoryInterface,
 	studioOwners StudioOwnerRepositoryInterface,
+	profileService ProfileService,
 	jwt jwtService,
 	mailer Mailer,
 	verificationCodePepper string,
@@ -80,6 +92,7 @@ func NewService(
 	return &Service{
 		users:                  users,
 		studioOwners:           studioOwners,
+		profileService:         profileService,
 		jwt:                    jwt,
 		mailer:                 mailer,
 		verificationCodePepper: verificationCodePepper,
@@ -110,68 +123,6 @@ func (s *Service) RegisterClient(ctx context.Context, req RegisterClientRequest)
 	}
 
 	if err := s.users.Create(ctx, user); err != nil {
-		return nil, false, err
-	}
-
-	if _, err := s.RequestEmailVerification(ctx, user.Email); err != nil {
-		return nil, false, err
-	}
-
-	user.PasswordHash = ""
-	return user, true, nil
-}
-
-func (s *Service) RegisterStudioOwner(ctx context.Context, req RegisterStudioRequest) (*User, bool, error) {
-	if err := s.validateEmailUnique(ctx, req.Email); err != nil {
-		return nil, false, err
-	}
-
-	hashedPassword, err := s.hashPassword(req.Password)
-	if err != nil {
-		return nil, false, err
-	}
-
-	tx := s.users.DB().WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return nil, false, tx.Error
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	user := &User{
-		Email:         strings.ToLower(strings.TrimSpace(req.Email)),
-		PasswordHash:  hashedPassword,
-		Name:          req.Name,
-		Phone:         req.Phone,
-		Role:          RoleStudioOwner,
-		StudioStatus:  StatusPending,
-		EmailVerified: false,
-	}
-
-	if err := tx.Create(user).Error; err != nil {
-		tx.Rollback()
-		return nil, false, err
-	}
-
-	studioOwner := &owner.StudioOwner{
-		UserID:           user.ID,
-		CompanyName:      req.CompanyName,
-		BIN:              req.BIN,
-		LegalAddress:     req.LegalAddress,
-		ContactPerson:    req.ContactPerson,
-		ContactPosition:  req.ContactPosition,
-		VerificationDocs: []string{},
-	}
-
-	if err := tx.Create(studioOwner).Error; err != nil {
-		tx.Rollback()
-		return nil, false, err
-	}
-
-	if err := tx.Commit().Error; err != nil {
 		return nil, false, err
 	}
 
