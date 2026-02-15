@@ -18,8 +18,6 @@ type Service struct {
 	db *gorm.DB
 }
 
-var _ WalletService = (*Service)(nil)
-
 func NewService(db *gorm.DB) *Service {
 	return &Service{db: db}
 }

@@ -1,7 +1,6 @@
 package wallet
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -9,17 +8,10 @@ import (
 )
 
 type Handler struct {
-	service WalletService
+	service *Service
 }
 
-type WalletService interface {
-	GetOrCreateWallet(ctx context.Context, userID int64) (*FakeWallet, error)
-	Add(ctx context.Context, userID int64, amount int64) (*FakeWallet, *FakeTransaction, error)
-	Spend(ctx context.Context, userID int64, amount int64) (*FakeWallet, *FakeTransaction, error)
-	ListTransactions(ctx context.Context, userID int64) ([]FakeTransaction, error)
-}
-
-func NewHandler(service WalletService) *Handler {
+func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
