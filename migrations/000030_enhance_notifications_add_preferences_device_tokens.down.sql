@@ -9,22 +9,25 @@ DROP TABLE IF EXISTS user_notification_preferences CASCADE;
 DROP INDEX IF EXISTS idx_user_notification_preferences_user_id;
 
 -- Rollback Phase 1: Revert notifications table changes
--- Rename body back to message (if possible)
-ALTER TABLE notifications RENAME COLUMN IF EXISTS body TO message;
+-- Safely rename body back to message if body exists and message doesn't
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'notifications' AND column_name = 'body'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'notifications' AND column_name = 'message'
+    ) THEN
+        ALTER TABLE notifications RENAME COLUMN body TO message;
+    END IF;
+END $$;
 
--- Remove read_at column
+-- Remove read_at column if it exists
 ALTER TABLE notifications DROP COLUMN IF EXISTS read_at;
 
--- Drop new indexes
+-- Drop indexes
 DROP INDEX IF EXISTS idx_notifications_user_unread;
 DROP INDEX IF EXISTS idx_notifications_user_created;
 DROP INDEX IF EXISTS idx_notifications_created_at;
 DROP INDEX IF EXISTS idx_notifications_type;
-
--- Recreate old indexes if they don't exist
-CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
-    ON notifications(user_id, is_read)
-    WHERE is_read = FALSE;
-
-CREATE INDEX IF NOT EXISTS idx_notifications_user_created
-    ON notifications(user_id, created_at DESC);
