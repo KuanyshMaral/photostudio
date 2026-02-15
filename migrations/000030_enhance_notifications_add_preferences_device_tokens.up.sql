@@ -1,8 +1,16 @@
--- Rename message column to body if it exists
-ALTER TABLE IF EXISTS notifications RENAME COLUMN IF EXISTS message TO body;
+-- Safely rename message column to body using a transaction
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name='notifications' AND column_name='message'
+  ) THEN
+    ALTER TABLE notifications RENAME COLUMN message TO body;
+  END IF;
+END $$;
 
 -- Add read_at column if it doesn't exist
-ALTER TABLE IF EXISTS notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
 
 -- Create user_notification_preferences table
 CREATE TABLE IF NOT EXISTS user_notification_preferences (
