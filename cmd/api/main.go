@@ -71,6 +71,8 @@ func main() {
 		&booking.Booking{},
 		&review.Review{},
 		&notification.Notification{},
+		&notification.UserPreferences{},
+		&notification.DeviceToken{},
 		&chat.Conversation{},
 		&chat.Message{},
 		&chat.BlockedUser{},
@@ -115,7 +117,6 @@ func main() {
 	studioOwnerRepo := owner.NewOwnerRepository(db)
 	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
 
-	notificationRepo := notification.NewNotificationRepository(db)
 	chatRepo := chat.NewChatRepository(db)
 	favoriteRepo := favorite.NewFavoriteRepository(db)
 	ownerCRMRepo := owner.NewOwnerCRMRepository(db)
@@ -150,9 +151,29 @@ func main() {
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
-	notificationService := notification.NewService(notificationRepo)
+	// Notification repositories (new architecture)
+	notifRepo := notification.NewRepository(db)
+	prefRepo := notification.NewPreferencesRepository(db)
+	deviceTokenRepo := notification.NewDeviceTokenRepository(db)
 
-	// В main.go, найдите создание bookingService и обновите:
+	notificationService := notification.NewService(notifRepo, prefRepo, deviceTokenRepo)
+	notificationExtendedService := notification.NewExtendedService(notificationService, &notification.ExternalServices{
+		EmailService: nil,  // TODO: integrate email service
+		PushService:  nil,  // TODO: integrate push service
+	})
+
+	// Initialize notification handlers
+	notificationHandler := notification.NewHandler(notificationService)
+	preferencesHandler := notification.NewPreferencesHandler(notificationService)
+	deviceTokensHandler := notification.NewDeviceTokensHandler(notificationService)
+
+	// Initialize cleanup service
+	cleanupService := notification.NewCleanupService(notifRepo, deviceTokenRepo)
+	cleanupConfig := notification.DefaultCleanupConfig()
+	// Optionally start scheduled cleanup in background
+	// stopCleanup := cleanupService.ScheduleCleanup(context.Background(), cleanupConfig)
+	// defer close(stopCleanup) // Stop cleanup on shutdown
+
 	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
@@ -246,8 +267,8 @@ func main() {
 		bookingHandler.RegisterRoutes(protected) // Полный набор маршрутов бронирования
 		bookingHandler.RegisterStudioRoutes(protected, ownershipChecker)
 
-		// reviewHandler.RegisterProtectedRoutes(protected) // Undefined
-		// notificationHandler.RegisterProtectedRoutes(protected) // Undefined
+		// Notification routes
+		notification.RegisterRoutes(protected, notificationHandler, preferencesHandler, deviceTokensHandler)
 
 		// Chat routes
 		protected.GET("/chat/ws", chatWSHandler.HandleWebSocket)

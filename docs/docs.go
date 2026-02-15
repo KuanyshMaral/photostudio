@@ -48,13 +48,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -83,7 +83,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.CreateAdminRequest"
+                            "$ref": "#/definitions/admin.CreateAdminRequest"
                         }
                     }
                 ],
@@ -91,13 +91,13 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -135,7 +135,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.UpdateAdminRequest"
+                            "$ref": "#/definitions/admin.UpdateAdminRequest"
                         }
                     }
                 ],
@@ -143,19 +143,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -229,7 +229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.Ad"
+                            "$ref": "#/definitions/admin.Ad"
                         }
                     }
                 ],
@@ -443,7 +443,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.LoginRequest"
+                            "$ref": "#/definitions/admin.LoginRequest"
                         }
                     }
                 ],
@@ -451,19 +451,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -488,13 +488,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -551,13 +551,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_lead.LeadListResponse"
+                                            "$ref": "#/definitions/lead.LeadListResponse"
                                         }
                                     }
                                 }
@@ -567,7 +567,7 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -592,13 +592,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -634,13 +634,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                                            "$ref": "#/definitions/lead.OwnerLead"
                                         }
                                     }
                                 }
@@ -650,13 +650,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -694,7 +694,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_lead.AssignLeadRequest"
+                            "$ref": "#/definitions/lead.AssignLeadRequest"
                         }
                     }
                 ],
@@ -702,31 +702,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -760,13 +760,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -804,7 +804,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_lead.ConvertLeadRequest"
+                            "$ref": "#/definitions/lead.ConvertLeadRequest"
                         }
                     }
                 ],
@@ -812,13 +812,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -856,7 +856,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_lead.UpdateLeadStatusRequest"
+                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
                         }
                     }
                 ],
@@ -864,13 +864,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -908,7 +908,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_lead.UpdateLeadStatusRequest"
+                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
                         }
                     }
                 ],
@@ -916,31 +916,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -984,7 +984,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список отзывов с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.ReviewListResponse"
+                            "$ref": "#/definitions/admin.ReviewListResponse"
                         }
                     },
                     "400": {
@@ -1441,7 +1441,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.RejectStudioRequest"
+                            "$ref": "#/definitions/admin.RejectStudioRequest"
                         }
                     }
                 ],
@@ -1503,7 +1503,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.VerifyStudioRequest"
+                            "$ref": "#/definitions/admin.VerifyStudioRequest"
                         }
                     }
                 ],
@@ -1701,7 +1701,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список пользователей с общим количеством и параметрами страницы",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.UserListResponse"
+                            "$ref": "#/definitions/admin.UserListResponse"
                         }
                     },
                     "400": {
@@ -1754,7 +1754,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.BlockUserRequest"
+                            "$ref": "#/definitions/admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -1816,7 +1816,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_admin.BlockUserRequest"
+                            "$ref": "#/definitions/admin.BlockUserRequest"
                         }
                     }
                 ],
@@ -2102,7 +2102,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_catalog.UpdateRoomRequest"
+                            "$ref": "#/definitions/catalog.UpdateRoomRequest"
                         }
                     }
                 ],
@@ -2229,7 +2229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_catalog.CreateEquipmentRequest"
+                            "$ref": "#/definitions/catalog.CreateEquipmentRequest"
                         }
                     }
                 ],
@@ -2405,7 +2405,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_catalog.CreateStudioRequest"
+                            "$ref": "#/definitions/catalog.CreateStudioRequest"
                         }
                     }
                 ],
@@ -2577,7 +2577,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_catalog.UpdateStudioRequest"
+                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
                         }
                     }
                 ],
@@ -2731,7 +2731,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_catalog.CreateRoomRequest"
+                            "$ref": "#/definitions/catalog.CreateRoomRequest"
                         }
                     }
                 ],
@@ -2980,7 +2980,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -3071,7 +3071,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.RegisterClientRequest"
+                            "$ref": "#/definitions/auth.RegisterClientRequest"
                         }
                     }
                 ],
@@ -3079,25 +3079,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.RegisterClientResponseSwagger"
+                            "$ref": "#/definitions/auth.RegisterClientResponseSwagger"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
+                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
+                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.ErrorResponseSwagger"
+                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
                         }
                     }
                 }
@@ -3123,7 +3123,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.VerifyConfirmDTO"
+                            "$ref": "#/definitions/auth.VerifyConfirmDTO"
                         }
                     }
                 ],
@@ -3158,7 +3158,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.VerifyRequestDTO"
+                            "$ref": "#/definitions/auth.VerifyRequestDTO"
                         }
                     }
                 ],
@@ -3192,7 +3192,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.CreateBookingRequest"
+                            "$ref": "#/definitions/booking.CreateBookingRequest"
                         }
                     }
                 ],
@@ -3261,7 +3261,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.CancelBookingRequest"
+                            "$ref": "#/definitions/booking.CancelBookingRequest"
                         }
                     }
                 ],
@@ -3443,7 +3443,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.UpdateDepositRequest"
+                            "$ref": "#/definitions/booking.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -3565,7 +3565,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.UpdatePaymentStatusRequest"
+                            "$ref": "#/definitions/booking.UpdatePaymentStatusRequest"
                         }
                     }
                 ],
@@ -3634,7 +3634,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.UpdateBookingStatusRequest"
+                            "$ref": "#/definitions/booking.UpdateBookingStatusRequest"
                         }
                     }
                 ],
@@ -3761,7 +3761,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_chat.CreateConversationRequest"
+                            "$ref": "#/definitions/chat.CreateConversationRequest"
                         }
                     }
                 ],
@@ -3878,7 +3878,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_chat.SendMessageRequest"
+                            "$ref": "#/definitions/chat.SendMessageRequest"
                         }
                     }
                 ],
@@ -4065,7 +4065,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_chat.BlockUserRequest"
+                            "$ref": "#/definitions/chat.BlockUserRequest"
                         }
                     }
                 ],
@@ -4202,7 +4202,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.AddPortfolioRequest"
+                            "$ref": "#/definitions/owner.AddPortfolioRequest"
                         }
                     }
                 ],
@@ -4326,7 +4326,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.ReorderPortfolioRequest"
+                            "$ref": "#/definitions/owner.ReorderPortfolioRequest"
                         }
                     }
                 ],
@@ -4434,7 +4434,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.UpdateCompanyProfileRequest"
+                            "$ref": "#/definitions/owner.UpdateCompanyProfileRequest"
                         }
                     }
                 ],
@@ -4508,19 +4508,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Список избранных студий",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.FavoriteListResponse"
+                            "$ref": "#/definitions/favorite.FavoriteListResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при получении списка избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4558,31 +4558,31 @@ const docTemplate = `{
                     "201": {
                         "description": "Студия успешно добавлена в избранное",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.FavoriteResponse"
+                            "$ref": "#/definitions/favorite.FavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Студия уже находится в избранном или некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия не найдена",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при добавлении в избранное",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4621,25 +4621,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Студия отсутствует в избранном",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при удалении из избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4677,25 +4677,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Результат проверки наличия студии в избранном",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.CheckFavoriteResponse"
+                            "$ref": "#/definitions/favorite.CheckFavoriteResponse"
                         }
                     },
                     "400": {
                         "description": "Некорректный ID студии",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Пользователь не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка при проверке избранного",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_favorite.ErrorResponse"
+                            "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     }
                 }
@@ -4720,7 +4720,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_mwork.SyncUserRequest"
+                            "$ref": "#/definitions/mwork.SyncUserRequest"
                         }
                     }
                 ],
@@ -4783,7 +4783,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_lead.SubmitLeadRequest"
+                            "$ref": "#/definitions/lead.SubmitLeadRequest"
                         }
                     }
                 ],
@@ -4793,13 +4793,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                                            "$ref": "#/definitions/lead.OwnerLead"
                                         }
                                     }
                                 }
@@ -4809,19 +4809,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -5007,7 +5007,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_manager.UpdateDepositRequest"
+                            "$ref": "#/definitions/manager.UpdateDepositRequest"
                         }
                     }
                 ],
@@ -5076,7 +5076,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_manager.UpdateStatusRequest"
+                            "$ref": "#/definitions/manager.UpdateStatusRequest"
                         }
                     }
                 ],
@@ -5190,7 +5190,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает список последних уведомлений пользователя и количество непрочитанных. Поддерживает пагинацию через параметр limit.",
+                "description": "Возвращает список последних уведомлений пользователя и количество непрочитанных. Поддерживает пагинацию через параметры limit и offset.",
                 "tags": [
                     "Уведомления"
                 ],
@@ -5201,14 +5201,19 @@ const docTemplate = `{
                         "description": "Максимальное количество уведомлений (по умолчанию 20, макс 100)",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение для пагинации (по умолчанию 0)",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "Список уведомлений и количество непрочитанных",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/notification.NotificationListResponse"
                         }
                     },
                     "401": {
@@ -5228,7 +5233,401 @@ const docTemplate = `{
                 }
             }
         },
-        "/notifications/:id/read": {
+        "/notifications/device-tokens": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех активных device tokens для текущего пользователя.",
+                "tags": [
+                    "Уведомления - Device Tokens"
+                ],
+                "summary": "Получить device tokens",
+                "responses": {
+                    "200": {
+                        "description": "Список device tokens",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/notification.DeviceTokenResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Регистрирует новый device token (для мобильных или веб-приложений) для получения push-уведомлений.",
+                "tags": [
+                    "Уведомления - Device Tokens"
+                ],
+                "summary": "Зарегистрировать device token",
+                "parameters": [
+                    {
+                        "description": "Device token информация",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.RegisterDeviceTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Device token зарегистрирован",
+                        "schema": {
+                            "$ref": "#/definitions/notification.DeviceTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/device-tokens/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Деактивирует device token, устройство больше не будет получать push-уведомления.",
+                "tags": [
+                    "Уведомления - Device Tokens"
+                ],
+                "summary": "Деактивировать device token",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID device token",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Device token деактивирован",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает текущие настройки уведомлений для пользователя.",
+                "tags": [
+                    "Уведомления - Настройки"
+                ],
+                "summary": "Получить настройки уведомлений",
+                "responses": {
+                    "200": {
+                        "description": "Настройки уведомлений",
+                        "schema": {
+                            "$ref": "#/definitions/notification.PreferencesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет настройки уведомлений для текущего пользователя.",
+                "tags": [
+                    "Уведомления - Настройки"
+                ],
+                "summary": "Обновить настройки уведомлений",
+                "parameters": [
+                    {
+                        "description": "Данные для обновления",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.UpdatePreferencesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновленные настройки",
+                        "schema": {
+                            "$ref": "#/definitions/notification.PreferencesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/preferences/reset": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сбрасывает все настройки уведомлений на значения по умолчанию.",
+                "tags": [
+                    "Уведомления - Настройки"
+                ],
+                "summary": "Сбросить настройки",
+                "responses": {
+                    "200": {
+                        "description": "Восстановленные настройки",
+                        "schema": {
+                            "$ref": "#/definitions/notification.PreferencesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Отмечает все непрочитанные уведомления пользователя как прочитанные одним запросом.",
+                "tags": [
+                    "Уведомления"
+                ],
+                "summary": "Отметить все уведомления как прочитанные",
+                "responses": {
+                    "200": {
+                        "description": "Все уведомления отмечены как прочитанные",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации: требуется токен",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера при обновлении статуса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает количество непрочитанных уведомлений для текущего пользователя.",
+                "tags": [
+                    "Уведомления"
+                ],
+                "summary": "Получить количество непрочитанных",
+                "responses": {
+                    "200": {
+                        "description": "Количество непрочитанных уведомлений",
+                        "schema": {
+                            "$ref": "#/definitions/notification.UnreadCountResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации: требуется токен",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет конкретное уведомление пользователя.",
+                "tags": [
+                    "Уведомления"
+                ],
+                "summary": "Удалить уведомление",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID уведомления",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Уведомление удалено",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка аутентификации",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
             "patch": {
                 "security": [
                     {
@@ -5273,43 +5672,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Ошибка: уведомление не найдено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении статуса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/notifications/read-all": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Отмечает все непрочитанные уведомления пользователя как прочитанные одним запросом.",
-                "tags": [
-                    "Уведомления"
-                ],
-                "summary": "Отметить все уведомления как прочитанные",
-                "responses": {
-                    "200": {
-                        "description": "Все уведомления отмечены как прочитанные",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -5508,7 +5870,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.CreateMaintenanceRequest"
+                            "$ref": "#/definitions/owner.CreateMaintenanceRequest"
                         }
                     }
                 ],
@@ -5782,7 +6144,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.CreateProcurementRequest"
+                            "$ref": "#/definitions/owner.CreateProcurementRequest"
                         }
                     }
                 ],
@@ -6003,7 +6365,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.SetPINRequest"
+                            "$ref": "#/definitions/owner.SetPINRequest"
                         }
                     }
                 ],
@@ -6071,7 +6433,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_owner.VerifyPINRequest"
+                            "$ref": "#/definitions/owner.VerifyPINRequest"
                         }
                     }
                 ],
@@ -6139,7 +6501,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.InitPaymentRequest"
+                            "$ref": "#/definitions/payment.InitPaymentRequest"
                         }
                     }
                 ],
@@ -6147,19 +6509,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.InitPaymentResponse"
+                            "$ref": "#/definitions/payment.InitPaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     }
                 }
@@ -6263,25 +6625,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.SuccessCallbackResponse"
+                            "$ref": "#/definitions/payment.SuccessCallbackResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_payment.ErrorResponse"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     }
                 }
@@ -6308,13 +6670,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.AdminProfile"
+                                            "$ref": "#/definitions/profile.AdminProfile"
                                         }
                                     }
                                 }
@@ -6324,13 +6686,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6359,7 +6721,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_profile.UpdateAdminProfileRequest"
+                            "$ref": "#/definitions/profile.UpdateAdminProfileRequest"
                         }
                     }
                 ],
@@ -6369,13 +6731,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.AdminProfile"
+                                            "$ref": "#/definitions/profile.AdminProfile"
                                         }
                                     }
                                 }
@@ -6385,25 +6747,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6430,13 +6792,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.ClientProfile"
+                                            "$ref": "#/definitions/profile.ClientProfile"
                                         }
                                     }
                                 }
@@ -6446,13 +6808,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6481,7 +6843,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_profile.UpdateClientProfileRequest"
+                            "$ref": "#/definitions/profile.UpdateClientProfileRequest"
                         }
                     }
                 ],
@@ -6491,13 +6853,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.ClientProfile"
+                                            "$ref": "#/definitions/profile.ClientProfile"
                                         }
                                     }
                                 }
@@ -6507,25 +6869,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6552,13 +6914,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.OwnerProfile"
+                                            "$ref": "#/definitions/profile.OwnerProfile"
                                         }
                                     }
                                 }
@@ -6568,13 +6930,13 @@ const docTemplate = `{
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6603,7 +6965,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_profile.UpdateOwnerProfileRequest"
+                            "$ref": "#/definitions/profile.UpdateOwnerProfileRequest"
                         }
                     }
                 ],
@@ -6613,13 +6975,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                                    "$ref": "#/definitions/response.Response"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/internal_domain_profile.OwnerProfile"
+                                            "$ref": "#/definitions/profile.OwnerProfile"
                                         }
                                     }
                                 }
@@ -6629,25 +6991,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "422": {
                         "description": "Unprocessable Entity",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/photostudio_internal_pkg_response.Response"
+                            "$ref": "#/definitions/response.Response"
                         }
                     }
                 }
@@ -6672,7 +7034,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_review.CreateReviewRequest"
+                            "$ref": "#/definitions/review.CreateReviewRequest"
                         }
                     }
                 ],
@@ -6748,7 +7110,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_review.OwnerResponseRequest"
+                            "$ref": "#/definitions/review.OwnerResponseRequest"
                         }
                     }
                 ],
@@ -6873,7 +7235,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Список занятых временных слотов на указанную дату",
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_booking.BusySlotsResponse"
+                            "$ref": "#/definitions/booking.BusySlotsResponse"
                         }
                     },
                     "400": {
@@ -7056,7 +7418,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_domain_auth.UpdateProfileRequest"
+                            "$ref": "#/definitions/auth.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -7208,7 +7570,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_domain_admin.Ad": {
+        "admin.Ad": {
             "type": "object",
             "properties": {
                 "clicks": {
@@ -7249,7 +7611,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.BlockUserRequest": {
+        "admin.BlockUserRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -7260,7 +7622,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.CreateAdminRequest": {
+        "admin.CreateAdminRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -7285,7 +7647,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.LoginRequest": {
+        "admin.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -7300,7 +7662,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.RejectStudioRequest": {
+        "admin.RejectStudioRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -7311,7 +7673,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.ReviewListResponse": {
+        "admin.ReviewListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -7323,7 +7685,7 @@ const docTemplate = `{
                 "reviews": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/photostudio_internal_domain_review.Review"
+                        "$ref": "#/definitions/review.Review"
                     }
                 },
                 "total": {
@@ -7331,7 +7693,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.UpdateAdminRequest": {
+        "admin.UpdateAdminRequest": {
             "type": "object",
             "properties": {
                 "is_active": {
@@ -7349,7 +7711,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_admin.UserListResponse": {
+        "admin.UserListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -7364,12 +7726,12 @@ const docTemplate = `{
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/photostudio_internal_domain_auth.User"
+                        "$ref": "#/definitions/auth.User"
                     }
                 }
             }
         },
-        "internal_domain_admin.VerifyStudioRequest": {
+        "admin.VerifyStudioRequest": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -7377,7 +7739,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.ErrorDetailsSwagger": {
+        "auth.ErrorDetailsSwagger": {
             "type": "object",
             "properties": {
                 "code": {
@@ -7388,18 +7750,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.ErrorResponseSwagger": {
+        "auth.ErrorResponseSwagger": {
             "type": "object",
             "properties": {
                 "error": {
-                    "$ref": "#/definitions/internal_domain_auth.ErrorDetailsSwagger"
+                    "$ref": "#/definitions/auth.ErrorDetailsSwagger"
                 },
                 "success": {
                     "type": "boolean"
                 }
             }
         },
-        "internal_domain_auth.LoginRequest": {
+        "auth.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -7414,18 +7776,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.RegisterClientDataSwagger": {
+        "auth.RegisterClientDataSwagger": {
             "type": "object",
             "properties": {
                 "user": {
-                    "$ref": "#/definitions/internal_domain_auth.RegisterUserSwagger"
+                    "$ref": "#/definitions/auth.RegisterUserSwagger"
                 },
                 "verification_sent": {
                     "type": "boolean"
                 }
             }
         },
-        "internal_domain_auth.RegisterClientRequest": {
+        "auth.RegisterClientRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -7448,18 +7810,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.RegisterClientResponseSwagger": {
+        "auth.RegisterClientResponseSwagger": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/internal_domain_auth.RegisterClientDataSwagger"
+                    "$ref": "#/definitions/auth.RegisterClientDataSwagger"
                 },
                 "success": {
                     "type": "boolean"
                 }
             }
         },
-        "internal_domain_auth.RegisterUserSwagger": {
+        "auth.RegisterUserSwagger": {
             "type": "object",
             "properties": {
                 "email": {
@@ -7482,7 +7844,22 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.UpdateProfileRequest": {
+        "auth.StudioStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "verified",
+                "rejected",
+                "blocked"
+            ],
+            "x-enum-varnames": [
+                "StatusPending",
+                "StatusVerified",
+                "StatusRejected",
+                "StatusBlocked"
+            ]
+        },
+        "auth.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "name": {
@@ -7495,7 +7872,76 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.VerifyConfirmDTO": {
+        "auth.User": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "ban_reason": {
+                    "type": "string"
+                },
+                "banned_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "email_verified_at": {
+                    "type": "string"
+                },
+                "failed_login_attempts": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_banned": {
+                    "type": "boolean"
+                },
+                "locked_until": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/auth.UserRole"
+                },
+                "studio_status": {
+                    "$ref": "#/definitions/auth.StudioStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.UserRole": {
+            "type": "string",
+            "enum": [
+                "client",
+                "studio_owner",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "RoleClient",
+                "RoleStudioOwner",
+                "RoleAdmin"
+            ]
+        },
+        "auth.VerifyConfirmDTO": {
             "type": "object",
             "required": [
                 "code",
@@ -7510,7 +7956,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_auth.VerifyRequestDTO": {
+        "auth.VerifyRequestDTO": {
             "type": "object",
             "required": [
                 "email"
@@ -7521,7 +7967,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.BusySlotDTO": {
+        "booking.BusySlotDTO": {
             "type": "object",
             "properties": {
                 "end": {
@@ -7534,13 +7980,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.BusySlotsResponse": {
+        "booking.BusySlotsResponse": {
             "type": "object",
             "properties": {
                 "busy_slots": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_domain_booking.BusySlotDTO"
+                        "$ref": "#/definitions/booking.BusySlotDTO"
                     }
                 },
                 "close_time": {
@@ -7557,7 +8003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.CancelBookingRequest": {
+        "booking.CancelBookingRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -7569,7 +8015,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.CreateBookingRequest": {
+        "booking.CreateBookingRequest": {
             "type": "object",
             "required": [
                 "end_time",
@@ -7599,7 +8045,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.PaymentStatus": {
+        "booking.PaymentStatus": {
             "type": "string",
             "enum": [
                 "unpaid",
@@ -7612,7 +8058,7 @@ const docTemplate = `{
                 "PaymentRefunded"
             ]
         },
-        "internal_domain_booking.UpdateBookingStatusRequest": {
+        "booking.UpdateBookingStatusRequest": {
             "type": "object",
             "properties": {
                 "status": {
@@ -7620,7 +8066,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.UpdateDepositRequest": {
+        "booking.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -7632,7 +8078,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_booking.UpdatePaymentStatusRequest": {
+        "booking.UpdatePaymentStatusRequest": {
             "type": "object",
             "required": [
                 "payment_status"
@@ -7646,13 +8092,13 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_domain_booking.PaymentStatus"
+                            "$ref": "#/definitions/booking.PaymentStatus"
                         }
                     ]
                 }
             }
         },
-        "internal_domain_catalog.CreateEquipmentRequest": {
+        "catalog.CreateEquipmentRequest": {
             "type": "object",
             "required": [
                 "name",
@@ -7679,7 +8125,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_catalog.CreateRoomRequest": {
+        "catalog.CreateRoomRequest": {
             "type": "object",
             "required": [
                 "area_sqm",
@@ -7725,7 +8171,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_catalog.CreateStudioRequest": {
+        "catalog.CreateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -7758,11 +8204,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/internal_domain_catalog.WorkingHoursMap"
+                    "$ref": "#/definitions/catalog.WorkingHoursMap"
                 }
             }
         },
-        "internal_domain_catalog.DaySchedule": {
+        "catalog.DaySchedule": {
             "type": "object",
             "properties": {
                 "close": {
@@ -7775,7 +8221,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_catalog.UpdateRoomRequest": {
+        "catalog.UpdateRoomRequest": {
             "type": "object",
             "properties": {
                 "amenities": {
@@ -7813,7 +8259,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_catalog.UpdateStudioRequest": {
+        "catalog.UpdateStudioRequest": {
             "type": "object",
             "required": [
                 "address",
@@ -7846,17 +8292,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "working_hours": {
-                    "$ref": "#/definitions/internal_domain_catalog.WorkingHoursMap"
+                    "$ref": "#/definitions/catalog.WorkingHoursMap"
                 }
             }
         },
-        "internal_domain_catalog.WorkingHoursMap": {
+        "catalog.WorkingHoursMap": {
             "type": "object",
             "additionalProperties": {
-                "$ref": "#/definitions/internal_domain_catalog.DaySchedule"
+                "$ref": "#/definitions/catalog.DaySchedule"
             }
         },
-        "internal_domain_chat.BlockUserRequest": {
+        "chat.BlockUserRequest": {
             "type": "object",
             "properties": {
                 "reason": {
@@ -7864,7 +8310,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_chat.CreateConversationRequest": {
+        "chat.CreateConversationRequest": {
             "type": "object",
             "required": [
                 "recipient_id"
@@ -7884,7 +8330,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_chat.SendMessageRequest": {
+        "chat.SendMessageRequest": {
             "type": "object",
             "required": [
                 "content"
@@ -7896,7 +8342,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_favorite.CheckFavoriteResponse": {
+        "favorite.CheckFavoriteResponse": {
             "type": "object",
             "properties": {
                 "is_favorite": {
@@ -7904,7 +8350,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_favorite.ErrorResponse": {
+        "favorite.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -7912,13 +8358,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_favorite.FavoriteListResponse": {
+        "favorite.FavoriteListResponse": {
             "type": "object",
             "properties": {
                 "favorites": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_domain_favorite.FavoriteResponse"
+                        "$ref": "#/definitions/favorite.FavoriteResponse"
                     }
                 },
                 "page": {
@@ -7935,7 +8381,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_favorite.FavoriteResponse": {
+        "favorite.FavoriteResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -7945,14 +8391,14 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "studio": {
-                    "$ref": "#/definitions/internal_domain_favorite.StudioBrief"
+                    "$ref": "#/definitions/favorite.StudioBrief"
                 },
                 "studio_id": {
                     "type": "integer"
                 }
             }
         },
-        "internal_domain_favorite.StudioBrief": {
+        "favorite.StudioBrief": {
             "type": "object",
             "properties": {
                 "address": {
@@ -7978,7 +8424,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.AssignLeadRequest": {
+        "lead.AssignLeadRequest": {
             "type": "object",
             "required": [
                 "admin_id"
@@ -7992,7 +8438,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.ConvertLeadRequest": {
+        "lead.ConvertLeadRequest": {
             "type": "object",
             "required": [
                 "bin",
@@ -8024,13 +8470,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.LeadListResponse": {
+        "lead.LeadListResponse": {
             "type": "object",
             "properties": {
                 "leads": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_domain_lead.OwnerLead"
+                        "$ref": "#/definitions/lead.OwnerLead"
                     }
                 },
                 "total": {
@@ -8038,7 +8484,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.OwnerLead": {
+        "lead.OwnerLead": {
             "type": "object",
             "properties": {
                 "assigned_to": {
@@ -8125,7 +8571,7 @@ const docTemplate = `{
                     "description": "Lead management",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_domain_lead.Status"
+                            "$ref": "#/definitions/lead.Status"
                         }
                     ]
                 },
@@ -8154,7 +8600,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.Status": {
+        "lead.Status": {
             "type": "string",
             "enum": [
                 "new",
@@ -8173,7 +8619,7 @@ const docTemplate = `{
                 "StatusLost"
             ]
         },
-        "internal_domain_lead.SubmitLeadRequest": {
+        "lead.SubmitLeadRequest": {
             "type": "object",
             "required": [
                 "company_name",
@@ -8227,7 +8673,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_lead.UpdateLeadStatusRequest": {
+        "lead.UpdateLeadStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -8250,13 +8696,13 @@ const docTemplate = `{
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_domain_lead.Status"
+                            "$ref": "#/definitions/lead.Status"
                         }
                     ]
                 }
             }
         },
-        "internal_domain_manager.UpdateDepositRequest": {
+        "manager.UpdateDepositRequest": {
             "type": "object",
             "required": [
                 "deposit_amount"
@@ -8268,7 +8714,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_manager.UpdateStatusRequest": {
+        "manager.UpdateStatusRequest": {
             "type": "object",
             "required": [
                 "status"
@@ -8285,7 +8731,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_mwork.SyncUserRequest": {
+        "mwork.SyncUserRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -8304,7 +8750,194 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.AddPortfolioRequest": {
+        "notification.ChannelSettings": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "boolean"
+                },
+                "in_app": {
+                    "type": "boolean"
+                },
+                "push": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "notification.DeviceTokenResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "device_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "last_used_at": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notification.NotificationListResponse": {
+            "type": "object",
+            "properties": {
+                "notifications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/notification.NotificationResponse"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notification.NotificationResponse": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "data": {
+                    "$ref": "#/definitions/photostudio_internal_domain_notification.NotificationData"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "read_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notification.PreferencesResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "digest_enabled": {
+                    "type": "boolean"
+                },
+                "digest_frequency": {
+                    "type": "string"
+                },
+                "email_enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "in_app_enabled": {
+                    "type": "boolean"
+                },
+                "per_type_settings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/notification.ChannelSettings"
+                    }
+                },
+                "push_enabled": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notification.RegisterDeviceTokenRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "token"
+            ],
+            "properties": {
+                "device_name": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": [
+                        "web",
+                        "ios",
+                        "android"
+                    ]
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "notification.UnreadCountResponse": {
+            "type": "object",
+            "properties": {
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notification.UpdatePreferencesRequest": {
+            "type": "object",
+            "properties": {
+                "digest_enabled": {
+                    "type": "boolean"
+                },
+                "digest_frequency": {
+                    "type": "string"
+                },
+                "email_enabled": {
+                    "type": "boolean"
+                },
+                "in_app_enabled": {
+                    "type": "boolean"
+                },
+                "per_type_settings": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/notification.ChannelSettings"
+                    }
+                },
+                "push_enabled": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.AddPortfolioRequest": {
             "type": "object",
             "required": [
                 "image_url"
@@ -8321,7 +8954,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.CreateMaintenanceRequest": {
+        "owner.CreateMaintenanceRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -8344,7 +8977,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.CreateProcurementRequest": {
+        "owner.CreateProcurementRequest": {
             "type": "object",
             "required": [
                 "title"
@@ -8372,7 +9005,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.ReorderPortfolioRequest": {
+        "owner.ReorderPortfolioRequest": {
             "type": "object",
             "required": [
                 "project_ids"
@@ -8386,7 +9019,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.SetPINRequest": {
+        "owner.SetPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -8399,7 +9032,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.UpdateCompanyProfileRequest": {
+        "owner.UpdateCompanyProfileRequest": {
             "type": "object",
             "properties": {
                 "city": {
@@ -8455,7 +9088,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_owner.VerifyPINRequest": {
+        "owner.VerifyPINRequest": {
             "type": "object",
             "required": [
                 "pin"
@@ -8466,7 +9099,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_payment.ErrorResponse": {
+        "payment.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -8475,7 +9108,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_payment.InitPaymentRequest": {
+        "payment.InitPaymentRequest": {
             "type": "object",
             "required": [
                 "booking_id",
@@ -8505,7 +9138,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_payment.InitPaymentResponse": {
+        "payment.InitPaymentResponse": {
             "type": "object",
             "properties": {
                 "inv_id": {
@@ -8526,7 +9159,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_payment.SuccessCallbackResponse": {
+        "payment.SuccessCallbackResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -8539,14 +9172,63 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_profile.AdminProfile": {
+        "photostudio_internal_domain_notification.NotificationData": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "cancellation_reason": {
+                    "type": "string"
+                },
+                "chat_room_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "equipment_id": {
+                    "type": "integer"
+                },
+                "message_id": {
+                    "type": "integer"
+                },
+                "message_preview": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "review_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "sender_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "profile.AdminProfile": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
                 },
                 "created_by": {
-                    "$ref": "#/definitions/sql.NullInt64"
+                    "$ref": "#/definitions/uuid.NullUUID"
                 },
                 "full_name": {
                     "description": "Admin info",
@@ -8575,11 +9257,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
-                    "type": "integer"
+                    "type": "string"
                 }
             }
         },
-        "internal_domain_profile.ClientProfile": {
+        "profile.ClientProfile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8613,7 +9295,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_profile.OwnerProfile": {
+        "profile.OwnerProfile": {
             "type": "object",
             "properties": {
                 "admin_notes": {
@@ -8682,7 +9364,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_profile.UpdateAdminProfileRequest": {
+        "profile.UpdateAdminProfileRequest": {
             "type": "object",
             "properties": {
                 "full_name": {
@@ -8696,7 +9378,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_profile.UpdateClientProfileRequest": {
+        "profile.UpdateClientProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8713,7 +9395,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_profile.UpdateOwnerProfileRequest": {
+        "profile.UpdateOwnerProfileRequest": {
             "type": "object",
             "properties": {
                 "bin": {
@@ -8742,7 +9424,31 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_review.CreateReviewRequest": {
+        "response.ErrorData": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "error": {
+                    "$ref": "#/definitions/response.ErrorData"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "review.CreateReviewRequest": {
             "type": "object",
             "required": [
                 "rating",
@@ -8771,7 +9477,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_domain_review.OwnerResponseRequest": {
+        "review.OwnerResponseRequest": {
             "type": "object",
             "required": [
                 "response"
@@ -8782,123 +9488,7 @@ const docTemplate = `{
                 }
             }
         },
-        "photostudio_internal_domain_auth.StudioStatus": {
-            "type": "string",
-            "enum": [
-                "pending",
-                "verified",
-                "rejected",
-                "blocked"
-            ],
-            "x-enum-varnames": [
-                "StatusPending",
-                "StatusVerified",
-                "StatusRejected",
-                "StatusBlocked"
-            ]
-        },
-        "photostudio_internal_domain_auth.User": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "ban_reason": {
-                    "type": "string"
-                },
-                "banned_at": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "email_verified": {
-                    "type": "boolean"
-                },
-                "email_verified_at": {
-                    "type": "string"
-                },
-                "failed_login_attempts": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_banned": {
-                    "type": "boolean"
-                },
-                "locked_until": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "role": {
-                    "$ref": "#/definitions/photostudio_internal_domain_auth.UserRole"
-                },
-                "studio_status": {
-                    "$ref": "#/definitions/photostudio_internal_domain_auth.StudioStatus"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "photostudio_internal_domain_auth.UserRole": {
-            "type": "string",
-            "enum": [
-                "client",
-                "studio_owner",
-                "admin"
-            ],
-            "x-enum-varnames": [
-                "RoleClient",
-                "RoleStudioOwner",
-                "RoleAdmin"
-            ]
-        },
-        "photostudio_internal_domain_lead.ConvertLeadRequest": {
-            "type": "object",
-            "required": [
-                "bin",
-                "legal_address",
-                "legal_name",
-                "org_type",
-                "password"
-            ],
-            "properties": {
-                "bin": {
-                    "type": "string"
-                },
-                "legal_address": {
-                    "type": "string"
-                },
-                "legal_name": {
-                    "type": "string"
-                },
-                "org_type": {
-                    "type": "string",
-                    "enum": [
-                        "ip",
-                        "llp"
-                    ]
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8
-                }
-            }
-        },
-        "photostudio_internal_domain_review.Review": {
+        "review.Review": {
             "type": "object",
             "properties": {
                 "booking_id": {
@@ -8945,30 +9535,6 @@ const docTemplate = `{
                 }
             }
         },
-        "photostudio_internal_pkg_response.ErrorData": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "details": {},
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "photostudio_internal_pkg_response.Response": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "error": {
-                    "$ref": "#/definitions/photostudio_internal_pkg_response.ErrorData"
-                },
-                "success": {
-                    "type": "boolean"
-                }
-            }
-        },
         "sql.NullInt64": {
             "type": "object",
             "properties": {
@@ -9002,6 +9568,18 @@ const docTemplate = `{
                 },
                 "valid": {
                     "description": "Valid is true if Time is not NULL",
+                    "type": "boolean"
+                }
+            }
+        },
+        "uuid.NullUUID": {
+            "type": "object",
+            "properties": {
+                "uuid": {
+                    "type": "string"
+                },
+                "valid": {
+                    "description": "Valid is true if UUID is not NULL",
                     "type": "boolean"
                 }
             }

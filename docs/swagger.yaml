@@ -1,6 +1,6 @@
 basePath: /api/v1
 definitions:
-  internal_domain_admin.Ad:
+  admin.Ad:
     properties:
       clicks:
         type: integer
@@ -27,14 +27,14 @@ definitions:
       updated_at:
         type: string
     type: object
-  internal_domain_admin.BlockUserRequest:
+  admin.BlockUserRequest:
     properties:
       reason:
         type: string
     required:
     - reason
     type: object
-  internal_domain_admin.CreateAdminRequest:
+  admin.CreateAdminRequest:
     properties:
       email:
         type: string
@@ -52,7 +52,7 @@ definitions:
     - password
     - role
     type: object
-  internal_domain_admin.LoginRequest:
+  admin.LoginRequest:
     properties:
       email:
         type: string
@@ -62,14 +62,14 @@ definitions:
     - email
     - password
     type: object
-  internal_domain_admin.RejectStudioRequest:
+  admin.RejectStudioRequest:
     properties:
       reason:
         type: string
     required:
     - reason
     type: object
-  internal_domain_admin.ReviewListResponse:
+  admin.ReviewListResponse:
     properties:
       limit:
         type: integer
@@ -77,12 +77,12 @@ definitions:
         type: integer
       reviews:
         items:
-          $ref: '#/definitions/photostudio_internal_domain_review.Review'
+          $ref: '#/definitions/review.Review'
         type: array
       total:
         type: integer
     type: object
-  internal_domain_admin.UpdateAdminRequest:
+  admin.UpdateAdminRequest:
     properties:
       is_active:
         type: boolean
@@ -94,7 +94,7 @@ definitions:
       role:
         type: string
     type: object
-  internal_domain_admin.UserListResponse:
+  admin.UserListResponse:
     properties:
       limit:
         type: integer
@@ -104,29 +104,29 @@ definitions:
         type: integer
       users:
         items:
-          $ref: '#/definitions/photostudio_internal_domain_auth.User'
+          $ref: '#/definitions/auth.User'
         type: array
     type: object
-  internal_domain_admin.VerifyStudioRequest:
+  admin.VerifyStudioRequest:
     properties:
       admin_notes:
         type: string
     type: object
-  internal_domain_auth.ErrorDetailsSwagger:
+  auth.ErrorDetailsSwagger:
     properties:
       code:
         type: string
       message:
         type: string
     type: object
-  internal_domain_auth.ErrorResponseSwagger:
+  auth.ErrorResponseSwagger:
     properties:
       error:
-        $ref: '#/definitions/internal_domain_auth.ErrorDetailsSwagger'
+        $ref: '#/definitions/auth.ErrorDetailsSwagger'
       success:
         type: boolean
     type: object
-  internal_domain_auth.LoginRequest:
+  auth.LoginRequest:
     properties:
       email:
         type: string
@@ -136,14 +136,14 @@ definitions:
     - email
     - password
     type: object
-  internal_domain_auth.RegisterClientDataSwagger:
+  auth.RegisterClientDataSwagger:
     properties:
       user:
-        $ref: '#/definitions/internal_domain_auth.RegisterUserSwagger'
+        $ref: '#/definitions/auth.RegisterUserSwagger'
       verification_sent:
         type: boolean
     type: object
-  internal_domain_auth.RegisterClientRequest:
+  auth.RegisterClientRequest:
     properties:
       email:
         type: string
@@ -159,14 +159,14 @@ definitions:
     - name
     - password
     type: object
-  internal_domain_auth.RegisterClientResponseSwagger:
+  auth.RegisterClientResponseSwagger:
     properties:
       data:
-        $ref: '#/definitions/internal_domain_auth.RegisterClientDataSwagger'
+        $ref: '#/definitions/auth.RegisterClientDataSwagger'
       success:
         type: boolean
     type: object
-  internal_domain_auth.RegisterUserSwagger:
+  auth.RegisterUserSwagger:
     properties:
       email:
         type: string
@@ -181,7 +181,19 @@ definitions:
       studio_status:
         type: string
     type: object
-  internal_domain_auth.UpdateProfileRequest:
+  auth.StudioStatus:
+    enum:
+    - pending
+    - verified
+    - rejected
+    - blocked
+    type: string
+    x-enum-varnames:
+    - StatusPending
+    - StatusVerified
+    - StatusRejected
+    - StatusBlocked
+  auth.UpdateProfileRequest:
     properties:
       name:
         minLength: 2
@@ -190,7 +202,54 @@ definitions:
         description: 'optional: use phone validation'
         type: string
     type: object
-  internal_domain_auth.VerifyConfirmDTO:
+  auth.User:
+    properties:
+      avatar_url:
+        type: string
+      ban_reason:
+        type: string
+      banned_at:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      email_verified_at:
+        type: string
+      failed_login_attempts:
+        type: integer
+      id:
+        type: integer
+      is_banned:
+        type: boolean
+      locked_until:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      role:
+        $ref: '#/definitions/auth.UserRole'
+      studio_status:
+        $ref: '#/definitions/auth.StudioStatus'
+      updated_at:
+        type: string
+    required:
+    - email
+    type: object
+  auth.UserRole:
+    enum:
+    - client
+    - studio_owner
+    - admin
+    type: string
+    x-enum-varnames:
+    - RoleClient
+    - RoleStudioOwner
+    - RoleAdmin
+  auth.VerifyConfirmDTO:
     properties:
       code:
         type: string
@@ -200,14 +259,14 @@ definitions:
     - code
     - email
     type: object
-  internal_domain_auth.VerifyRequestDTO:
+  auth.VerifyRequestDTO:
     properties:
       email:
         type: string
     required:
     - email
     type: object
-  internal_domain_booking.BusySlotDTO:
+  booking.BusySlotDTO:
     properties:
       end:
         description: '"12:00"'
@@ -216,11 +275,11 @@ definitions:
         description: '"10:00"'
         type: string
     type: object
-  internal_domain_booking.BusySlotsResponse:
+  booking.BusySlotsResponse:
     properties:
       busy_slots:
         items:
-          $ref: '#/definitions/internal_domain_booking.BusySlotDTO'
+          $ref: '#/definitions/booking.BusySlotDTO'
         type: array
       close_time:
         type: string
@@ -231,7 +290,7 @@ definitions:
       room_id:
         type: integer
     type: object
-  internal_domain_booking.CancelBookingRequest:
+  booking.CancelBookingRequest:
     properties:
       reason:
         minLength: 10
@@ -239,7 +298,7 @@ definitions:
     required:
     - reason
     type: object
-  internal_domain_booking.CreateBookingRequest:
+  booking.CreateBookingRequest:
     properties:
       end_time:
         type: string
@@ -260,7 +319,7 @@ definitions:
     - start_time
     - studio_id
     type: object
-  internal_domain_booking.PaymentStatus:
+  booking.PaymentStatus:
     enum:
     - unpaid
     - paid
@@ -270,12 +329,12 @@ definitions:
     - PaymentUnpaid
     - PaymentPaid
     - PaymentRefunded
-  internal_domain_booking.UpdateBookingStatusRequest:
+  booking.UpdateBookingStatusRequest:
     properties:
       status:
         type: string
     type: object
-  internal_domain_booking.UpdateDepositRequest:
+  booking.UpdateDepositRequest:
     properties:
       deposit_amount:
         minimum: 0
@@ -283,11 +342,11 @@ definitions:
     required:
     - deposit_amount
     type: object
-  internal_domain_booking.UpdatePaymentStatusRequest:
+  booking.UpdatePaymentStatusRequest:
     properties:
       payment_status:
         allOf:
-        - $ref: '#/definitions/internal_domain_booking.PaymentStatus'
+        - $ref: '#/definitions/booking.PaymentStatus'
         enum:
         - unpaid
         - paid
@@ -295,7 +354,7 @@ definitions:
     required:
     - payment_status
     type: object
-  internal_domain_catalog.CreateEquipmentRequest:
+  catalog.CreateEquipmentRequest:
     properties:
       brand:
         type: string
@@ -313,7 +372,7 @@ definitions:
     - name
     - quantity
     type: object
-  internal_domain_catalog.CreateRoomRequest:
+  catalog.CreateRoomRequest:
     properties:
       amenities:
         items:
@@ -345,7 +404,7 @@ definitions:
     - price_per_hour_min
     - room_type
     type: object
-  internal_domain_catalog.CreateStudioRequest:
+  catalog.CreateStudioRequest:
     properties:
       address:
         type: string
@@ -364,13 +423,13 @@ definitions:
       website:
         type: string
       working_hours:
-        $ref: '#/definitions/internal_domain_catalog.WorkingHoursMap'
+        $ref: '#/definitions/catalog.WorkingHoursMap'
     required:
     - address
     - city
     - name
     type: object
-  internal_domain_catalog.DaySchedule:
+  catalog.DaySchedule:
     properties:
       close:
         description: '"22:00"'
@@ -379,7 +438,7 @@ definitions:
         description: '"09:00"'
         type: string
     type: object
-  internal_domain_catalog.UpdateRoomRequest:
+  catalog.UpdateRoomRequest:
     properties:
       amenities:
         items:
@@ -404,7 +463,7 @@ definitions:
       room_type:
         type: string
     type: object
-  internal_domain_catalog.UpdateStudioRequest:
+  catalog.UpdateStudioRequest:
     properties:
       address:
         type: string
@@ -423,22 +482,22 @@ definitions:
       website:
         type: string
       working_hours:
-        $ref: '#/definitions/internal_domain_catalog.WorkingHoursMap'
+        $ref: '#/definitions/catalog.WorkingHoursMap'
     required:
     - address
     - city
     - name
     type: object
-  internal_domain_catalog.WorkingHoursMap:
+  catalog.WorkingHoursMap:
     additionalProperties:
-      $ref: '#/definitions/internal_domain_catalog.DaySchedule'
+      $ref: '#/definitions/catalog.DaySchedule'
     type: object
-  internal_domain_chat.BlockUserRequest:
+  chat.BlockUserRequest:
     properties:
       reason:
         type: string
     type: object
-  internal_domain_chat.CreateConversationRequest:
+  chat.CreateConversationRequest:
     properties:
       booking_id:
         type: integer
@@ -451,7 +510,7 @@ definitions:
     required:
     - recipient_id
     type: object
-  internal_domain_chat.SendMessageRequest:
+  chat.SendMessageRequest:
     properties:
       content:
         maxLength: 4000
@@ -459,21 +518,21 @@ definitions:
     required:
     - content
     type: object
-  internal_domain_favorite.CheckFavoriteResponse:
+  favorite.CheckFavoriteResponse:
     properties:
       is_favorite:
         type: boolean
     type: object
-  internal_domain_favorite.ErrorResponse:
+  favorite.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  internal_domain_favorite.FavoriteListResponse:
+  favorite.FavoriteListResponse:
     properties:
       favorites:
         items:
-          $ref: '#/definitions/internal_domain_favorite.FavoriteResponse'
+          $ref: '#/definitions/favorite.FavoriteResponse'
         type: array
       page:
         type: integer
@@ -484,18 +543,18 @@ definitions:
       total_pages:
         type: integer
     type: object
-  internal_domain_favorite.FavoriteResponse:
+  favorite.FavoriteResponse:
     properties:
       created_at:
         type: string
       id:
         type: integer
       studio:
-        $ref: '#/definitions/internal_domain_favorite.StudioBrief'
+        $ref: '#/definitions/favorite.StudioBrief'
       studio_id:
         type: integer
     type: object
-  internal_domain_favorite.StudioBrief:
+  favorite.StudioBrief:
     properties:
       address:
         type: string
@@ -512,7 +571,7 @@ definitions:
       rating:
         type: number
     type: object
-  internal_domain_lead.AssignLeadRequest:
+  lead.AssignLeadRequest:
     properties:
       admin_id:
         type: string
@@ -521,7 +580,7 @@ definitions:
     required:
     - admin_id
     type: object
-  internal_domain_lead.ConvertLeadRequest:
+  lead.ConvertLeadRequest:
     properties:
       bin:
         type: string
@@ -544,16 +603,16 @@ definitions:
     - org_type
     - password
     type: object
-  internal_domain_lead.LeadListResponse:
+  lead.LeadListResponse:
     properties:
       leads:
         items:
-          $ref: '#/definitions/internal_domain_lead.OwnerLead'
+          $ref: '#/definitions/lead.OwnerLead'
         type: array
       total:
         type: integer
     type: object
-  internal_domain_lead.OwnerLead:
+  lead.OwnerLead:
     properties:
       assigned_to:
         $ref: '#/definitions/sql.NullString'
@@ -607,7 +666,7 @@ definitions:
         description: UTM tracking
       status:
         allOf:
-        - $ref: '#/definitions/internal_domain_lead.Status'
+        - $ref: '#/definitions/lead.Status'
         description: Lead management
       updated_at:
         type: string
@@ -624,7 +683,7 @@ definitions:
       website:
         $ref: '#/definitions/sql.NullString'
     type: object
-  internal_domain_lead.Status:
+  lead.Status:
     enum:
     - new
     - contacted
@@ -640,7 +699,7 @@ definitions:
     - StatusConverted
     - StatusRejected
     - StatusLost
-  internal_domain_lead.SubmitLeadRequest:
+  lead.SubmitLeadRequest:
     properties:
       bin:
         type: string
@@ -678,7 +737,7 @@ definitions:
     - contact_name
     - contact_phone
     type: object
-  internal_domain_lead.UpdateLeadStatusRequest:
+  lead.UpdateLeadStatusRequest:
     properties:
       notes:
         type: string
@@ -687,7 +746,7 @@ definitions:
         type: string
       status:
         allOf:
-        - $ref: '#/definitions/internal_domain_lead.Status'
+        - $ref: '#/definitions/lead.Status'
         enum:
         - new
         - contacted
@@ -697,7 +756,7 @@ definitions:
     required:
     - status
     type: object
-  internal_domain_manager.UpdateDepositRequest:
+  manager.UpdateDepositRequest:
     properties:
       deposit_amount:
         minimum: 0
@@ -705,7 +764,7 @@ definitions:
     required:
     - deposit_amount
     type: object
-  internal_domain_manager.UpdateStatusRequest:
+  manager.UpdateStatusRequest:
     properties:
       status:
         enum:
@@ -717,7 +776,7 @@ definitions:
     required:
     - status
     type: object
-  internal_domain_mwork.SyncUserRequest:
+  mwork.SyncUserRequest:
     properties:
       email:
         type: string
@@ -730,7 +789,130 @@ definitions:
     - mwork_user_id
     - role
     type: object
-  internal_domain_owner.AddPortfolioRequest:
+  notification.ChannelSettings:
+    properties:
+      email:
+        type: boolean
+      in_app:
+        type: boolean
+      push:
+        type: boolean
+    type: object
+  notification.DeviceTokenResponse:
+    properties:
+      created_at:
+        type: string
+      device_name:
+        type: string
+      id:
+        type: integer
+      is_active:
+        type: boolean
+      last_used_at:
+        type: string
+      platform:
+        type: string
+      token:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  notification.NotificationListResponse:
+    properties:
+      notifications:
+        items:
+          $ref: '#/definitions/notification.NotificationResponse'
+        type: array
+      total:
+        type: integer
+      unread_count:
+        type: integer
+    type: object
+  notification.NotificationResponse:
+    properties:
+      body:
+        type: string
+      created_at:
+        type: string
+      data:
+        $ref: '#/definitions/photostudio_internal_domain_notification.NotificationData'
+      id:
+        type: integer
+      is_read:
+        type: boolean
+      read_at:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  notification.PreferencesResponse:
+    properties:
+      created_at:
+        type: string
+      digest_enabled:
+        type: boolean
+      digest_frequency:
+        type: string
+      email_enabled:
+        type: boolean
+      id:
+        type: integer
+      in_app_enabled:
+        type: boolean
+      per_type_settings:
+        additionalProperties:
+          $ref: '#/definitions/notification.ChannelSettings'
+        type: object
+      push_enabled:
+        type: boolean
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  notification.RegisterDeviceTokenRequest:
+    properties:
+      device_name:
+        type: string
+      platform:
+        enum:
+        - web
+        - ios
+        - android
+        type: string
+      token:
+        type: string
+    required:
+    - platform
+    - token
+    type: object
+  notification.UnreadCountResponse:
+    properties:
+      unread_count:
+        type: integer
+    type: object
+  notification.UpdatePreferencesRequest:
+    properties:
+      digest_enabled:
+        type: boolean
+      digest_frequency:
+        type: string
+      email_enabled:
+        type: boolean
+      in_app_enabled:
+        type: boolean
+      per_type_settings:
+        additionalProperties:
+          $ref: '#/definitions/notification.ChannelSettings'
+        type: object
+      push_enabled:
+        type: boolean
+    type: object
+  owner.AddPortfolioRequest:
     properties:
       category:
         type: string
@@ -741,7 +923,7 @@ definitions:
     required:
     - image_url
     type: object
-  internal_domain_owner.CreateMaintenanceRequest:
+  owner.CreateMaintenanceRequest:
     properties:
       assigned_to:
         type: string
@@ -756,7 +938,7 @@ definitions:
     required:
     - title
     type: object
-  internal_domain_owner.CreateProcurementRequest:
+  owner.CreateProcurementRequest:
     properties:
       description:
         type: string
@@ -775,7 +957,7 @@ definitions:
     required:
     - title
     type: object
-  internal_domain_owner.ReorderPortfolioRequest:
+  owner.ReorderPortfolioRequest:
     properties:
       project_ids:
         items:
@@ -784,7 +966,7 @@ definitions:
     required:
     - project_ids
     type: object
-  internal_domain_owner.SetPINRequest:
+  owner.SetPINRequest:
     properties:
       pin:
         maxLength: 6
@@ -793,7 +975,7 @@ definitions:
     required:
     - pin
     type: object
-  internal_domain_owner.UpdateCompanyProfileRequest:
+  owner.UpdateCompanyProfileRequest:
     properties:
       city:
         type: string
@@ -830,20 +1012,20 @@ definitions:
       years_experience:
         type: integer
     type: object
-  internal_domain_owner.VerifyPINRequest:
+  owner.VerifyPINRequest:
     properties:
       pin:
         type: string
     required:
     - pin
     type: object
-  internal_domain_payment.ErrorResponse:
+  payment.ErrorResponse:
     properties:
       error:
         example: invalid request
         type: string
     type: object
-  internal_domain_payment.InitPaymentRequest:
+  payment.InitPaymentRequest:
     properties:
       booking_id:
         example: 123
@@ -864,7 +1046,7 @@ definitions:
     - booking_id
     - out_sum
     type: object
-  internal_domain_payment.InitPaymentResponse:
+  payment.InitPaymentResponse:
     properties:
       inv_id:
         example: 1700000000000000000
@@ -879,7 +1061,7 @@ definitions:
         example: created
         type: string
     type: object
-  internal_domain_payment.SuccessCallbackResponse:
+  payment.SuccessCallbackResponse:
     properties:
       status:
         example: ok
@@ -888,12 +1070,45 @@ definitions:
         example: true
         type: boolean
     type: object
-  internal_domain_profile.AdminProfile:
+  photostudio_internal_domain_notification.NotificationData:
+    properties:
+      booking_id:
+        type: integer
+      cancellation_reason:
+        type: string
+      chat_room_id:
+        type: integer
+      end_time:
+        description: ISO8601 format
+        type: string
+      equipment_id:
+        type: integer
+      message_id:
+        type: integer
+      message_preview:
+        type: string
+      rating:
+        type: integer
+      reason:
+        type: string
+      review_id:
+        type: integer
+      room_id:
+        type: integer
+      sender_name:
+        type: string
+      start_time:
+        description: ISO8601 format
+        type: string
+      studio_id:
+        type: integer
+    type: object
+  profile.AdminProfile:
     properties:
       created_at:
         type: string
       created_by:
-        $ref: '#/definitions/sql.NullInt64'
+        $ref: '#/definitions/uuid.NullUUID'
       full_name:
         description: Admin info
         type: string
@@ -913,9 +1128,9 @@ definitions:
       updated_at:
         type: string
       user_id:
-        type: integer
+        type: string
     type: object
-  internal_domain_profile.ClientProfile:
+  profile.ClientProfile:
     properties:
       avatar_url:
         $ref: '#/definitions/sql.NullString'
@@ -936,7 +1151,7 @@ definitions:
       user_id:
         type: integer
     type: object
-  internal_domain_profile.OwnerProfile:
+  profile.OwnerProfile:
     properties:
       admin_notes:
         $ref: '#/definitions/sql.NullString'
@@ -981,7 +1196,7 @@ definitions:
       website:
         $ref: '#/definitions/sql.NullString'
     type: object
-  internal_domain_profile.UpdateAdminProfileRequest:
+  profile.UpdateAdminProfileRequest:
     properties:
       full_name:
         type: string
@@ -990,7 +1205,7 @@ definitions:
       position:
         type: string
     type: object
-  internal_domain_profile.UpdateClientProfileRequest:
+  profile.UpdateClientProfileRequest:
     properties:
       avatar_url:
         type: string
@@ -1001,7 +1216,7 @@ definitions:
       phone:
         type: string
     type: object
-  internal_domain_profile.UpdateOwnerProfileRequest:
+  profile.UpdateOwnerProfileRequest:
     properties:
       bin:
         type: string
@@ -1020,7 +1235,23 @@ definitions:
       website:
         type: string
     type: object
-  internal_domain_review.CreateReviewRequest:
+  response.ErrorData:
+    properties:
+      code:
+        type: string
+      details: {}
+      message:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/response.ErrorData'
+      success:
+        type: boolean
+    type: object
+  review.CreateReviewRequest:
     properties:
       booking_id:
         type: integer
@@ -1040,96 +1271,14 @@ definitions:
     - rating
     - studio_id
     type: object
-  internal_domain_review.OwnerResponseRequest:
+  review.OwnerResponseRequest:
     properties:
       response:
         type: string
     required:
     - response
     type: object
-  photostudio_internal_domain_auth.StudioStatus:
-    enum:
-    - pending
-    - verified
-    - rejected
-    - blocked
-    type: string
-    x-enum-varnames:
-    - StatusPending
-    - StatusVerified
-    - StatusRejected
-    - StatusBlocked
-  photostudio_internal_domain_auth.User:
-    properties:
-      avatar_url:
-        type: string
-      ban_reason:
-        type: string
-      banned_at:
-        type: string
-      created_at:
-        type: string
-      email:
-        type: string
-      email_verified:
-        type: boolean
-      email_verified_at:
-        type: string
-      failed_login_attempts:
-        type: integer
-      id:
-        type: integer
-      is_banned:
-        type: boolean
-      locked_until:
-        type: string
-      name:
-        type: string
-      phone:
-        type: string
-      role:
-        $ref: '#/definitions/photostudio_internal_domain_auth.UserRole'
-      studio_status:
-        $ref: '#/definitions/photostudio_internal_domain_auth.StudioStatus'
-      updated_at:
-        type: string
-    required:
-    - email
-    type: object
-  photostudio_internal_domain_auth.UserRole:
-    enum:
-    - client
-    - studio_owner
-    - admin
-    type: string
-    x-enum-varnames:
-    - RoleClient
-    - RoleStudioOwner
-    - RoleAdmin
-  photostudio_internal_domain_lead.ConvertLeadRequest:
-    properties:
-      bin:
-        type: string
-      legal_address:
-        type: string
-      legal_name:
-        type: string
-      org_type:
-        enum:
-        - ip
-        - llp
-        type: string
-      password:
-        minLength: 8
-        type: string
-    required:
-    - bin
-    - legal_address
-    - legal_name
-    - org_type
-    - password
-    type: object
-  photostudio_internal_domain_review.Review:
+  review.Review:
     properties:
       booking_id:
         type: integer
@@ -1160,22 +1309,6 @@ definitions:
       user_id:
         type: integer
     type: object
-  photostudio_internal_pkg_response.ErrorData:
-    properties:
-      code:
-        type: string
-      details: {}
-      message:
-        type: string
-    type: object
-  photostudio_internal_pkg_response.Response:
-    properties:
-      data: {}
-      error:
-        $ref: '#/definitions/photostudio_internal_pkg_response.ErrorData'
-      success:
-        type: boolean
-    type: object
   sql.NullInt64:
     properties:
       int64:
@@ -1199,6 +1332,14 @@ definitions:
         type: string
       valid:
         description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+  uuid.NullUUID:
+    properties:
+      uuid:
+        type: string
+      valid:
+        description: Valid is true if UUID is not NULL
         type: boolean
     type: object
 info:
@@ -1225,11 +1366,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: List admins
@@ -1245,18 +1386,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.CreateAdminRequest'
+          $ref: '#/definitions/admin.CreateAdminRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Create admin
@@ -1278,22 +1419,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.UpdateAdminRequest'
+          $ref: '#/definitions/admin.UpdateAdminRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Update admin
@@ -1344,7 +1485,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.Ad'
+          $ref: '#/definitions/admin.Ad'
       responses:
         "201":
           description: Объявление успешно создано
@@ -1487,22 +1628,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.LoginRequest'
+          $ref: '#/definitions/admin.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Admin Login
@@ -1517,11 +1658,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get current admin
@@ -1559,15 +1700,15 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_lead.LeadListResponse'
+                  $ref: '#/definitions/lead.LeadListResponse'
               type: object
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: List leads
@@ -1589,19 +1730,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_lead.OwnerLead'
+                  $ref: '#/definitions/lead.OwnerLead'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get lead by ID
@@ -1623,30 +1764,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_lead.AssignLeadRequest'
+          $ref: '#/definitions/lead.AssignLeadRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Assign lead to admin
@@ -1667,11 +1808,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Mark lead as contacted
@@ -1693,18 +1834,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_lead.ConvertLeadRequest'
+          $ref: '#/definitions/lead.ConvertLeadRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Convert lead to owner
@@ -1726,18 +1867,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_lead.UpdateLeadStatusRequest'
+          $ref: '#/definitions/lead.UpdateLeadStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Reject lead
@@ -1759,30 +1900,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_lead.UpdateLeadStatusRequest'
+          $ref: '#/definitions/lead.UpdateLeadStatusRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Update lead status
@@ -1797,11 +1938,11 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get lead statistics
@@ -1830,7 +1971,7 @@ paths:
         "200":
           description: Список отзывов с общим количеством и параметрами страницы
           schema:
-            $ref: '#/definitions/internal_domain_admin.ReviewListResponse'
+            $ref: '#/definitions/admin.ReviewListResponse'
         "400":
           description: Ошибка валидации параметров запроса
           schema:
@@ -2141,7 +2282,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.RejectStudioRequest'
+          $ref: '#/definitions/admin.RejectStudioRequest'
       responses:
         "200":
           description: Заявка успешно отклонена
@@ -2183,7 +2324,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.VerifyStudioRequest'
+          $ref: '#/definitions/admin.VerifyStudioRequest'
       responses:
         "200":
           description: Студия успешно верифицирована
@@ -2317,7 +2458,7 @@ paths:
         "200":
           description: Список пользователей с общим количеством и параметрами страницы
           schema:
-            $ref: '#/definitions/internal_domain_admin.UserListResponse'
+            $ref: '#/definitions/admin.UserListResponse'
         "400":
           description: Ошибка валидации параметров запроса
           schema:
@@ -2353,7 +2494,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.BlockUserRequest'
+          $ref: '#/definitions/admin.BlockUserRequest'
       responses:
         "200":
           description: Пользователь успешно заблокирован
@@ -2395,7 +2536,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_admin.BlockUserRequest'
+          $ref: '#/definitions/admin.BlockUserRequest'
       responses:
         "200":
           description: Пользователь успешно заблокирован
@@ -2632,7 +2773,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_catalog.UpdateRoomRequest'
+          $ref: '#/definitions/catalog.UpdateRoomRequest'
       produces:
       - application/json
       responses:
@@ -2680,7 +2821,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_catalog.CreateEquipmentRequest'
+          $ref: '#/definitions/catalog.CreateEquipmentRequest'
       produces:
       - application/json
       responses:
@@ -2806,7 +2947,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_catalog.CreateStudioRequest'
+          $ref: '#/definitions/catalog.CreateStudioRequest'
       produces:
       - application/json
       responses:
@@ -2897,7 +3038,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_catalog.UpdateStudioRequest'
+          $ref: '#/definitions/catalog.UpdateStudioRequest'
       produces:
       - application/json
       responses:
@@ -3007,7 +3148,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_catalog.CreateRoomRequest'
+          $ref: '#/definitions/catalog.CreateRoomRequest'
       produces:
       - application/json
       responses:
@@ -3217,7 +3358,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_auth.LoginRequest'
+          $ref: '#/definitions/auth.LoginRequest'
       responses:
         "200":
           description: Успешная авторизация, возвращается JWT токен
@@ -3277,26 +3418,26 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_auth.RegisterClientRequest'
+          $ref: '#/definitions/auth.RegisterClientRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_domain_auth.RegisterClientResponseSwagger'
+            $ref: '#/definitions/auth.RegisterClientResponseSwagger'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
+            $ref: '#/definitions/auth.ErrorResponseSwagger'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
+            $ref: '#/definitions/auth.ErrorResponseSwagger'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_domain_auth.ErrorResponseSwagger'
+            $ref: '#/definitions/auth.ErrorResponseSwagger'
       summary: Register client
       tags:
       - Auth
@@ -3311,7 +3452,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_auth.VerifyConfirmDTO'
+          $ref: '#/definitions/auth.VerifyConfirmDTO'
       produces:
       - application/json
       responses:
@@ -3334,7 +3475,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_auth.VerifyRequestDTO'
+          $ref: '#/definitions/auth.VerifyRequestDTO'
       produces:
       - application/json
       responses:
@@ -3360,7 +3501,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_booking.CreateBookingRequest'
+          $ref: '#/definitions/booking.CreateBookingRequest'
       responses:
         "201":
           description: Бронирование успешно создано
@@ -3410,7 +3551,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_booking.CancelBookingRequest'
+          $ref: '#/definitions/booking.CancelBookingRequest'
       responses:
         "200":
           description: Бронирование успешно отменено с указанной причиной
@@ -3543,7 +3684,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_booking.UpdateDepositRequest'
+          $ref: '#/definitions/booking.UpdateDepositRequest'
       responses:
         "200":
           description: Размер залога успешно обновлен
@@ -3632,7 +3773,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_booking.UpdatePaymentStatusRequest'
+          $ref: '#/definitions/booking.UpdatePaymentStatusRequest'
       responses:
         "200":
           description: Статус платежа успешно обновлен
@@ -3682,7 +3823,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_booking.UpdateBookingStatusRequest'
+          $ref: '#/definitions/booking.UpdateBookingStatusRequest'
       responses:
         "200":
           description: Статус бронирования успешно обновлен
@@ -3764,7 +3905,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_chat.CreateConversationRequest'
+          $ref: '#/definitions/chat.CreateConversationRequest'
       produces:
       - application/json
       responses:
@@ -3843,7 +3984,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_chat.SendMessageRequest'
+          $ref: '#/definitions/chat.SendMessageRequest'
       produces:
       - application/json
       responses:
@@ -4001,7 +4142,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_chat.BlockUserRequest'
+          $ref: '#/definitions/chat.BlockUserRequest'
       produces:
       - application/json
       responses:
@@ -4061,7 +4202,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.AddPortfolioRequest'
+          $ref: '#/definitions/owner.AddPortfolioRequest'
       produces:
       - application/json
       responses:
@@ -4145,7 +4286,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.ReorderPortfolioRequest'
+          $ref: '#/definitions/owner.ReorderPortfolioRequest'
       produces:
       - application/json
       responses:
@@ -4218,7 +4359,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.UpdateCompanyProfileRequest'
+          $ref: '#/definitions/owner.UpdateCompanyProfileRequest'
       produces:
       - application/json
       responses:
@@ -4270,15 +4411,15 @@ paths:
         "200":
           description: Список избранных студий
           schema:
-            $ref: '#/definitions/internal_domain_favorite.FavoriteListResponse'
+            $ref: '#/definitions/favorite.FavoriteListResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "500":
           description: Ошибка при получении списка избранного
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Получить список избранных студий
@@ -4305,19 +4446,19 @@ paths:
         "400":
           description: Некорректный ID студии
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "404":
           description: Студия отсутствует в избранном
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "500":
           description: Ошибка при удалении из избранного
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Удалить студию из избранного
@@ -4341,23 +4482,23 @@ paths:
         "201":
           description: Студия успешно добавлена в избранное
           schema:
-            $ref: '#/definitions/internal_domain_favorite.FavoriteResponse'
+            $ref: '#/definitions/favorite.FavoriteResponse'
         "400":
           description: Студия уже находится в избранном или некорректный ID студии
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "404":
           description: Студия не найдена
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "500":
           description: Ошибка при добавлении в избранное
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Добавить студию в избранное
@@ -4381,19 +4522,19 @@ paths:
         "200":
           description: Результат проверки наличия студии в избранном
           schema:
-            $ref: '#/definitions/internal_domain_favorite.CheckFavoriteResponse'
+            $ref: '#/definitions/favorite.CheckFavoriteResponse'
         "400":
           description: Некорректный ID студии
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "401":
           description: Пользователь не авторизован
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
         "500":
           description: Ошибка при проверке избранного
           schema:
-            $ref: '#/definitions/internal_domain_favorite.ErrorResponse'
+            $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Проверить находится ли студия в избранном
@@ -4411,7 +4552,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_mwork.SyncUserRequest'
+          $ref: '#/definitions/mwork.SyncUserRequest'
       responses:
         "200":
           description: Пользователь синхронизирован успешно
@@ -4455,7 +4596,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_lead.SubmitLeadRequest'
+          $ref: '#/definitions/lead.SubmitLeadRequest'
       produces:
       - application/json
       responses:
@@ -4463,23 +4604,23 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_lead.OwnerLead'
+                  $ref: '#/definitions/lead.OwnerLead'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       summary: Submit studio owner lead
       tags:
       - Leads
@@ -4602,7 +4743,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_manager.UpdateDepositRequest'
+          $ref: '#/definitions/manager.UpdateDepositRequest'
       responses:
         "200":
           description: Намавка депозита обновлена
@@ -4649,7 +4790,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_manager.UpdateStatusRequest'
+          $ref: '#/definitions/manager.UpdateStatusRequest'
       responses:
         "200":
           description: Статус бронирования обновлен
@@ -4727,18 +4868,21 @@ paths:
   /notifications:
     get:
       description: Возвращает список последних уведомлений пользователя и количество
-        непрочитанных. Поддерживает пагинацию через параметр limit.
+        непрочитанных. Поддерживает пагинацию через параметры limit и offset.
       parameters:
       - description: Максимальное количество уведомлений (по умолчанию 20, макс 100)
         in: query
         name: limit
         type: integer
+      - description: Смещение для пагинации (по умолчанию 0)
+        in: query
+        name: offset
+        type: integer
       responses:
         "200":
           description: Список уведомлений и количество непрочитанных
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/notification.NotificationListResponse'
         "401":
           description: 'Ошибка аутентификации: требуется токен'
           schema:
@@ -4754,7 +4898,42 @@ paths:
       summary: Получить уведомления
       tags:
       - Уведомления
-  /notifications/:id/read:
+  /notifications/{id}:
+    delete:
+      description: Удаляет конкретное уведомление пользователя.
+      parameters:
+      - description: ID уведомления
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Уведомление удалено
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный ID'
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить уведомление
+      tags:
+      - Уведомления
+  /notifications/{id}/read:
     patch:
       description: Отмечает конкретное уведомление как прочитанное. После этого оно
         больше не будет учитываться в счётчике непрочитанных.
@@ -4795,6 +4974,182 @@ paths:
       summary: Отметить уведомление как прочитанное
       tags:
       - Уведомления
+  /notifications/device-tokens:
+    get:
+      description: Возвращает список всех активных device tokens для текущего пользователя.
+      responses:
+        "200":
+          description: Список device tokens
+          schema:
+            items:
+              $ref: '#/definitions/notification.DeviceTokenResponse'
+            type: array
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить device tokens
+      tags:
+      - Уведомления - Device Tokens
+    post:
+      description: Регистрирует новый device token (для мобильных или веб-приложений)
+        для получения push-уведомлений.
+      parameters:
+      - description: Device token информация
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.RegisterDeviceTokenRequest'
+      responses:
+        "201":
+          description: Device token зарегистрирован
+          schema:
+            $ref: '#/definitions/notification.DeviceTokenResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Зарегистрировать device token
+      tags:
+      - Уведомления - Device Tokens
+  /notifications/device-tokens/{id}:
+    delete:
+      description: Деактивирует device token, устройство больше не будет получать
+        push-уведомления.
+      parameters:
+      - description: ID device token
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: Device token деактивирован
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный ID'
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Деактивировать device token
+      tags:
+      - Уведомления - Device Tokens
+  /notifications/preferences:
+    get:
+      description: Возвращает текущие настройки уведомлений для пользователя.
+      responses:
+        "200":
+          description: Настройки уведомлений
+          schema:
+            $ref: '#/definitions/notification.PreferencesResponse'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить настройки уведомлений
+      tags:
+      - Уведомления - Настройки
+    patch:
+      description: Обновляет настройки уведомлений для текущего пользователя.
+      parameters:
+      - description: Данные для обновления
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.UpdatePreferencesRequest'
+      responses:
+        "200":
+          description: Обновленные настройки
+          schema:
+            $ref: '#/definitions/notification.PreferencesResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить настройки уведомлений
+      tags:
+      - Уведомления - Настройки
+  /notifications/preferences/reset:
+    post:
+      description: Сбрасывает все настройки уведомлений на значения по умолчанию.
+      responses:
+        "200":
+          description: Восстановленные настройки
+          schema:
+            $ref: '#/definitions/notification.PreferencesResponse'
+        "401":
+          description: Ошибка аутентификации
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Сбросить настройки
+      tags:
+      - Уведомления - Настройки
   /notifications/read-all:
     patch:
       description: Отмечает все непрочитанные уведомления пользователя как прочитанные
@@ -4818,6 +5173,29 @@ paths:
       security:
       - BearerAuth: []
       summary: Отметить все уведомления как прочитанные
+      tags:
+      - Уведомления
+  /notifications/unread-count:
+    get:
+      description: Возвращает количество непрочитанных уведомлений для текущего пользователя.
+      responses:
+        "200":
+          description: Количество непрочитанных уведомлений
+          schema:
+            $ref: '#/definitions/notification.UnreadCountResponse'
+        "401":
+          description: 'Ошибка аутентификации: требуется токен'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить количество непрочитанных
       tags:
       - Уведомления
   /owner/analytics:
@@ -4940,7 +5318,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.CreateMaintenanceRequest'
+          $ref: '#/definitions/owner.CreateMaintenanceRequest'
       produces:
       - application/json
       responses:
@@ -5128,7 +5506,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.CreateProcurementRequest'
+          $ref: '#/definitions/owner.CreateProcurementRequest'
       produces:
       - application/json
       responses:
@@ -5279,7 +5657,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.SetPINRequest'
+          $ref: '#/definitions/owner.SetPINRequest'
       produces:
       - application/json
       responses:
@@ -5324,7 +5702,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_owner.VerifyPINRequest'
+          $ref: '#/definitions/owner.VerifyPINRequest'
       produces:
       - application/json
       responses:
@@ -5369,22 +5747,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_payment.InitPaymentRequest'
+          $ref: '#/definitions/payment.InitPaymentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_domain_payment.InitPaymentResponse'
+            $ref: '#/definitions/payment.InitPaymentResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
+            $ref: '#/definitions/payment.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
+            $ref: '#/definitions/payment.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Initialize Robokassa payment
@@ -5456,19 +5834,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_domain_payment.SuccessCallbackResponse'
+            $ref: '#/definitions/payment.SuccessCallbackResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
+            $ref: '#/definitions/payment.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
+            $ref: '#/definitions/payment.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_domain_payment.ErrorResponse'
+            $ref: '#/definitions/payment.ErrorResponse'
       summary: Robokassa SuccessURL callback
       tags:
       - Payments
@@ -5482,19 +5860,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.AdminProfile'
+                  $ref: '#/definitions/profile.AdminProfile'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get admin profile
@@ -5510,7 +5888,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_profile.UpdateAdminProfileRequest'
+          $ref: '#/definitions/profile.UpdateAdminProfileRequest'
       produces:
       - application/json
       responses:
@@ -5518,27 +5896,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.AdminProfile'
+                  $ref: '#/definitions/profile.AdminProfile'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Update admin profile
@@ -5554,19 +5932,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.ClientProfile'
+                  $ref: '#/definitions/profile.ClientProfile'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get client profile
@@ -5582,7 +5960,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_profile.UpdateClientProfileRequest'
+          $ref: '#/definitions/profile.UpdateClientProfileRequest'
       produces:
       - application/json
       responses:
@@ -5590,27 +5968,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.ClientProfile'
+                  $ref: '#/definitions/profile.ClientProfile'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Update client profile
@@ -5626,19 +6004,19 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.OwnerProfile'
+                  $ref: '#/definitions/profile.OwnerProfile'
               type: object
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Get owner profile
@@ -5654,7 +6032,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_profile.UpdateOwnerProfileRequest'
+          $ref: '#/definitions/profile.UpdateOwnerProfileRequest'
       produces:
       - application/json
       responses:
@@ -5662,27 +6040,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            - $ref: '#/definitions/response.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/internal_domain_profile.OwnerProfile'
+                  $ref: '#/definitions/profile.OwnerProfile'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "422":
           description: Unprocessable Entity
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/photostudio_internal_pkg_response.Response'
+            $ref: '#/definitions/response.Response'
       security:
       - BearerAuth: []
       summary: Update owner profile
@@ -5698,7 +6076,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_review.CreateReviewRequest'
+          $ref: '#/definitions/review.CreateReviewRequest'
       responses:
         "201":
           description: Отзыв успешно сохранён
@@ -5750,7 +6128,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_review.OwnerResponseRequest'
+          $ref: '#/definitions/review.OwnerResponseRequest'
       responses:
         "200":
           description: Ответ успешно добавлен
@@ -5845,7 +6223,7 @@ paths:
         "200":
           description: Список занятых временных слотов на указанную дату
           schema:
-            $ref: '#/definitions/internal_domain_booking.BusySlotsResponse'
+            $ref: '#/definitions/booking.BusySlotsResponse'
         "400":
           description: Ошибка валидации - неверный ID комнаты или формат даты
           schema:
@@ -5972,7 +6350,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_domain_auth.UpdateProfileRequest'
+          $ref: '#/definitions/auth.UpdateProfileRequest'
       responses:
         "200":
           description: Профиль успешно обновлён
