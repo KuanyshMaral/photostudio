@@ -22,6 +22,7 @@ import (
 	"photostudio/internal/domain/payment"
 	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
+	"photostudio/internal/domain/wallet"
 	"photostudio/internal/middleware"
 	"photostudio/internal/modules/wallet"
 	jwtsvc "photostudio/internal/pkg/jwt"
