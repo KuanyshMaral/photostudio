@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -161,6 +162,8 @@ func main() {
 		EmailService: nil,  // TODO: integrate email service
 		PushService:  nil,  // TODO: integrate push service
 	})
+	// keep extended service referenced for now (integration point)
+	_ = notificationExtendedService
 
 	// Initialize notification handlers
 	notificationHandler := notification.NewHandler(notificationService)
@@ -170,9 +173,9 @@ func main() {
 	// Initialize cleanup service
 	cleanupService := notification.NewCleanupService(notifRepo, deviceTokenRepo)
 	cleanupConfig := notification.DefaultCleanupConfig()
-	// Optionally start scheduled cleanup in background
-	// stopCleanup := cleanupService.ScheduleCleanup(context.Background(), cleanupConfig)
-	// defer close(stopCleanup) // Stop cleanup on shutdown
+	// Start scheduled cleanup in background
+	stopCleanup := cleanupService.ScheduleCleanup(context.Background(), cleanupConfig)
+	defer close(stopCleanup) // Stop cleanup on shutdown
 
 	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
