@@ -23,6 +23,7 @@ import (
 	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
+	"photostudio/internal/modules/wallet"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/pkg/response"
 
@@ -85,6 +86,8 @@ func main() {
 		&owner.PortfolioProject{},
 		&catalog.StudioWorkingHours{}, // Добавляем новую таблицу
 		&payment.RobokassaPayment{},
+		&wallet.FakeWallet{},
+		&wallet.FakeTransaction{},
 	}
 
 	// Check if migrations should be run via environment variable
@@ -159,8 +162,8 @@ func main() {
 
 	notificationService := notification.NewService(notifRepo, prefRepo, deviceTokenRepo)
 	notificationExtendedService := notification.NewExtendedService(notificationService, &notification.ExternalServices{
-		EmailService: nil,  // TODO: integrate email service
-		PushService:  nil,  // TODO: integrate push service
+		EmailService: nil, // TODO: integrate email service
+		PushService:  nil, // TODO: integrate push service
 	})
 	// keep extended service referenced for now (integration point)
 	_ = notificationExtendedService
@@ -219,6 +222,8 @@ func main() {
 	// For now assuming existing payment service signature is correct for the codebase
 	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger) // bookingRepo implements all needed interfaces now
 	paymentHandler := payment.NewHandler(paymentService, paymentLogger)
+	walletService := wallet.NewService(db)
+	walletHandler := wallet.NewHandler(walletService)
 
 	// Initialize new profile handlers
 	clientProfileHandler := profile.NewClientHandler(profileService)
@@ -286,6 +291,7 @@ func main() {
 
 		// Payment routes
 		paymentHandler.RegisterProtectedRoutes(protected)
+		walletHandler.RegisterRoutes(protected)
 
 		// Owner CRM routes (require studio_owner role)
 		ownerCRMGroup := protected.Group("")
