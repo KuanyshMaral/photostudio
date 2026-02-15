@@ -1,3 +1,9 @@
+-- Rename message column to body if it exists
+ALTER TABLE IF EXISTS notifications RENAME COLUMN IF EXISTS message TO body;
+
+-- Add read_at column if it doesn't exist
+ALTER TABLE IF EXISTS notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+
 -- Create user_notification_preferences table
 CREATE TABLE IF NOT EXISTS user_notification_preferences (
     id BIGSERIAL PRIMARY KEY,
@@ -31,6 +37,3 @@ CREATE TABLE IF NOT EXISTS device_tokens (
 CREATE INDEX IF NOT EXISTS idx_device_tokens_user_id ON device_tokens(user_id);
 CREATE INDEX IF NOT EXISTS idx_device_tokens_active ON device_tokens(user_id, is_active) WHERE is_active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_device_tokens_last_used ON device_tokens(last_used_at);
-
--- Add read_at to notifications if it doesn't exist
-ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
