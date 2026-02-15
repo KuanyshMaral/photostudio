@@ -9,4 +9,7 @@ DROP TABLE IF EXISTS user_notification_preferences CASCADE;
 DROP INDEX IF EXISTS idx_user_notification_preferences_user_id;
 
 -- Remove read_at column from notifications
-ALTER TABLE notifications DROP COLUMN IF EXISTS read_at;
+ALTER TABLE IF EXISTS notifications DROP COLUMN IF EXISTS read_at;
+
+-- Rename body back to message if needed
+ALTER TABLE IF EXISTS notifications RENAME COLUMN IF EXISTS body TO message;
