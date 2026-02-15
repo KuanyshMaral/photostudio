@@ -355,19 +355,21 @@ func (s *Service) NotifyIfOffline(
 	title := fmt.Sprintf("Сообщение от %s", sender.Name)
 	body := preview
 
-	return s.notifService.Create(
+	_, err = s.notifService.Create(
 		ctx,
 		recipientID,
-		notification.NotifNewMessage,
+		notification.TypeNewMessage,
 		title,
 		body,
-		map[string]any{
-			"conversation_id": conversation.ID,
-			"message_id":      message.ID,
-			"sender_id":       message.SenderID,
-			"sender_name":     sender.Name,
+		&notification.NotificationData{
+			ChatRoomID:     &conversation.ID,
+			MessageID:      &message.ID,
+			SenderName:     &sender.Name,
+			MessagePreview: &preview,
 		},
 	)
+
+	return err
 }
 
 // GetRecipientID возвращает ID получателя для диалога
