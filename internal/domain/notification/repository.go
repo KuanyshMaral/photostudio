@@ -321,6 +321,10 @@ func (r *NotificationRepository) Create(ctx context.Context, n *Notification, da
 			return err
 		}
 		raw = b
+		// assign marshaled JSON to Notification.Data if the field exists
+		if n != nil {
+			n.Data = raw
+		}
 	}
 
 	return r.db.WithContext(ctx).Create(n).Error
