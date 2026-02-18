@@ -2,10 +2,6 @@ package admin
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
@@ -13,6 +9,11 @@ import (
 	"photostudio/internal/domain/review"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 /* ==================== MOCKS ==================== */
@@ -223,6 +224,9 @@ func TestVerifyStudio_Success(t *testing.T) {
 		&MockReviewRepository{},
 		&MockStudioOwnerRepository{},
 		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	res, err := service.VerifyStudio(ctx, 1, 100, "OK")
@@ -246,6 +250,9 @@ func TestVerifyStudio_NotFound(t *testing.T) {
 		&MockBookingRepository{},
 		&MockReviewRepository{},
 		&MockStudioOwnerRepository{},
+		nil,
+		nil,
+		nil,
 		nil,
 	)
 
@@ -274,7 +281,7 @@ func TestRejectStudio_Success(t *testing.T) {
 	studioRepo.On("GetByID", ctx, int64(1)).Return(studio, nil)
 	userRepo.On("GetByID", ctx, int64(10)).Return(owner, nil)
 	userRepo.On("Update", ctx, mock.MatchedBy(func(u *auth.User) bool {
-		return u.StudioStatus == domain.StatusRejected
+		return u.StudioStatus == auth.StatusRejected
 	})).Return(nil)
 
 	service := NewService(
@@ -283,6 +290,9 @@ func TestRejectStudio_Success(t *testing.T) {
 		&MockBookingRepository{},
 		&MockReviewRepository{},
 		&MockStudioOwnerRepository{},
+		nil,
+		nil,
+		nil,
 		nil,
 	)
 
@@ -303,7 +313,7 @@ func TestGetStatistics_Success(t *testing.T) {
 	mockBooking := &MockBookingRepository{db: db}
 	mockReview := new(MockReviewRepository)
 
-	service := NewService(mockUser, mockStudio, mockBooking, mockReview, &MockStudioOwnerRepository{db: db}, nil)
+	service := NewService(mockUser, mockStudio, mockBooking, mockReview, &MockStudioOwnerRepository{db: db}, nil, nil, nil, nil)
 
 	stats, err := service.GetStatistics(ctx)
 

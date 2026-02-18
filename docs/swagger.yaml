@@ -492,31 +492,38 @@ definitions:
     additionalProperties:
       $ref: '#/definitions/catalog.DaySchedule'
     type: object
-  chat.BlockUserRequest:
+  chat.addMemberRequest:
     properties:
-      reason:
-        type: string
+      user_id:
+        type: integer
+    required:
+    - user_id
     type: object
-  chat.CreateConversationRequest:
+  chat.createDirectRequest:
     properties:
-      booking_id:
-        type: integer
-      initial_message:
-        type: string
       recipient_id:
-        type: integer
-      studio_id:
         type: integer
     required:
     - recipient_id
     type: object
-  chat.SendMessageRequest:
+  chat.createGroupRequest:
     properties:
-      content:
-        maxLength: 4000
+      member_ids:
+        items:
+          type: integer
+        type: array
+      name:
         type: string
     required:
-    - content
+    - name
+    type: object
+  chat.sendMessageRequest:
+    properties:
+      content:
+        type: string
+      upload_id:
+        description: optional
+        type: string
     type: object
   favorite.CheckFavoriteResponse:
     properties:
@@ -1235,6 +1242,13 @@ definitions:
       website:
         type: string
     type: object
+  relationship.blockRequest:
+    properties:
+      user_id:
+        type: integer
+    required:
+    - user_id
+    type: object
   response.ErrorData:
     properties:
       code:
@@ -1333,6 +1347,108 @@ definitions:
       valid:
         description: Valid is true if Time is not NULL
         type: boolean
+    type: object
+  subscription.CancelRequest:
+    properties:
+      reason:
+        type: string
+    type: object
+  subscription.CurrentUsage:
+    properties:
+      rooms_count:
+        type: integer
+      team_members_count:
+        type: integer
+    type: object
+  subscription.PlanFeatures:
+    properties:
+      analytics_advanced:
+        type: boolean
+      crm_access:
+        type: boolean
+      priority_search:
+        type: boolean
+      priority_support:
+        type: boolean
+    type: object
+  subscription.PlanLimits:
+    properties:
+      max_photos_per_room:
+        type: integer
+      max_rooms:
+        description: -1 = unlimited
+        type: integer
+      max_team_members:
+        description: 0 = solo only
+        type: integer
+    type: object
+  subscription.PlanResponse:
+    properties:
+      description:
+        type: string
+      features:
+        $ref: '#/definitions/subscription.PlanFeatures'
+      id:
+        type: string
+      limits:
+        $ref: '#/definitions/subscription.PlanLimits'
+      name:
+        type: string
+      price_monthly:
+        type: number
+      price_yearly:
+        type: number
+    type: object
+  subscription.SubscribeRequest:
+    properties:
+      billing_period:
+        enum:
+        - monthly
+        - yearly
+        type: string
+      plan_id:
+        type: string
+    required:
+    - billing_period
+    - plan_id
+    type: object
+  subscription.SubscriptionResponse:
+    properties:
+      auto_renew:
+        type: boolean
+      billing_period:
+        type: string
+      days_remaining:
+        type: integer
+      expires_at:
+        type: string
+      features:
+        $ref: '#/definitions/subscription.PlanFeatures'
+      id:
+        type: string
+      limits:
+        $ref: '#/definitions/subscription.PlanLimits'
+      plan_id:
+        type: string
+      plan_name:
+        type: string
+      started_at:
+        type: string
+      status:
+        type: string
+    type: object
+  subscription.UsageResponse:
+    properties:
+      features:
+        $ref: '#/definitions/subscription.PlanFeatures'
+      limits:
+        $ref: '#/definitions/subscription.PlanLimits'
+      plan_id:
+        type: string
+      plan_name:
+        type: string
+      usage:
+        $ref: '#/definitions/subscription.CurrentUsage'
     type: object
   uuid.NullUUID:
     properties:
@@ -3860,309 +3976,6 @@ paths:
       summary: Обновить статус бронирования
       tags:
       - Бронирования
-  /chat/conversations:
-    get:
-      consumes:
-      - application/json
-      description: Получает список бесед текущего пользователя с поддержкой пагинации
-      parameters:
-      - default: 20
-        description: Максимальное количество бесед
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: Смещение от начала
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Список бесед
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Ошибка при получении бесед
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Получить список всех бесед
-      tags:
-      - Chat
-    post:
-      consumes:
-      - application/json
-      description: Создаёт новую беседу с другим пользователем или получает существующую
-      parameters:
-      - description: Данные для создания беседы
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chat.CreateConversationRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Беседа успешно создана
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка валидации или создания беседы
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать новую беседу
-      tags:
-      - Chat
-  /chat/conversations/{id}/messages:
-    get:
-      consumes:
-      - application/json
-      description: Получает сообщения из конкретной беседы с поддержкой пагинации
-        и фильтрации
-      parameters:
-      - description: ID беседы
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      - default: 50
-        description: Максимальное количество сообщений
-        in: query
-        name: limit
-        type: integer
-      - description: ID сообщения для загрузки сообщений до него
-        format: int64
-        in: query
-        name: before_id
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Список сообщений и флаг há_more
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка валидации ID или доступа
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Получить сообщения беседы
-      tags:
-      - Chat
-    post:
-      consumes:
-      - application/json
-      description: Отправляет текстовое сообщение в беседу. Пользователь должен быть
-        участником беседы
-      parameters:
-      - description: ID беседы
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Содержимое сообщения
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chat.SendMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Сообщение успешно отправлено
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка валидации или отправки сообщения
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Отправить сообщение
-      tags:
-      - Chat
-  /chat/conversations/{id}/messages/upload:
-    post:
-      consumes:
-      - multipart/form-data
-      description: 'Загружает изображение в беседу. Поддерживаемые форматы: jpg, jpeg,
-        png, webp. Максимальный размер: 5 MB'
-      parameters:
-      - description: ID беседы
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Изображение для загрузки
-        in: formData
-        name: image
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Сообщение с изображением успешно отправлено
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: 'Ошибка: нет файла, недопустимый формат или слишком большой
-            размер'
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "401":
-          description: Пользователь не авторизован
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Пользователь не является участником беседы или заблокирован
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Ошибка при сохранении файла
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Загрузить изображение в чат
-      tags:
-      - Chat
-  /chat/conversations/{id}/read:
-    post:
-      consumes:
-      - application/json
-      description: Отмечает все неприлитанные сообщения в беседе как прочитанные для
-        текущего пользователя
-      parameters:
-      - description: ID беседы
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Количество отмеченных сообщений
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Ошибка валидации или отметки сообщений
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Отметить сообщения как прочитанные
-      tags:
-      - Chat
-  /chat/users/{id}/block:
-    delete:
-      consumes:
-      - application/json
-      description: Разблокирует ранее заблокированного пользователя для получения
-        сообщений от него
-      parameters:
-      - description: ID заблокированного пользователя
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Пользователь успешно разблокирован
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Ошибка при разблокировке пользователя
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Разблокировать пользователя
-      tags:
-      - Chat
-    post:
-      consumes:
-      - application/json
-      description: Блокирует пользователя для предотвращения получения сообщений от
-        него
-      parameters:
-      - description: ID пользователя для блокировки
-        format: int64
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Причина блокировки (опционально)
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/chat.BlockUserRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Пользователь успешно заблокирован
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Ошибка при блокировке пользователя
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Заблокировать пользователя
-      tags:
-      - Chat
   /company/portfolio:
     get:
       description: Возвращает полный список проектов портфолио студии с информацией
@@ -5686,6 +5499,79 @@ paths:
       summary: Установка PIN кода
       tags:
       - Owner
+  /owner/subscription:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/subscription.SubscriptionResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current subscription for the authenticated Studio Owner
+      tags:
+      - Subscriptions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Plan and billing period
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/subscription.SubscribeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/subscription.SubscriptionResponse'
+      security:
+      - BearerAuth: []
+      summary: Subscribe or upgrade to a plan
+      tags:
+      - Subscriptions
+  /owner/subscription/cancel:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Optional cancel reason
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/subscription.CancelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Cancel current subscription
+      tags:
+      - Subscriptions
+  /owner/subscription/usage:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/subscription.UsageResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current usage vs plan limits for the Studio Owner
+      tags:
+      - Subscriptions
   /owner/verify-pin:
     post:
       consumes:
@@ -6066,6 +5952,64 @@ paths:
       summary: Update owner profile
       tags:
       - Owner Profile
+  /relationships/block:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User to block
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/relationship.blockRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Block a user
+      tags:
+      - Relationships
+  /relationships/block/{user_id}:
+    delete:
+      parameters:
+      - description: User ID to unblock
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unblock a user
+      tags:
+      - Relationships
+  /relationships/blocked:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List blocked users
+      tags:
+      - Relationships
   /reviews:
     post:
       description: Пользователь может написать отзыв о студии только после завершённого
@@ -6165,6 +6109,21 @@ paths:
       summary: Ответить на отзыв
       tags:
       - Отзывы
+  /rooms:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my rooms
+      tags:
+      - Chat
   /rooms/{id}/availability:
     get:
       description: Возвращает детальную информацию о доступности указанной комнаты
@@ -6237,6 +6196,235 @@ paths:
       summary: Получить занятые временные слоты
       tags:
       - Бронирования
+  /rooms/{id}/leave:
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave a room
+      tags:
+      - Chat
+  /rooms/{id}/members:
+    get:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get room members
+      tags:
+      - Chat
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.addMemberRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add member to group room (admin only)
+      tags:
+      - Chat
+  /rooms/{id}/members/{user_id}:
+    delete:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove member from group room (admin only)
+      tags:
+      - Chat
+  /rooms/{id}/messages:
+    get:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get messages in a room
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.sendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send a message
+      tags:
+      - Chat
+  /rooms/{id}/read:
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark room as read
+      tags:
+      - Chat
+  /rooms/direct:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Recipient
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.createDirectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Start or get a 1-on-1 room
+      tags:
+      - Chat
+  /rooms/group:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.createGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a group room
+      tags:
+      - Chat
+  /rooms/unread:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Total unread messages count
+      tags:
+      - Chat
+  /rooms/ws:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Connect to WebSocket for real-time chat
+      tags:
+      - Chat
   /studios/:id/reviews:
     get:
       description: Возвращает постраничный список отзывов о студии. Отзывы отображаются
@@ -6305,6 +6493,141 @@ paths:
       summary: Получить бронирования студии
       tags:
       - Бронирования
+  /subscriptions/plans:
+    get:
+      description: Returns all available plans. Public endpoint — no auth required.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/subscription.PlanResponse'
+            type: array
+      summary: List all subscription plans
+      tags:
+      - Subscriptions
+  /uploads:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my uploads
+      tags:
+      - Uploads
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload any file (image, video, PDF). Returns file ID and public
+        URL.
+      parameters:
+      - description: File to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "413":
+          description: Request Entity Too Large
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload a file
+      tags:
+      - Uploads
+  /uploads/{id}:
+    delete:
+      parameters:
+      - description: Upload ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete an upload (file + record)
+      tags:
+      - Uploads
+    get:
+      parameters:
+      - description: Upload ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get upload metadata by ID
+      tags:
+      - Uploads
   /users/me:
     get:
       description: Возвращает полный профиль текущего авторизованного пользователя

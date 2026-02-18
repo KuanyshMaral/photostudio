@@ -2,11 +2,12 @@ package admin
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/owner"
 	"testing"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type mockUserRepo struct {
@@ -86,6 +87,9 @@ func TestApproveStudioOwner_Success(t *testing.T) {
 		nil,
 		ownerRepo,
 		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	if err := svc.ApproveStudioOwner(ctx, ownerID, adminID); err != nil {
@@ -138,6 +142,9 @@ func TestApproveStudioOwner_NotPending(t *testing.T) {
 		nil,
 		nil,
 		ownerRepo,
+		nil,
+		nil,
+		nil,
 		nil,
 	)
 
