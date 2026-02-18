@@ -2,14 +2,13 @@ package auth
 
 import (
 	"context"
-	"errors"
-	"github.com/golang-jwt/jwt/v5"
+	"testing"
+	"time"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"testing"
-	"time"
 )
 
 // Mock User Repository implementing the interface
@@ -82,7 +81,7 @@ func TestService_RegisterClient_Success(t *testing.T) {
 	userRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 	jwtSvc.On("GenerateToken", mock.Anything, "client").Return("fake-jwt-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
+	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	user, token, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Name:     "Test User",
@@ -106,7 +105,7 @@ func TestService_RegisterClient_EmailExists(t *testing.T) {
 
 	userRepo.On("ExistsByEmail", mock.Anything, "exists@example.com").Return(true, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
+	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	_, _, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Email: "exists@example.com",
@@ -131,15 +130,15 @@ func TestService_Login_Success(t *testing.T) {
 	userRepo.On("GetByEmail", mock.Anything, "user@example.com").Return(existingUser, nil)
 	jwtSvc.On("GenerateToken", int64(10), "client").Return("login-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
+	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
-	_, token, err := service.Login(context.Background(), LoginRequest{
+	res, err := service.Login(context.Background(), LoginRequest{
 		Email:    "user@example.com",
 		Password: "password123",
-	})
+	}, "", "")
 
 	assert.NoError(t, err)
-	assert.Equal(t, "login-token", token)
+	assert.Equal(t, "login-token", res.AccessToken)
 }
 
 func TestService_Login_WrongPassword(t *testing.T) {
@@ -152,9 +151,9 @@ func TestService_Login_WrongPassword(t *testing.T) {
 
 	userRepo.On("GetByEmail", mock.Anything, mock.Anything).Return(user, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
+	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
-	_, _, err := service.Login(context.Background(), LoginRequest{Password: "wrong"})
+	_, err := service.Login(context.Background(), LoginRequest{Password: "wrong"}, "", "")
 
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 }
@@ -168,7 +167,7 @@ func TestService_AppendVerificationDocs(t *testing.T) {
 
 	studioOwnerRepo.On("AppendVerificationDocs", mock.Anything, int64(5), urls).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute)
+	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	err := service.AppendVerificationDocs(context.Background(), 5, urls)
 

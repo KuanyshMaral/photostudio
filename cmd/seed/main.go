@@ -1,9 +1,8 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"photostudio/internal/database"
@@ -14,6 +13,9 @@ import (
 	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/review"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -289,11 +291,11 @@ func main() {
 	log.Println("Creating notifications...")
 	for _, owner := range owners {
 		notification := notification.Notification{
-			UserID:  owner.ID,
-			Type:    notification.NotifVerificationApproved,
-			Title:   "Студия верифицирована",
-			Message: "Ваша студия готова к работе!",
-			IsRead:  rand.Intn(2) == 0,
+			UserID: owner.ID,
+			Type:   notification.TypeVerificationApproved,
+			Title:  "Студия верифицирована",
+			Body:   sql.NullString{String: "Ваша студия готова к работе!", Valid: true},
+			IsRead: rand.Intn(2) == 0,
 		}
 		if err := db.Create(&notification).Error; err != nil {
 			log.Println("Failed to create notification:", err)

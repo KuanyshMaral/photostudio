@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	jwtsvc "photostudio/internal/pkg/jwt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -79,6 +81,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		&booking.Booking{},
 		&review.Review{},
 		&notification.Notification{},
+		&auth.VerificationCode{},
 	}
 
 	for _, model := range models {
@@ -92,30 +95,55 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	roomRepo := catalog.NewRoomRepository(db)
 	equipmentRepo := catalog.NewEquipmentRepository(db)
 	bookingRepo := booking.NewBookingRepository(db)
-	reviewRepo := repository.NewReviewRepository(db)
-	studioOwnerRepo := repository.NewOwnerRepository(db)
-	notificationRepo := repository.NewNotificationRepository(db)
+	reviewRepo := review.NewReviewRepository(db)
+	studioOwnerRepo := owner.NewOwnerRepository(db)
+	notificationRepo := notification.NewRepository(db)
+	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
+	preferencesRepo := notification.NewPreferencesRepository(db)
+	deviceTokenRepo := notification.NewDeviceTokenRepository(db)
 
 	// Setup services
 	jwtService := jwtsvc.New("test_secret_key_32_characters_min", 24*time.Hour)
 
-	authService := auth.NewService(userRepo, studioOwnerRepo, jwtService)
-	authHandler := auth.NewHandler(authService)
+	authService := auth.NewService(
+		userRepo,
+		studioOwnerRepo,
+		nil, // profileService
+		jwtService,
+		nil, // mailer
+		"pepper",
+		5*time.Minute,
+		time.Minute,
+		"refresh",
+		24*time.Hour,
+	)
+	authHandler := auth.NewHandler(authService, nil, nil, false, "", "")
 
-	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo)
+	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, nil)
+	bookingService := booking.NewService(bookingRepo, roomRepo, nil, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
 
-	notificationService := notification.NewService(notificationRepo)
+	notificationService := notification.NewService(notificationRepo, preferencesRepo, deviceTokenRepo)
 
 	// Admin domain
 	adminRepo := admin.NewAdminRepository(db)
-	adminService := admin.NewService(userRepo, studioRepo, bookingRepo, reviewRepo, studioOwnerRepo, adminRepo, jwtService, notificationService)
+	adminService := admin.NewService(
+		userRepo,
+		studioRepo,
+		bookingRepo,
+		reviewRepo,
+		studioOwnerRepo,
+		adminRepo,
+		nil, // profileService
+		jwtService,
+		nil, // notificationSender
+	)
+
 	adminAuthHandler := admin.NewAuthHandler(adminService)
 	adminManagementHandler := admin.NewManagementHandler(adminService)
 	adminHandler := admin.NewHandler(adminService, adminAuthHandler, adminManagementHandler)
@@ -144,7 +172,9 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 		// Notification handler
 		notificationHandler := notification.NewHandler(notificationService)
-		notificationHandler.RegisterRoutes(protected)
+		prefsHandler := notification.NewPreferencesHandler(notificationService)
+		devicesHandler := notification.NewDeviceTokensHandler(notificationService)
+		notification.RegisterRoutes(protected, notificationHandler, prefsHandler, devicesHandler)
 
 		studios := protected.Group("/studios")
 		{
@@ -164,7 +194,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		adminGroup := protected.Group("/admin")
 		adminGroup.Use(middleware.RequireRole("admin"))
 		{
-			adminHandler.RegisterRoutes(adminGroup)
+			adminHandler.RegisterProtectedRoutes(adminGroup)
 		}
 
 		bookings := protected.Group("/bookings")
@@ -1125,7 +1155,7 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		suite.db.Model(&booking.Booking{}).Where("id = ?", bookingID).Updates(map[string]interface{}{
 			"start_time": pastStart,
 			"end_time":   pastEnd,
-			"status":     domain.BookingCompleted,
+			"status":     booking.BookingCompleted,
 		})
 	})
 
@@ -1255,7 +1285,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		Name:            "Room1",
 		AreaSqm:         10,
 		Capacity:        2,
-		RoomType:        domain.RoomFashion,
+		RoomType:        catalog.RoomFashion,
 		PricePerHourMin: 12000,
 		IsActive:        true,
 		CreatedAt:       time.Now(),
@@ -1266,7 +1296,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		Name:            "Room2",
 		AreaSqm:         10,
 		Capacity:        2,
-		RoomType:        domain.RoomPortrait,
+		RoomType:        catalog.RoomPortrait,
 		PricePerHourMin: 8000,
 		IsActive:        true,
 		CreatedAt:       time.Now(),
@@ -1277,7 +1307,7 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 		Name:            "Room3",
 		AreaSqm:         10,
 		Capacity:        2,
-		RoomType:        domain.RoomCreative,
+		RoomType:        catalog.RoomCreative,
 		PricePerHourMin: 4000,
 		IsActive:        true,
 		CreatedAt:       time.Now(),

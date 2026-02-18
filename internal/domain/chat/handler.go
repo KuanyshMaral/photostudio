@@ -1,395 +1,438 @@
 package chat
 
 import (
-	"errors"
-	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"os"
-	"path/filepath"
-	"photostudio/internal/pkg/response"
 	"strconv"
-	"strings"
-	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
+// Handler handles HTTP requests for the chat domain
 type Handler struct {
 	service *Service
+	hub     *Hub
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, hub *Hub) *Handler {
+	return &Handler{service: service, hub: hub}
 }
 
-// RegisterRoutes registers chat routes under protected group (JWT required).
-// Base path is /api/v1/chat
+// ---- Room endpoints ----
 
-// CreateConversation создаёт новую беседу между пользователями
-//
-// @Summary Создать новую беседу
-// @Description Создаёт новую беседу с другим пользователем или получает существующую
+// CreateDirectRoom godoc
+// @Summary Start or get a 1-on-1 room
 // @Tags Chat
+// @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Security BearerAuth
-// @Param request body CreateConversationRequest true "Данные для создания беседы"
-// @Success 201 {object} map[string]interface{} "Беседа успешно создана"
-// @Failure 400 {object} map[string]string "Ошибка валидации или создания беседы"
-// @Router /chat/conversations [post]
-func (h *Handler) CreateConversation(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	var req CreateConversationRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "VALIDATION_ERROR", err)
-		return
-	}
-
-	conv, initialMsg, err := h.service.GetOrCreateConversation(c.Request.Context(), userID, req)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	resp := ToConversationResponse(conv, userID)
-	out := gin.H{"conversation": resp}
-	if initialMsg != nil {
-		out["initial_message"] = ToMessageResponse(initialMsg)
-	}
-
-	response.Success(c, http.StatusCreated, out)
-}
-
-// ListConversations возвращает список всех бесед пользователя
-//
-// @Summary Получить список всех бесед
-// @Description Получает список бесед текущего пользователя с поддержкой пагинации
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param limit query int false "Максимальное количество бесед" default(20)
-// @Param offset query int false "Смещение от начала" default(0)
-// @Success 200 {object} map[string]interface{} "Список бесед"
-// @Failure 500 {object} map[string]string "Ошибка при получении бесед"
-// @Router /chat/conversations [get]
-func (h *Handler) ListConversations(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-
-	convs, err := h.service.GetUserConversations(c.Request.Context(), userID, limit, offset)
-	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_ERROR", err)
-		return
-	}
-
-	items := make([]*ConversationResponse, 0, len(convs))
-	for i := range convs {
-		items = append(items, ToConversationResponse(&convs[i], userID))
-	}
-
-	response.Success(c, http.StatusOK, gin.H{"conversations": items})
-}
-
-// GetMessages получает сообщения из беседы
-//
-// @Summary Получить сообщения беседы
-// @Description Получает сообщения из конкретной беседы с поддержкой пагинации и фильтрации
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID беседы"
-// @Param limit query int false "Максимальное количество сообщений" default(50)
-// @Param before_id query int64 false "ID сообщения для загрузки сообщений до него"
-// @Success 200 {object} map[string]interface{} "Список сообщений и флаг há_more"
-// @Failure 400 {object} map[string]string "Ошибка валидации ID или доступа"
-// @Router /chat/conversations/{id}/messages [get]
-func (h *Handler) GetMessages(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	conversationID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid conversation ID")
-		return
-	}
-
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
-
-	var beforeID *int64
-	if v := c.Query("before_id"); v != "" {
-		id, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			response.CustomError(c, http.StatusBadRequest, "VALIDATION_ERROR", "before_id must be integer")
-			return
-		}
-		beforeID = &id
-	}
-
-	msgs, hasMore, err := h.service.GetMessages(c.Request.Context(), userID, conversationID, limit, beforeID)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	out := make([]*MessageResponse, 0, len(msgs))
-	for i := range msgs {
-		out = append(out, ToMessageResponse(&msgs[i]))
-	}
-
-	response.Success(c, http.StatusOK, gin.H{
-		"messages": out,
-		"has_more": hasMore,
-	})
-}
-
-// SendMessage отправляет сообщение в беседу
-//
-// @Summary Отправить сообщение
-// @Description Отправляет текстовое сообщение в беседу. Пользователь должен быть участником беседы
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID беседы"
-// @Param request body SendMessageRequest true "Содержимое сообщения"
-// @Success 201 {object} map[string]interface{} "Сообщение успешно отправлено"
-// @Failure 400 {object} map[string]string "Ошибка валидации или отправки сообщения"
-// @Router /chat/conversations/{id}/messages [post]
-func (h *Handler) SendMessage(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	conversationID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid conversation ID")
-		return
-	}
-
-	var req SendMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "VALIDATION_ERROR", err)
-		return
-	}
-
-	msg, err := h.service.SendMessage(c.Request.Context(), userID, conversationID, req)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusCreated, gin.H{"message": ToMessageResponse(msg)})
-}
-
-// MarkAsRead отмечает сообщения в беседе как прочитанные
-//
-// @Summary Отметить сообщения как прочитанные
-// @Description Отмечает все неприлитанные сообщения в беседе как прочитанные для текущего пользователя
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID беседы"
-// @Success 200 {object} map[string]interface{} "Количество отмеченных сообщений"
-// @Failure 400 {object} map[string]string "Ошибка валидации или отметки сообщений"
-// @Router /chat/conversations/{id}/read [post]
-func (h *Handler) MarkAsRead(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	conversationID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid conversation ID")
-		return
-	}
-
-	updated, err := h.service.MarkAsRead(c.Request.Context(), userID, conversationID)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, gin.H{"updated": updated})
-}
-
-// BlockUser блокирует пользователя в чате
-//
-// @Summary Заблокировать пользователя
-// @Description Блокирует пользователя для предотвращения получения сообщений от него
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID пользователя для блокировки"
-// @Param request body BlockUserRequest true "Причина блокировки (опционально)"
-// @Success 200 {object} map[string]string "Пользователь успешно заблокирован"
-// @Failure 400 {object} map[string]string "Ошибка при блокировке пользователя"
-// @Router /chat/users/{id}/block [post]
-func (h *Handler) BlockUser(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	targetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
-		return
-	}
-
-	var req BlockUserRequest
-	_ = c.ShouldBindJSON(&req)
-
-	if err := h.service.BlockUser(c.Request.Context(), userID, targetID, req.Reason); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "User blocked"})
-}
-
-// UnblockUser разблокирует пользователя в чате
-//
-// @Summary Разблокировать пользователя
-// @Description Разблокирует ранее заблокированного пользователя для получения сообщений от него
-// @Tags Chat
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID заблокированного пользователя"
-// @Success 200 {object} map[string]string "Пользователь успешно разблокирован"
-// @Failure 400 {object} map[string]string "Ошибка при разблокировке пользователя"
-// @Router /chat/users/{id}/block [delete]
-func (h *Handler) UnblockUser(c *gin.Context) {
-	userID := c.GetInt64("user_id")
-
-	targetID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid user ID")
-		return
-	}
-
-	if err := h.service.UnblockUser(c.Request.Context(), userID, targetID); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "CHAT_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "User unblocked"})
-}
-
-// UploadImage загружает изображение в чат беседы
-//
-// @Summary Загрузить изображение в чат
-// @Description Загружает изображение в беседу. Поддерживаемые форматы: jpg, jpeg, png, webp. Максимальный размер: 5 MB
-// @Tags Chat
-// @Accept multipart/form-data
-// @Produce json
-// @Security BearerAuth
-// @Param id path int64 true "ID беседы"
-// @Param image formData file true "Изображение для загрузки"
-// @Success 201 {object} map[string]interface{} "Сообщение с изображением успешно отправлено"
-// @Failure 400 {object} map[string]string "Ошибка: нет файла, недопустимый формат или слишком большой размер"
-// @Failure 401 {object} map[string]string "Пользователь не авторизован"
-// @Failure 403 {object} map[string]string "Пользователь не является участником беседы или заблокирован"
-// @Failure 500 {object} map[string]string "Ошибка при сохранении файла"
-// @Router /chat/conversations/{id}/messages/upload [post]
-func (h *Handler) UploadImage(c *gin.Context) {
-	// 1. Получаем user_id из JWT
-	userID := c.GetInt64("user_id")
+// @Param body body createDirectRequest true "Recipient"
+// @Success 201 {object} map[string]interface{}
+// @Router /rooms/direct [post]
+func (h *Handler) CreateDirectRoom(c *gin.Context) {
+	userID := mustUserID(c)
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
-
-	// 2. Получаем conversation_id из URL
-	conversationID, err := strconv.ParseInt(c.Param("id"), 10, 64)
-	if err != nil || conversationID <= 0 {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid conversation ID")
+	var req createDirectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-
-	// 3. Проверяем что пользователь — участник диалога
-	if !h.service.IsParticipant(c.Request.Context(), userID, conversationID) {
-		response.CustomError(c, http.StatusForbidden, "NOT_PARTICIPANT", "You are not a participant of this conversation")
-		return
-	}
-
-	// 4. Получаем файл из multipart form
-	file, err := c.FormFile("image")
+	room, err := h.service.GetOrCreateDirectRoom(c.Request.Context(), userID, req.RecipientID)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "NO_FILE", "Image file is required")
+		handleRoomError(c, err)
 		return
 	}
+	c.JSON(http.StatusCreated, gin.H{"success": true, "data": roomResponse(room)})
+}
 
-	// 5. Валидация размера (5 MB = 5 * 1024 * 1024 bytes)
-	const maxSize = 5 * 1024 * 1024
-	if file.Size > maxSize {
-		response.CustomError(c, http.StatusBadRequest, "FILE_TOO_LARGE",
-			fmt.Sprintf("File size exceeds %d MB limit", maxSize/(1024*1024)))
+// CreateGroupRoom godoc
+// @Summary Create a group room
+// @Tags Chat
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param body body createGroupRequest true "Group details"
+// @Success 201 {object} map[string]interface{}
+// @Router /rooms/group [post]
+func (h *Handler) CreateGroupRoom(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
 		return
 	}
-
-	// 6. Валидация расширения
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-		".webp": true,
-	}
-	if !allowedExts[ext] {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_FORMAT",
-			"Only jpg, jpeg, png, webp files are allowed")
+	var req createGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-
-	// 7. Создаём директорию для файлов диалога
-	uploadDir := fmt.Sprintf("./uploads/chat/%d", conversationID)
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "MKDIR_FAILED",
-			"Failed to create upload directory")
-		return
-	}
-
-	// 8. Генерируем уникальное имя файла
-	// Формат: {timestamp_ns}{ext} — гарантирует уникальность
-	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
-	savePath := filepath.Join(uploadDir, filename)
-
-	// 9. Сохраняем файл
-	if err := c.SaveUploadedFile(file, savePath); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "SAVE_FAILED",
-			"Failed to save uploaded file")
-		return
-	}
-
-	// 10. Формируем URL для доступа к файлу
-	// /static уже настроен в main.go: r.Static("/static", "./uploads")
-	imageURL := fmt.Sprintf("/static/chat/%d/%s", conversationID, filename)
-
-	// 11. Создаём сообщение с типом image
-	msg, err := h.service.SendImageMessage(
-		c.Request.Context(),
-		userID,
-		conversationID,
-		imageURL,
-	)
+	room, err := h.service.CreateGroupRoom(c.Request.Context(), userID, req.Name, req.MemberIDs)
 	if err != nil {
-		// Удаляем файл если не удалось создать сообщение
-		_ = os.Remove(savePath)
+		handleRoomError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"success": true, "data": roomResponse(room)})
+}
 
-		switch {
-		case errors.Is(err, ErrNotParticipant):
-			response.CustomError(c, http.StatusForbidden, "NOT_PARTICIPANT", err)
-		case errors.Is(err, ErrBlocked):
-			response.CustomError(c, http.StatusForbidden, "BLOCKED", err)
-		default:
-			response.CustomError(c, http.StatusInternalServerError, "MESSAGE_FAILED", err)
-		}
+// ListRooms godoc
+// @Summary List my rooms
+// @Tags Chat
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms [get]
+func (h *Handler) ListRooms(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	rooms, err := h.service.ListRooms(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to list rooms"})
+		return
+	}
+	items := make([]gin.H, 0, len(rooms))
+	for _, r := range rooms {
+		item := roomResponse(r.Room)
+		item["unread_count"] = r.UnreadCount
+		item["member_count"] = len(r.Members)
+		items = append(items, item)
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+}
+
+// ---- Message endpoints ----
+
+// GetMessages godoc
+// @Summary Get messages in a room
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Param limit query int false "Limit (default 50)"
+// @Param offset query int false "Offset"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/messages [get]
+func (h *Handler) GetMessages(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	limit := 50
+	offset := 0
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+	if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+		offset = o
+	}
+	msgs, err := h.service.GetMessages(c.Request.Context(), userID, roomID, limit, offset)
+	if err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	items := make([]gin.H, 0, len(msgs))
+	for _, m := range msgs {
+		items = append(items, messageResponse(m))
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+}
+
+// SendMessage godoc
+// @Summary Send a message
+// @Tags Chat
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Room ID"
+// @Param body body sendMessageRequest true "Message"
+// @Success 201 {object} map[string]interface{}
+// @Router /rooms/{id}/messages [post]
+func (h *Handler) SendMessage(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	var req sendMessageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	msg, err := h.service.SendMessage(c.Request.Context(), userID, roomID, req.Content, req.UploadID)
+	if err != nil {
+		handleRoomError(c, err)
 		return
 	}
 
-	// 12. Отправляем через WebSocket (если Hub подключен)
-	// TODO: h.hub.BroadcastToConversation(...)
-
-	response.Success(c, http.StatusCreated, gin.H{
-		"message": msg,
+	// Broadcast via WebSocket
+	h.hub.BroadcastToRoom(roomID, &WSEvent{
+		Type:    EventNewMessage,
+		RoomID:  roomID,
+		Payload: messageResponse(msg),
 	})
+
+	c.JSON(http.StatusCreated, gin.H{"success": true, "data": messageResponse(msg)})
+}
+
+// MarkAsRead godoc
+// @Summary Mark room as read
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/read [post]
+func (h *Handler) MarkAsRead(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	if err := h.service.MarkAsRead(c.Request.Context(), userID, roomID); err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// GetUnreadCount godoc
+// @Summary Total unread messages count
+// @Tags Chat
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/unread [get]
+func (h *Handler) GetUnreadCount(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	count, _ := h.service.GetUnreadCount(c.Request.Context(), userID)
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"unread_count": count}})
+}
+
+// ---- Member management ----
+
+// GetMembers godoc
+// @Summary Get room members
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/members [get]
+func (h *Handler) GetMembers(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	members, err := h.service.GetMembers(c.Request.Context(), userID, roomID)
+	if err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	items := make([]gin.H, 0, len(members))
+	for _, m := range members {
+		items = append(items, gin.H{
+			"user_id":   m.UserID,
+			"role":      m.Role,
+			"joined_at": m.JoinedAt,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+}
+
+// AddMember godoc
+// @Summary Add member to group room (admin only)
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Param body body addMemberRequest true "User to add"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/members [post]
+func (h *Handler) AddMember(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	var req addMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	if err := h.service.AddMember(c.Request.Context(), userID, roomID, req.UserID); err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "member added"})
+}
+
+// RemoveMember godoc
+// @Summary Remove member from group room (admin only)
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Param user_id path int true "User ID to remove"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/members/{user_id} [delete]
+func (h *Handler) RemoveMember(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	targetID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid user_id"})
+		return
+	}
+	if err := h.service.RemoveMember(c.Request.Context(), userID, roomID, targetID); err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "member removed"})
+}
+
+// LeaveRoom godoc
+// @Summary Leave a room
+// @Tags Chat
+// @Security BearerAuth
+// @Param id path string true "Room ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /rooms/{id}/leave [post]
+func (h *Handler) LeaveRoom(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+	roomID := c.Param("id")
+	if err := h.service.RemoveMember(c.Request.Context(), userID, roomID, userID); err != nil {
+		handleRoomError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "left room"})
+}
+
+// ---- WebSocket ----
+
+// WebSocket godoc
+// @Summary Connect to WebSocket for real-time chat
+// @Tags Chat
+// @Security BearerAuth
+// @Router /rooms/ws [get]
+func (h *Handler) WebSocket(c *gin.Context) {
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+
+	// Upgrade HTTP connection
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		// handle error
+		return
+	}
+
+	// Auto-subscribe: Fetch user's current rooms
+	rooms, err := h.service.ListRooms(c.Request.Context(), userID)
+	var roomIDs []string
+	if err == nil {
+		for _, r := range rooms {
+			roomIDs = append(roomIDs, r.ID)
+		}
+	}
+
+	h.hub.ServeWS(conn, userID, roomIDs)
+}
+
+// ---- Helpers ----
+
+func roomResponse(r *Room) gin.H {
+	name := ""
+	if r.Name.Valid {
+		name = r.Name.String
+	}
+	var creatorID *int64
+	if r.CreatorID.Valid {
+		creatorID = &r.CreatorID.Int64
+	}
+	return gin.H{
+		"id":         r.ID,
+		"type":       r.Type,
+		"name":       name,
+		"creator_id": creatorID,
+		"created_at": r.CreatedAt,
+	}
+}
+
+func messageResponse(m *Message) gin.H {
+	resp := gin.H{
+		"id":         m.ID,
+		"room_id":    m.RoomID,
+		"sender_id":  m.SenderID,
+		"content":    m.Content,
+		"is_read":    m.IsRead,
+		"created_at": m.CreatedAt,
+	}
+	if m.UploadID.Valid {
+		resp["upload_id"] = m.UploadID.String
+		resp["attachment_url"] = m.AttachmentURL
+		resp["attachment_name"] = m.AttachmentName
+		resp["attachment_mime"] = m.AttachmentMime
+	}
+	return resp
+}
+
+func handleRoomError(c *gin.Context, err error) {
+	switch err {
+	case ErrRoomNotFound:
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": err.Error()})
+	case ErrNotRoomMember:
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+	case ErrNotRoomAdmin:
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+	case ErrAlreadyMember:
+		c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
+	case ErrCannotChatSelf:
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	case ErrUserBlocked:
+		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "internal error"})
+	}
+}
+
+func mustUserID(c *gin.Context) int64 {
+	id, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "unauthorized"})
+		return 0
+	}
+	switch v := id.(type) {
+	case int64:
+		return v
+	case float64:
+		return int64(v)
+	}
+	c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "invalid user id"})
+	return 0
+}
+
+// ---- Request types ----
+
+type createDirectRequest struct {
+	RecipientID int64 `json:"recipient_id" binding:"required"`
+}
+
+type createGroupRequest struct {
+	Name      string  `json:"name" binding:"required"`
+	MemberIDs []int64 `json:"member_ids"`
+}
+
+type sendMessageRequest struct {
+	Content  string  `json:"content"`
+	UploadID *string `json:"upload_id"` // optional
+}
+
+type addMemberRequest struct {
+	UserID int64 `json:"user_id" binding:"required"`
 }

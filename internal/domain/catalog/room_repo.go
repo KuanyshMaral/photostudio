@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+
 	"gorm.io/gorm"
 )
 
@@ -56,6 +57,18 @@ func (r *RoomRepository) Update(ctx context.Context, room *Room) error {
 		Updates(room).Error
 }
 
+// CountRoomsByOwnerID counts how many rooms a studio owner has across all their studios.
+// Used by the subscription service to enforce the MaxRooms plan limit.
+func (r *RoomRepository) CountRoomsByOwnerID(ctx context.Context, ownerID int64) (int, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("rooms").
+		Joins("JOIN studios ON studios.id = rooms.studio_id").
+		Where("studios.owner_id = ? AND rooms.is_active = true", ownerID).
+		Count(&count).Error
+	return int(count), err
+}
+
 type EquipmentRepository struct {
 	db *gorm.DB
 }
@@ -97,7 +110,7 @@ func (r *RoomRepository) GetStudioWorkingHoursByRoomID(ctx context.Context, room
 
 func (r *RoomRepository) GetRoomWorkingHoursRaw(ctx context.Context, roomID int64) ([]byte, error) {
 	// TODO: working_hours field doesn't exist in current schema
-	// Return empty for now  
+	// Return empty for now
 	return nil, nil
 }
 
