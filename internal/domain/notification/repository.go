@@ -13,12 +13,12 @@ import (
 type Repository interface {
 	Create(ctx context.Context, n *Notification) error
 	GetByID(ctx context.Context, id int64) (*Notification, error)
-	ListByUser(ctx context.Context, userID int64, limit, offset int) ([]*Notification, error)
-	CountByUser(ctx context.Context, userID int64) (int64, error)
+	ListByUser(ctx context.Context, userID int64, limit, offset int, onlyUnread bool) ([]*Notification, error)
+	CountByUser(ctx context.Context, userID int64, onlyUnread bool) (int64, error)
 	CountUnreadByUser(ctx context.Context, userID int64) (int64, error)
-	MarkAsRead(ctx context.Context, id int64) error
+	MarkAsRead(ctx context.Context, id, userID int64) error
 	MarkAllAsRead(ctx context.Context, userID int64) error
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id, userID int64) error
 	DeleteByUser(ctx context.Context, userID int64) error
 	DeleteOldByUser(ctx context.Context, userID int64, days int) (int64, error)
 	DeleteOlderThan(ctx context.Context, age time.Duration) (int64, error)
@@ -40,7 +40,7 @@ type DeviceTokenRepository interface {
 	GetByToken(ctx context.Context, token string) (*DeviceToken, error)
 	ListByUser(ctx context.Context, userID int64, activeOnly bool) ([]*DeviceToken, error)
 	Update(ctx context.Context, token *DeviceToken) error
-	Deactivate(ctx context.Context, id int64) error
+	Deactivate(ctx context.Context, id, userID int64) error
 	DeactivateByUser(ctx context.Context, userID int64) error
 	Delete(ctx context.Context, id int64) error
 	DeleteInactive(ctx context.Context, olderThan time.Duration) (int64, error)
@@ -77,10 +77,14 @@ func (r *notificationRepository) GetByID(ctx context.Context, id int64) (*Notifi
 	return &n, nil
 }
 
-func (r *notificationRepository) ListByUser(ctx context.Context, userID int64, limit, offset int) ([]*Notification, error) {
+func (r *notificationRepository) ListByUser(ctx context.Context, userID int64, limit, offset int, onlyUnread bool) ([]*Notification, error) {
 	var notifications []*Notification
-	err := r.db.WithContext(ctx).
-		Where("user_id = ?", userID).
+	query := r.db.WithContext(ctx).Where("user_id = ?", userID)
+	if onlyUnread {
+		query = query.Where("is_read = ?", false)
+	}
+
+	err := query.
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
@@ -88,12 +92,15 @@ func (r *notificationRepository) ListByUser(ctx context.Context, userID int64, l
 	return notifications, err
 }
 
-func (r *notificationRepository) CountByUser(ctx context.Context, userID int64) (int64, error) {
+func (r *notificationRepository) CountByUser(ctx context.Context, userID int64, onlyUnread bool) (int64, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Model(&Notification{}).
-		Where("user_id = ?", userID).
-		Count(&count).Error
+		Where("user_id = ?", userID)
+	if onlyUnread {
+		query = query.Where("is_read = ?", false)
+	}
+	err := query.Count(&count).Error
 	return count, err
 }
 
@@ -106,14 +113,23 @@ func (r *notificationRepository) CountUnreadByUser(ctx context.Context, userID i
 	return count, err
 }
 
-func (r *notificationRepository) MarkAsRead(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).
+func (r *notificationRepository) MarkAsRead(ctx context.Context, id, userID int64) error {
+	result := r.db.WithContext(ctx).
 		Model(&Notification{}).
-		Where("id = ?", id).
+		Where("id = ? AND user_id = ?", id, userID).
 		Updates(map[string]interface{}{
 			"is_read": true,
 			"read_at": time.Now(),
-		}).Error
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func (r *notificationRepository) MarkAllAsRead(ctx context.Context, userID int64) error {
@@ -126,8 +142,19 @@ func (r *notificationRepository) MarkAllAsRead(ctx context.Context, userID int64
 		}).Error
 }
 
-func (r *notificationRepository) Delete(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).Delete(&Notification{}, id).Error
+func (r *notificationRepository) Delete(ctx context.Context, id, userID int64) error {
+	result := r.db.WithContext(ctx).
+		Where("id = ? AND user_id = ?", id, userID).
+		Delete(&Notification{})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func (r *notificationRepository) DeleteByUser(ctx context.Context, userID int64) error {
@@ -263,11 +290,20 @@ func (r *deviceTokenRepository) Update(ctx context.Context, token *DeviceToken) 
 	return r.db.WithContext(ctx).Save(token).Error
 }
 
-func (r *deviceTokenRepository) Deactivate(ctx context.Context, id int64) error {
-	return r.db.WithContext(ctx).
+func (r *deviceTokenRepository) Deactivate(ctx context.Context, id, userID int64) error {
+	result := r.db.WithContext(ctx).
 		Model(&DeviceToken{}).
-		Where("id = ?", id).
-		Update("is_active", false).Error
+		Where("id = ? AND user_id = ?", id, userID).
+		Update("is_active", false)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+
+	return nil
 }
 
 func (r *deviceTokenRepository) DeactivateByUser(ctx context.Context, userID int64) error {

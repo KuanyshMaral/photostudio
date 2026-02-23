@@ -8,6 +8,7 @@ func RegisterRoutes(protected *gin.RouterGroup, handler *Handler, prefsHandler *
 	notifGroup := protected.Group("/notifications")
 	{
 		notifGroup.GET("", handler.GetNotifications)
+		notifGroup.GET("/ws", handler.WebSocket)
 		notifGroup.GET("/unread-count", handler.GetUnreadCount)
 		notifGroup.PATCH("/:id/read", handler.MarkAsRead)
 		notifGroup.POST("/read-all", handler.MarkAllAsRead)
@@ -30,4 +31,3 @@ func RegisterRoutes(protected *gin.RouterGroup, handler *Handler, prefsHandler *
 		}
 	}
 }
-

@@ -3,18 +3,54 @@ package notification
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 	"net/http"
+	"photostudio/internal/domain/chat"
 	"photostudio/internal/pkg/response"
 	"strconv"
 )
 
 type Handler struct {
 	service *Service
+	hub     *chat.Hub
 }
 
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
+}
+
+// SetRealtimeHub sets chat hub for notifications websocket channel.
+func (h *Handler) SetRealtimeHub(hub *chat.Hub) {
+	h.hub = hub
+}
+
+var notificationsUpgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
+}
+
+// WebSocket serves user-scoped websocket connection for notification events.
+func (h *Handler) WebSocket(c *gin.Context) {
+	userID := c.GetInt64("user_id")
+	if userID == 0 {
+		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		return
+	}
+	if h.hub == nil {
+		response.CustomError(c, http.StatusServiceUnavailable, "INTERNAL_ERROR", "WebSocket hub unavailable")
+		return
+	}
+
+	conn, err := notificationsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "Failed to upgrade websocket")
+		return
+	}
+
+	// Reuse existing hub infrastructure; empty room list = user channel only.
+	h.hub.ServeWS(conn, userID, nil)
 }
 
 // GetNotifications получает список уведомлений текущего пользователя.
@@ -52,9 +88,19 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 		}
 	}
 
-	notifications, unread, total, err := h.service.List(c.Request.Context(), userID, limit, offset)
+	onlyUnread := false
+	if s := c.Query("only_unread"); s != "" {
+		v, err := strconv.ParseBool(s)
+		if err != nil {
+			response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid only_unread value")
+			return
+		}
+		onlyUnread = v
+	}
+
+	notifications, unread, total, err := h.service.List(c.Request.Context(), userID, limit, offset, onlyUnread)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get notifications")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get notifications")
 		return
 	}
 
@@ -89,7 +135,7 @@ func (h *Handler) GetUnreadCount(c *gin.Context) {
 
 	unread, err := h.service.GetUnreadCount(c.Request.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get unread count")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get unread count")
 		return
 	}
 
@@ -121,12 +167,12 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.MarkAsRead(c.Request.Context(), id); err != nil {
+	if err := h.service.MarkAsRead(c.Request.Context(), id, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Notification not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to mark as read")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
 		return
 	}
 
@@ -141,7 +187,7 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 // @Success		200	{object}		map[string]interface{} "Все уведомления отмечены как прочитанные"
 // @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
 // @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении статуса"
-// @Router		/notifications/read-all [PATCH]
+// @Router		/notifications/read-all [POST]
 func (h *Handler) MarkAllAsRead(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -150,7 +196,7 @@ func (h *Handler) MarkAllAsRead(c *gin.Context) {
 	}
 
 	if err := h.service.MarkAllAsRead(c.Request.Context(), userID); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to mark as read")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
 		return
 	}
 
@@ -181,8 +227,12 @@ func (h *Handler) DeleteNotification(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "DELETE_FAILED", "Failed to delete notification")
+	if err := h.service.Delete(c.Request.Context(), id, userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Notification not found")
+			return
+		}
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete notification")
 		return
 	}
 

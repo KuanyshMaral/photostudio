@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"time"
 
@@ -53,13 +54,14 @@ func ErrorLogger() gin.HandlerFunc {
 }
 
 func logRequestError(c *gin.Context, start time.Time, errType string, message string, stack []byte) {
+	sanitizedQuery := sanitizeQuery(c.Request.URL.RawQuery)
 	log.Printf(
 		"request_error type=%s status=%d method=%s path=%s query=%s client_ip=%s user_id=%d role=%s request_id=%s latency=%s error=%q stack=%s",
 		errType,
 		c.Writer.Status(),
 		c.Request.Method,
 		c.Request.URL.Path,
-		c.Request.URL.RawQuery,
+		sanitizedQuery,
 		c.ClientIP(),
 		c.GetInt64("user_id"),
 		c.GetString("role"),
@@ -68,6 +70,20 @@ func logRequestError(c *gin.Context, start time.Time, errType string, message st
 		message,
 		string(stack),
 	)
+}
+
+func sanitizeQuery(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	v, err := url.ParseQuery(raw)
+	if err != nil {
+		return ""
+	}
+	if v.Has("token") {
+		v.Set("token", "[REDACTED]")
+	}
+	return v.Encode()
 }
 
 func requestID(c *gin.Context) string {

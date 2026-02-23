@@ -46,26 +46,34 @@ type connection struct {
 // Hub manages all active WebSocket connections
 type Hub struct {
 	mu          sync.RWMutex
-	connections map[int64]*connection // userID -> connection
+	connections map[int64]map[*connection]struct{} // userID -> many connections
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		connections: make(map[int64]*connection),
+		connections: make(map[int64]map[*connection]struct{}),
 	}
 }
 
 func (h *Hub) register(c *connection) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.connections[c.userID] = c
+	if _, ok := h.connections[c.userID]; !ok {
+		h.connections[c.userID] = make(map[*connection]struct{})
+	}
+	h.connections[c.userID][c] = struct{}{}
 }
 
 func (h *Hub) unregister(c *connection) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if existing, ok := h.connections[c.userID]; ok && existing == c {
-		delete(h.connections, c.userID)
+	if userConns, ok := h.connections[c.userID]; ok {
+		if _, exists := userConns[c]; exists {
+			delete(userConns, c)
+		}
+		if len(userConns) == 0 {
+			delete(h.connections, c.userID)
+		}
 		close(c.send)
 	}
 }
@@ -78,14 +86,59 @@ func (h *Hub) BroadcastToRoom(roomID string, event *WSEvent) {
 	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	for _, c := range h.connections {
-		if c.rooms[roomID] {
-			select {
-			case c.send <- data:
-			default:
-				// Client too slow — skip
+	for _, userConns := range h.connections {
+		for c := range userConns {
+			if c.rooms[roomID] {
+				select {
+				case c.send <- data:
+				default:
+					// Client too slow — skip
+				}
 			}
 		}
+	}
+}
+
+// PublishToUser sends an event to a specific connected user.
+func (h *Hub) PublishToUser(userID int64, event *WSEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	h.mu.RLock()
+	userConns, ok := h.connections[userID]
+	if !ok {
+		h.mu.RUnlock()
+		return
+	}
+	stale := make([]*connection, 0)
+
+	for c := range userConns {
+		select {
+		case c.send <- data:
+		default:
+			// Client likely stale/slow — schedule cleanup.
+			stale = append(stale, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	if len(stale) == 0 {
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	current := h.connections[userID]
+	for _, c := range stale {
+		if _, exists := current[c]; exists {
+			delete(current, c)
+			close(c.send)
+		}
+	}
+	if len(current) == 0 {
+		delete(h.connections, userID)
 	}
 }
 
