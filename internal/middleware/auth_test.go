@@ -98,3 +98,63 @@ func TestJWTAuth_WrongFormat(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Contains(t, w.Body.String(), "INVALID_AUTH_FORMAT")
 }
+
+func TestJWTAuth_QueryTokenRejectedForNormalHTTP(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	validToken, _ := jwtService.GenerateToken(42, "client")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.GET("/api/v1/notifications", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/notifications?token="+validToken, nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Contains(t, w.Body.String(), "AUTH_HEADER_MISSING")
+}
+
+func TestJWTAuth_QueryTokenAllowedForNotificationsWSUpgrade(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	validToken, _ := jwtService.GenerateToken(42, "client")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.GET("/api/v1/notifications/ws", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/notifications/ws?token="+validToken, nil)
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Connection", "Upgrade")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestJWTAuth_QueryTokenRejectedForOtherWSPath(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	validToken, _ := jwtService.GenerateToken(42, "client")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.GET("/api/v1/rooms/ws", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/rooms/ws?token="+validToken, nil)
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Connection", "Upgrade")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+	assert.Contains(t, w.Body.String(), "AUTH_HEADER_MISSING")
+}

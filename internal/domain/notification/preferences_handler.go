@@ -35,7 +35,7 @@ func (h *PreferencesHandler) GetPreferences(c *gin.Context) {
 
 	prefs, err := h.service.GetPreferences(c.Request.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get preferences")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get preferences")
 		return
 	}
 
@@ -67,33 +67,14 @@ func (h *PreferencesHandler) UpdatePreferences(c *gin.Context) {
 		return
 	}
 
-	// Create update object
-	updates := &UserPreferences{
-		UserID: userID,
+	if req.IsEmpty() {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "empty update payload")
+		return
 	}
 
-	if req.EmailEnabled != nil {
-		updates.EmailEnabled = *req.EmailEnabled
-	}
-	if req.PushEnabled != nil {
-		updates.PushEnabled = *req.PushEnabled
-	}
-	if req.InAppEnabled != nil {
-		updates.InAppEnabled = *req.InAppEnabled
-	}
-	if req.DigestEnabled != nil {
-		updates.DigestEnabled = *req.DigestEnabled
-	}
-	if req.DigestFrequency != nil {
-		updates.DigestFrequency = *req.DigestFrequency
-	}
-	if req.PerTypeSettings != nil {
-		updates.PerTypeSettings = req.PerTypeSettings
-	}
-
-	prefs, err := h.service.UpdatePreferences(c.Request.Context(), userID, updates)
+	prefs, err := h.service.UpdatePreferences(c.Request.Context(), userID, &req)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", "Failed to update preferences")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update preferences")
 		return
 	}
 
@@ -119,7 +100,7 @@ func (h *PreferencesHandler) ResetPreferences(c *gin.Context) {
 
 	prefs, err := h.service.ResetPreferences(c.Request.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "RESET_FAILED", "Failed to reset preferences")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to reset preferences")
 		return
 	}
 

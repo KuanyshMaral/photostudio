@@ -1,7 +1,9 @@
 package notification
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
 	"photostudio/internal/pkg/response"
 	"strconv"
@@ -44,7 +46,7 @@ func (h *DeviceTokensHandler) RegisterDeviceToken(c *gin.Context) {
 
 	dt, err := h.service.RegisterDeviceToken(c.Request.Context(), userID, req.Token, req.Platform, req.DeviceName)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "REGISTER_FAILED", "Failed to register device token")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to register device token")
 		return
 	}
 
@@ -70,7 +72,7 @@ func (h *DeviceTokensHandler) ListDeviceTokens(c *gin.Context) {
 
 	tokens, err := h.service.ListDeviceTokens(c.Request.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to list device tokens")
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list device tokens")
 		return
 	}
 
@@ -106,8 +108,12 @@ func (h *DeviceTokensHandler) DeactivateDeviceToken(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeactivateDeviceToken(c.Request.Context(), id); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "DEACTIVATE_FAILED", "Failed to deactivate device token")
+	if err := h.service.DeactivateDeviceToken(c.Request.Context(), id, userID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Device token not found")
+			return
+		}
+		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to deactivate device token")
 		return
 	}
 

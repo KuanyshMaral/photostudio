@@ -159,8 +159,10 @@ func main() {
 	notifRepo := notification.NewRepository(db)
 	prefRepo := notification.NewPreferencesRepository(db)
 	deviceTokenRepo := notification.NewDeviceTokenRepository(db)
+	chatHub := chat.NewHub()
 
 	notificationService := notification.NewService(notifRepo, prefRepo, deviceTokenRepo)
+	notificationService.SetRealtimePublisher(chatHub)
 	notificationExtendedService := notification.NewExtendedService(notificationService, &notification.ExternalServices{
 		EmailService: nil, // TODO: integrate email service
 		PushService:  nil, // TODO: integrate push service
@@ -170,6 +172,7 @@ func main() {
 
 	// Initialize notification handlers
 	notificationHandler := notification.NewHandler(notificationService)
+	notificationHandler.SetRealtimeHub(chatHub)
 	preferencesHandler := notification.NewPreferencesHandler(notificationService)
 	deviceTokensHandler := notification.NewDeviceTokensHandler(notificationService)
 
@@ -211,7 +214,6 @@ func main() {
 
 	// Chat service — Room-based (direct + group), with block check
 	chatRepo := chat.NewRepository(db)
-	chatHub := chat.NewHub()
 	chatService := chat.NewService(chatRepo, relationshipService)
 	chatHandler := chat.NewHandler(chatService, chatHub)
 	favoriteHandler := favorite.NewHandler(favoriteRepo)

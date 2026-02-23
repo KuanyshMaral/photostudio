@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"photostudio/internal/domain/chat"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type Service struct {
 	notifRepo       Repository
 	prefRepo        PreferencesRepository
 	deviceTokenRepo DeviceTokenRepository
+	realtime        RealtimePublisher
 }
 
 // NewService creates notification service
@@ -21,6 +23,11 @@ func NewService(repo Repository, prefRepo PreferencesRepository, deviceTokenRepo
 		prefRepo:        prefRepo,
 		deviceTokenRepo: deviceTokenRepo,
 	}
+}
+
+// SetRealtimePublisher sets websocket publisher for realtime notifications.
+func (s *Service) SetRealtimePublisher(p RealtimePublisher) {
+	s.realtime = p
 }
 
 // NewServiceLegacy creates legacy service for backward compatibility
@@ -51,11 +58,20 @@ func (s *Service) Create(ctx context.Context, userID int64, notifType Type, titl
 		return nil, err
 	}
 
+	if s.realtime != nil {
+		resp := NotificationResponseFromEntity(n)
+		s.realtime.PublishToUser(userID, &chat.WSEvent{
+			Type:    EventNotificationCreated,
+			RoomID:  "",
+			Payload: RealtimePayloadFromNotificationResponse(resp),
+		})
+	}
+
 	return n, nil
 }
 
 // List returns notifications for user with pagination
-func (s *Service) List(ctx context.Context, userID int64, limit, offset int) ([]*Notification, int64, int64, error) {
+func (s *Service) List(ctx context.Context, userID int64, limit, offset int, onlyUnread bool) ([]*Notification, int64, int64, error) {
 	// Validate limit
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -64,7 +80,7 @@ func (s *Service) List(ctx context.Context, userID int64, limit, offset int) ([]
 		offset = 0
 	}
 
-	notifications, err := s.notifRepo.ListByUser(ctx, userID, limit, offset)
+	notifications, err := s.notifRepo.ListByUser(ctx, userID, limit, offset, onlyUnread)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -74,7 +90,7 @@ func (s *Service) List(ctx context.Context, userID int64, limit, offset int) ([]
 		unread = 0
 	}
 
-	total, err := s.notifRepo.CountByUser(ctx, userID)
+	total, err := s.notifRepo.CountByUser(ctx, userID, onlyUnread)
 	if err != nil {
 		total = 0
 	}
@@ -88,8 +104,8 @@ func (s *Service) GetUnreadCount(ctx context.Context, userID int64) (int64, erro
 }
 
 // MarkAsRead marks single notification as read
-func (s *Service) MarkAsRead(ctx context.Context, id int64) error {
-	return s.notifRepo.MarkAsRead(ctx, id)
+func (s *Service) MarkAsRead(ctx context.Context, id, userID int64) error {
+	return s.notifRepo.MarkAsRead(ctx, id, userID)
 }
 
 // MarkAllAsRead marks all notifications as read for user
@@ -98,8 +114,8 @@ func (s *Service) MarkAllAsRead(ctx context.Context, userID int64) error {
 }
 
 // Delete removes a notification
-func (s *Service) Delete(ctx context.Context, id int64) error {
-	return s.notifRepo.Delete(ctx, id)
+func (s *Service) Delete(ctx context.Context, id, userID int64) error {
+	return s.notifRepo.Delete(ctx, id, userID)
 }
 
 // DeleteOlder removes old notifications
@@ -278,7 +294,7 @@ func (s *Service) GetPreferences(ctx context.Context, userID int64) (*UserPrefer
 }
 
 // UpdatePreferences updates user notification preferences
-func (s *Service) UpdatePreferences(ctx context.Context, userID int64, updates *UserPreferences) (*UserPreferences, error) {
+func (s *Service) UpdatePreferences(ctx context.Context, userID int64, updates *UpdatePreferencesRequest) (*UserPreferences, error) {
 	if s.prefRepo == nil {
 		return nil, fmt.Errorf("preferences repository not initialized")
 	}
@@ -289,22 +305,22 @@ func (s *Service) UpdatePreferences(ctx context.Context, userID int64, updates *
 	}
 
 	// Update fields
-	if updates.EmailEnabled != prefs.EmailEnabled {
-		prefs.EmailEnabled = updates.EmailEnabled
+	if updates.EmailEnabled != nil {
+		prefs.EmailEnabled = *updates.EmailEnabled
 	}
-	if updates.PushEnabled != prefs.PushEnabled {
-		prefs.PushEnabled = updates.PushEnabled
+	if updates.PushEnabled != nil {
+		prefs.PushEnabled = *updates.PushEnabled
 	}
-	if updates.InAppEnabled != prefs.InAppEnabled {
-		prefs.InAppEnabled = updates.InAppEnabled
+	if updates.InAppEnabled != nil {
+		prefs.InAppEnabled = *updates.InAppEnabled
 	}
-	if updates.DigestEnabled != prefs.DigestEnabled {
-		prefs.DigestEnabled = updates.DigestEnabled
+	if updates.DigestEnabled != nil {
+		prefs.DigestEnabled = *updates.DigestEnabled
 	}
-	if updates.DigestFrequency != "" {
-		prefs.DigestFrequency = updates.DigestFrequency
+	if updates.DigestFrequency != nil {
+		prefs.DigestFrequency = *updates.DigestFrequency
 	}
-	if len(updates.PerTypeSettings) > 0 {
+	if updates.PerTypeSettings != nil {
 		prefs.PerTypeSettings = updates.PerTypeSettings
 	}
 
@@ -363,12 +379,12 @@ func (s *Service) ListDeviceTokens(ctx context.Context, userID int64) ([]*Device
 }
 
 // DeactivateDeviceToken deactivates a device token
-func (s *Service) DeactivateDeviceToken(ctx context.Context, id int64) error {
+func (s *Service) DeactivateDeviceToken(ctx context.Context, id, userID int64) error {
 	if s.deviceTokenRepo == nil {
 		return fmt.Errorf("device token repository not initialized")
 	}
 
-	return s.deviceTokenRepo.Deactivate(ctx, id)
+	return s.deviceTokenRepo.Deactivate(ctx, id, userID)
 }
 
 // UpdateDeviceTokenUsage updates last used timestamp
@@ -413,34 +429,51 @@ func (a *legacyRepositoryAdapter) GetByID(ctx context.Context, id int64) (*Notif
 	return nil, nil
 }
 
-func (a *legacyRepositoryAdapter) ListByUser(ctx context.Context, userID int64, limit, offset int) ([]*Notification, error) {
+func (a *legacyRepositoryAdapter) ListByUser(ctx context.Context, userID int64, limit, offset int, onlyUnread bool) ([]*Notification, error) {
 	notifications, err := a.repo.GetByUserID(ctx, userID, limit)
 	converted := make([]*Notification, len(notifications))
 	for i := range notifications {
 		converted[i] = &notifications[i]
 	}
+	if onlyUnread {
+		filtered := make([]*Notification, 0, len(converted))
+		for _, n := range converted {
+			if !n.IsRead {
+				filtered = append(filtered, n)
+			}
+		}
+		return filtered, err
+	}
 	return converted, err
 }
 
-func (a *legacyRepositoryAdapter) CountByUser(ctx context.Context, userID int64) (int64, error) {
-	// Not implemented
-	return 0, nil
+func (a *legacyRepositoryAdapter) CountByUser(ctx context.Context, userID int64, onlyUnread bool) (int64, error) {
+	if onlyUnread {
+		return a.repo.CountUnread(ctx, userID)
+	}
+
+	var count int64
+	err := a.repo.db.WithContext(ctx).
+		Model(&Notification{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
+	return count, err
 }
 
 func (a *legacyRepositoryAdapter) CountUnreadByUser(ctx context.Context, userID int64) (int64, error) {
 	return a.repo.CountUnread(ctx, userID)
 }
 
-func (a *legacyRepositoryAdapter) MarkAsRead(ctx context.Context, id int64) error {
+func (a *legacyRepositoryAdapter) MarkAsRead(ctx context.Context, id, userID int64) error {
 	// Need userID - not available, so use 0
-	return a.repo.MarkAsRead(ctx, id, 0)
+	return a.repo.MarkAsRead(ctx, id, userID)
 }
 
 func (a *legacyRepositoryAdapter) MarkAllAsRead(ctx context.Context, userID int64) error {
 	return a.repo.MarkAllAsRead(ctx, userID)
 }
 
-func (a *legacyRepositoryAdapter) Delete(ctx context.Context, id int64) error {
+func (a *legacyRepositoryAdapter) Delete(ctx context.Context, id, userID int64) error {
 	return nil
 }
 

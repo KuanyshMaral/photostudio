@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const maxWebSocketTokenLength = 8192
+
 // OwnershipChecker provides middleware to verify resource ownership
 type OwnershipChecker struct {
 	studioRepo *catalog.StudioRepository
@@ -129,9 +131,28 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			response.CustomError(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
-			c.Abort()
-			return
+			upgrade := strings.EqualFold(c.GetHeader("Upgrade"), "websocket")
+			connUpgrade := strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade")
+			isNotificationsWS := strings.HasSuffix(c.Request.URL.Path, "/notifications/ws")
+
+			// Browser WebSocket clients cannot set custom Authorization headers,
+			// allow token in query for notifications websocket endpoint only.
+			if upgrade && connUpgrade && isNotificationsWS {
+				qToken := c.Query("token")
+				if len(qToken) > maxWebSocketTokenLength {
+					response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is too long")
+					c.Abort()
+					return
+				}
+				if qToken != "" {
+					authHeader = "Bearer " + qToken
+				}
+			}
+			if authHeader == "" {
+				response.CustomError(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
+				c.Abort()
+				return
+			}
 		}
 
 		// Expected format: "Bearer <token>"
