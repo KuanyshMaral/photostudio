@@ -357,7 +357,6 @@ func main() {
 
 	// Static files for uploads
 	r.Static("/static/uploads", "./uploads")
-	r.Static("/static", "./uploads")
 
 	// Start server
 	port := os.Getenv("PORT")
