@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U photostudio -d photostudio"]
+      test: [ "CMD-SHELL", "pg_isready -U photostudio -d photostudio" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -54,11 +54,8 @@ services:
         condition: service_completed_successfully
     ports:
       - "8090:8090"
-    environment:
-      - DATABASE_URL=postgres://photostudio:photostudio123@postgres:5432/photostudio?sslmode=disable
-      - JWT_SECRET=docker_dev_secret_change_in_production
-      - PORT=8090
-      - ENV=production
+    env_file:
+      - .env.docker
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
