@@ -37,7 +37,7 @@ func (m *DevConsoleMailer) SendVerificationCode(_ context.Context, email, code s
 	return nil
 }
 
-type verificationCodeRow struct {
+type VerificationCode struct {
 	UserID      int64      `gorm:"column:user_id"`
 	CodeHash    string     `gorm:"column:code_hash"`
 	Attempts    int        `gorm:"column:attempts"`
@@ -48,7 +48,7 @@ type verificationCodeRow struct {
 	CreatedAt   time.Time  `gorm:"column:created_at"`
 }
 
-func (verificationCodeRow) TableName() string { return "email_verification_codes" }
+func (VerificationCode) TableName() string { return "email_verification_codes" }
 
 type VerifyRequestResult struct {
 	Status string
@@ -71,7 +71,7 @@ func (s *Service) RequestEmailVerification(ctx context.Context, email string) (*
 	}
 
 	now := time.Now()
-	var current verificationCodeRow
+	var current VerificationCode
 	err = s.users.DB().WithContext(ctx).Where("user_id = ?", user.ID).First(&current).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -92,7 +92,7 @@ func (s *Service) RequestEmailVerification(ctx context.Context, email string) (*
 	expiresAt := now.Add(s.verifyCodeTTL)
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		row := verificationCodeRow{
+		row := VerificationCode{
 			UserID:      user.ID,
 			CodeHash:    codeHash,
 			Attempts:    0,
@@ -105,7 +105,7 @@ func (s *Service) RequestEmailVerification(ctx context.Context, email string) (*
 		}
 	} else {
 		if updateErr := s.users.DB().WithContext(ctx).
-			Model(&verificationCodeRow{}).
+			Model(&VerificationCode{}).
 			Where("user_id = ?", user.ID).
 			Updates(map[string]any{
 				"code_hash":    codeHash,
@@ -140,7 +140,7 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 	}
 
 	now := time.Now()
-	var row verificationCodeRow
+	var row VerificationCode
 	if err := s.users.DB().WithContext(ctx).Where("user_id = ?", user.ID).First(&row).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidVerificationCode
@@ -156,7 +156,7 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 	if inputHash != row.CodeHash {
 		attempts := row.Attempts + 1
 		if updateErr := s.users.DB().WithContext(ctx).
-			Model(&verificationCodeRow{}).
+			Model(&VerificationCode{}).
 			Where("user_id = ?", user.ID).
 			Update("attempts", attempts).Error; updateErr != nil {
 			return updateErr
@@ -176,7 +176,7 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 			return err
 		}
 
-		if err := tx.Model(&verificationCodeRow{}).Where("user_id = ?", user.ID).Updates(map[string]any{
+		if err := tx.Model(&VerificationCode{}).Where("user_id = ?", user.ID).Updates(map[string]any{
 			"used_at": now,
 		}).Error; err != nil {
 			return err

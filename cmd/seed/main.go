@@ -1,9 +1,8 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 	"log"
 	"math/rand"
 	"photostudio/internal/database"
@@ -11,9 +10,14 @@ import (
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/domain/notification"
-	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 	"time"
+
+	"github.com/lib/pq"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -28,7 +32,8 @@ func main() {
 	log.Println("Running AutoMigrate...")
 	if err := db.AutoMigrate(
 		&auth.User{},
-		&owner.StudioOwner{},
+		&auth.User{},
+		&profile.OwnerProfile{},
 		&catalog.Studio{},
 		&catalog.Room{},
 		&catalog.Equipment{},
@@ -49,7 +54,7 @@ func main() {
 	db.Exec("DELETE FROM equipment")
 	db.Exec("DELETE FROM rooms")
 	db.Exec("DELETE FROM studios")
-	db.Exec("DELETE FROM studio_owners")
+	db.Exec("DELETE FROM owner_profiles")
 	db.Exec("DELETE FROM users")
 
 	// ================== USERS ==================
@@ -106,14 +111,18 @@ func main() {
 		}
 		owners = append(owners, u)
 
-		// StudioOwner details
-		studioOwner := owner.StudioOwner{
-			UserID:      u.ID,
-			CompanyName: fmt.Sprintf("Studio Company %d", i+1),
-			BIN:         fmt.Sprintf("1234567890%02d", i+12),
+		// OwnerProfile details
+		ownerProfile := profile.OwnerProfile{
+			UserID:             u.ID,
+			CompanyName:        fmt.Sprintf("Studio Company %d", i+1),
+			Bin:                sql.NullString{String: fmt.Sprintf("1234567890%02d", i+12), Valid: true},
+			VerificationStatus: "verified",
+			VerificationDocs:   pq.StringArray{},
+			CreatedAt:          time.Now(),
+			UpdatedAt:          time.Now(),
 		}
-		if err := db.Create(&studioOwner).Error; err != nil {
-			log.Fatal("Failed to create studio owner details:", err)
+		if err := db.Create(&ownerProfile).Error; err != nil {
+			log.Fatal("Failed to create owner profile:", err)
 		}
 	}
 
@@ -289,11 +298,11 @@ func main() {
 	log.Println("Creating notifications...")
 	for _, owner := range owners {
 		notification := notification.Notification{
-			UserID:  owner.ID,
-			Type:    notification.NotifVerificationApproved,
-			Title:   "Студия верифицирована",
-			Message: "Ваша студия готова к работе!",
-			IsRead:  rand.Intn(2) == 0,
+			UserID: owner.ID,
+			Type:   notification.TypeVerificationApproved,
+			Title:  "Студия верифицирована",
+			Body:   sql.NullString{String: "Ваша студия готова к работе!", Valid: true},
+			IsRead: rand.Intn(2) == 0,
 		}
 		if err := db.Create(&notification).Error; err != nil {
 			log.Println("Failed to create notification:", err)

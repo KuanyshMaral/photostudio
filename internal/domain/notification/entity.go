@@ -36,12 +36,12 @@ const (
 // Notification represents a user notification
 type Notification struct {
 	ID        int64           `db:"id" gorm:"primaryKey;column:id" json:"id"`
-	UserID    int64           `db:"user_id" gorm:"column:user_id;index:idx_notifications_user_unread,expression:user_id WHERE is_read = false" json:"user_id"`
+	UserID    int64           `db:"user_id" gorm:"column:user_id;index:idx_notifications_user_unread" json:"user_id"`
 	Type      Type            `db:"type" gorm:"column:type" json:"type"`
 	Title     string          `db:"title" gorm:"column:title" json:"title"`
 	Body      sql.NullString  `db:"body" gorm:"column:body" json:"body,omitempty"`
 	Data      json.RawMessage `db:"data" gorm:"column:data;type:jsonb" json:"data,omitempty"`
-	IsRead    bool            `db:"is_read" gorm:"column:is_read;index:idx_notifications_user_unread,expression:user_id WHERE is_read = false" json:"is_read"`
+	IsRead    bool            `db:"is_read" gorm:"column:is_read;index:idx_notifications_user_unread" json:"is_read"`
 	ReadAt    sql.NullTime    `db:"read_at" gorm:"column:read_at" json:"read_at,omitempty"`
 	CreatedAt time.Time       `db:"created_at" gorm:"column:created_at;index:idx_notifications_user_created,expression:user_id,created_at DESC" json:"created_at"`
 }
@@ -53,19 +53,19 @@ func (Notification) TableName() string {
 
 // NotificationData for linking to entities - structured data for notifications
 type NotificationData struct {
-	BookingID     *int64  `json:"booking_id,omitempty"`
-	StudioID      *int64  `json:"studio_id,omitempty"`
-	RoomID        *int64  `json:"room_id,omitempty"`
-	ReviewID      *int64  `json:"review_id,omitempty"`
-	EquipmentID   *int64  `json:"equipment_id,omitempty"`
-	MessageID     *int64  `json:"message_id,omitempty"`
-	ChatRoomID    *int64  `json:"chat_room_id,omitempty"`
-	Rating        *int    `json:"rating,omitempty"`
-	SenderName    *string `json:"sender_name,omitempty"`
-	MessagePreview *string `json:"message_preview,omitempty"`
-	Reason        *string `json:"reason,omitempty"`
-	StartTime     *string `json:"start_time,omitempty"` // ISO8601 format
-	EndTime       *string `json:"end_time,omitempty"`   // ISO8601 format
+	BookingID          *int64  `json:"booking_id,omitempty"`
+	StudioID           *int64  `json:"studio_id,omitempty"`
+	RoomID             *int64  `json:"room_id,omitempty"`
+	ReviewID           *int64  `json:"review_id,omitempty"`
+	EquipmentID        *int64  `json:"equipment_id,omitempty"`
+	MessageID          *int64  `json:"message_id,omitempty"`
+	ChatRoomID         *int64  `json:"chat_room_id,omitempty"`
+	Rating             *int    `json:"rating,omitempty"`
+	SenderName         *string `json:"sender_name,omitempty"`
+	MessagePreview     *string `json:"message_preview,omitempty"`
+	Reason             *string `json:"reason,omitempty"`
+	StartTime          *string `json:"start_time,omitempty"` // ISO8601 format
+	EndTime            *string `json:"end_time,omitempty"`   // ISO8601 format
 	CancellationReason *string `json:"cancellation_reason,omitempty"`
 }
 

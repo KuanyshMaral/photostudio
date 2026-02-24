@@ -3677,66 +3677,38 @@
                 }
             }
         },
-        "/chat/conversations": {
+        "/chats": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает список бесед текущего пользователя с поддержкой пагинации",
-                "consumes": [
-                    "application/json"
-                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Получить список всех бесед",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Максимальное количество бесед",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Смещение от начала",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
+                "summary": "List my rooms",
                 "responses": {
                     "200": {
-                        "description": "Список бесед",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
-                    },
-                    "500": {
-                        "description": "Ошибка при получении бесед",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
-            },
+            }
+        },
+        "/chats/direct": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт новую беседу с другим пользователем или получает существующую",
                 "consumes": [
                     "application/json"
                 ],
@@ -3746,95 +3718,161 @@
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Создать новую беседу",
+                "summary": "Start or get a 1-on-1 room",
                 "parameters": [
                     {
-                        "description": "Данные для создания беседы",
-                        "name": "request",
+                        "description": "Recipient",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/chat.CreateConversationRequest"
+                            "$ref": "#/definitions/chat.createDirectRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Беседа успешно создана",
+                        "description": "Created",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации или создания беседы",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     }
                 }
             }
         },
-        "/chat/conversations/{id}/messages": {
+        "/chats/group": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Create a group room",
+                "parameters": [
+                    {
+                        "description": "Group details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.createGroupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/unread": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает сообщения из конкретной беседы с поддержкой пагинации и фильтрации",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Получить сообщения беседы",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID беседы",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Максимальное количество сообщений",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID сообщения для загрузки сообщений до него",
-                        "name": "before_id",
-                        "in": "query"
-                    }
-                ],
+                "summary": "Total unread messages count",
                 "responses": {
                     "200": {
-                        "description": "Список сообщений и флаг há_more",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации ID или доступа",
+                    }
+                }
+            }
+        },
+        "/chats/ws": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Connect to WebSocket for real-time chat",
+                "responses": {}
+            }
+        },
+        "/chats/{id}/leave": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Leave a room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get room members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3845,251 +3883,125 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Отправляет текстовое сообщение в беседу. Пользователь должен быть участником беседы",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Отправить сообщение",
+                "summary": "Add member to group room (admin only)",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID беседы",
+                        "type": "string",
+                        "description": "Room ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Содержимое сообщения",
-                        "name": "request",
+                        "description": "User to add",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/chat.SendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Сообщение успешно отправлено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации или отправки сообщения",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/chat/conversations/{id}/messages/upload": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Загружает изображение в беседу. Поддерживаемые форматы: jpg, jpeg, png, webp. Максимальный размер: 5 MB",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Загрузить изображение в чат",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID беседы",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Изображение для загрузки",
-                        "name": "image",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Сообщение с изображением успешно отправлено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: нет файла, недопустимый формат или слишком большой размер",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Пользователь не является участником беседы или заблокирован",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка при сохранении файла",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/chat/conversations/{id}/read": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Отмечает все неприлитанные сообщения в беседе как прочитанные для текущего пользователя",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Отметить сообщения как прочитанные",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID беседы",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Количество отмеченных сообщений",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации или отметки сообщений",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/chat/users/{id}/block": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Блокирует пользователя для предотвращения получения сообщений от него",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Заблокировать пользователя",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID пользователя для блокировки",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Причина блокировки (опционально)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.BlockUserRequest"
+                            "$ref": "#/definitions/chat.addMemberRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Пользователь успешно заблокирован",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка при блокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     }
                 }
-            },
+            }
+        },
+        "/chats/{id}/members/{user_id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Разблокирует ранее заблокированного пользователя для получения сообщений от него",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Remove member from group room (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "User ID to remove",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get messages in a room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
@@ -4099,12 +4011,51 @@
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Разблокировать пользователя",
+                "summary": "Send a message",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID заблокированного пользователя",
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.sendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mark room as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -4112,21 +4063,10 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Пользователь успешно разблокирован",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка при разблокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -5495,7 +5435,7 @@
             }
         },
         "/notifications/read-all": {
-            "patch": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -6394,6 +6334,128 @@
                 }
             }
         },
+        "/owner/subscription": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get current subscription for the authenticated Studio Owner",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.SubscriptionResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Subscribe or upgrade to a plan",
+                "parameters": [
+                    {
+                        "description": "Plan and billing period",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/subscription.SubscribeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.SubscriptionResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/subscription/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Cancel current subscription",
+                "parameters": [
+                    {
+                        "description": "Optional cancel reason",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.CancelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/subscription/usage": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Get current usage vs plan limits for the Studio Owner",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.UsageResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/owner/verify-pin": {
             "post": {
                 "security": [
@@ -7008,6 +7070,101 @@
                 }
             }
         },
+        "/relationships/block": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Relationships"
+                ],
+                "summary": "Block a user",
+                "parameters": [
+                    {
+                        "description": "User to block",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/relationship.blockRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/relationships/block/{user_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Relationships"
+                ],
+                "summary": "Unblock a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID to unblock",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/relationships/blocked": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Relationships"
+                ],
+                "summary": "List blocked users",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/reviews": {
             "post": {
                 "security": [
@@ -7334,6 +7491,212 @@
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера при получении бронирований",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions/plans": {
+            "get": {
+                "description": "Returns all available plans. Public endpoint — no auth required.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "List all subscription plans",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/subscription.PlanResponse"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/uploads": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "List my uploads",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload any file (image, video, PDF). Returns file ID and public URL.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Upload a file",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File to upload",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/uploads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Get upload metadata by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Upload ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Delete an upload (file + record)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Upload ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -8295,43 +8658,54 @@
                 "$ref": "#/definitions/catalog.DaySchedule"
             }
         },
-        "chat.BlockUserRequest": {
+        "chat.addMemberRequest": {
             "type": "object",
+            "required": [
+                "user_id"
+            ],
             "properties": {
-                "reason": {
-                    "type": "string"
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
-        "chat.CreateConversationRequest": {
+        "chat.createDirectRequest": {
             "type": "object",
             "required": [
                 "recipient_id"
             ],
             "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
-                "initial_message": {
-                    "type": "string"
-                },
                 "recipient_id": {
-                    "type": "integer"
-                },
-                "studio_id": {
                     "type": "integer"
                 }
             }
         },
-        "chat.SendMessageRequest": {
+        "chat.createGroupRequest": {
             "type": "object",
             "required": [
-                "content"
+                "name"
             ],
             "properties": {
+                "member_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.sendMessageRequest": {
+            "type": "object",
+            "properties": {
                 "content": {
-                    "type": "string",
-                    "maxLength": 4000
+                    "type": "string"
+                },
+                "upload_id": {
+                    "description": "optional",
+                    "type": "string"
                 }
             }
         },
@@ -8481,10 +8855,10 @@
             "type": "object",
             "properties": {
                 "assigned_to": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "bin": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "company_name": {
                     "description": "Company info",
@@ -8501,18 +8875,14 @@
                     "type": "string"
                 },
                 "contact_position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "converted_at": {
                     "description": "Conversion",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullTime"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "converted_user_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
+                    "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
@@ -8521,44 +8891,36 @@
                     "type": "integer"
                 },
                 "how_found_us": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "last_contacted_at": {
                     "description": "Follow-up",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullTime"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "legal_address": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "next_follow_up_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "notes": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "priority": {
                     "type": "integer"
                 },
                 "referrer_url": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "rejection_reason": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "source": {
                     "description": "UTM tracking",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "status": {
                     "description": "Lead management",
@@ -8573,23 +8935,19 @@
                 },
                 "use_case": {
                     "description": "Application details",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "utm_campaign": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "utm_medium": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "utm_source": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "website": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 }
             }
         },
@@ -8786,6 +9144,55 @@
                 }
             }
         },
+        "notification.NotificationData": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "cancellation_reason": {
+                    "type": "string"
+                },
+                "chat_room_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "equipment_id": {
+                    "type": "integer"
+                },
+                "message_id": {
+                    "type": "integer"
+                },
+                "message_preview": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "review_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "sender_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "notification.NotificationListResponse": {
             "type": "object",
             "properties": {
@@ -8813,7 +9220,7 @@
                     "type": "string"
                 },
                 "data": {
-                    "$ref": "#/definitions/photostudio_internal_domain_notification.NotificationData"
+                    "$ref": "#/definitions/notification.NotificationData"
                 },
                 "id": {
                     "type": "integer"
@@ -9165,55 +9572,6 @@
                 }
             }
         },
-        "photostudio_internal_domain_notification.NotificationData": {
-            "type": "object",
-            "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
-                "cancellation_reason": {
-                    "type": "string"
-                },
-                "chat_room_id": {
-                    "type": "integer"
-                },
-                "end_time": {
-                    "description": "ISO8601 format",
-                    "type": "string"
-                },
-                "equipment_id": {
-                    "type": "integer"
-                },
-                "message_id": {
-                    "type": "integer"
-                },
-                "message_preview": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "review_id": {
-                    "type": "integer"
-                },
-                "room_id": {
-                    "type": "integer"
-                },
-                "sender_name": {
-                    "type": "string"
-                },
-                "start_time": {
-                    "description": "ISO8601 format",
-                    "type": "string"
-                },
-                "studio_id": {
-                    "type": "integer"
-                }
-            }
-        },
         "profile.AdminProfile": {
             "type": "object",
             "properties": {
@@ -9221,7 +9579,7 @@
                     "type": "string"
                 },
                 "created_by": {
-                    "$ref": "#/definitions/uuid.NullUUID"
+                    "type": "string"
                 },
                 "full_name": {
                     "description": "Admin info",
@@ -9235,16 +9593,16 @@
                     "type": "boolean"
                 },
                 "last_login_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "last_login_ip": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9258,7 +9616,7 @@
             "type": "object",
             "properties": {
                 "avatar_url": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"
@@ -9268,17 +9626,13 @@
                 },
                 "name": {
                     "description": "Basic info",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "nickname": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9292,43 +9646,39 @@
             "type": "object",
             "properties": {
                 "admin_notes": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "bin": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "company_name": {
                     "description": "Company info",
                     "type": "string"
                 },
                 "contact_person": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "contact_position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "email": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "legal_address": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
                     "description": "Contact",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "rejected_reason": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9347,13 +9697,13 @@
                     "type": "string"
                 },
                 "verified_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "verified_by": {
-                    "$ref": "#/definitions/sql.NullInt64"
+                    "type": "integer"
                 },
                 "website": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 }
             }
         },
@@ -9414,6 +9764,17 @@
                 },
                 "website": {
                     "type": "string"
+                }
+            }
+        },
+        "relationship.blockRequest": {
+            "type": "object",
+            "required": [
+                "user_id"
+            ],
+            "properties": {
+                "user_id": {
+                    "type": "integer"
                 }
             }
         },
@@ -9528,52 +9889,158 @@
                 }
             }
         },
-        "sql.NullInt64": {
+        "subscription.CancelRequest": {
             "type": "object",
             "properties": {
-                "int64": {
-                    "type": "integer",
-                    "format": "int64"
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "subscription.CurrentUsage": {
+            "type": "object",
+            "properties": {
+                "rooms_count": {
+                    "type": "integer"
                 },
-                "valid": {
-                    "description": "Valid is true if Int64 is not NULL",
+                "team_members_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "subscription.PlanFeatures": {
+            "type": "object",
+            "properties": {
+                "analytics_advanced": {
+                    "type": "boolean"
+                },
+                "crm_access": {
+                    "type": "boolean"
+                },
+                "priority_search": {
+                    "type": "boolean"
+                },
+                "priority_support": {
                     "type": "boolean"
                 }
             }
         },
-        "sql.NullString": {
+        "subscription.PlanLimits": {
             "type": "object",
             "properties": {
-                "string": {
-                    "type": "string"
+                "max_photos_per_room": {
+                    "type": "integer"
                 },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
+                "max_rooms": {
+                    "description": "-1 = unlimited",
+                    "type": "integer"
+                },
+                "max_team_members": {
+                    "description": "0 = solo only",
+                    "type": "integer"
                 }
             }
         },
-        "sql.NullTime": {
+        "subscription.PlanResponse": {
             "type": "object",
             "properties": {
-                "time": {
+                "description": {
                     "type": "string"
                 },
-                "valid": {
-                    "description": "Valid is true if Time is not NULL",
-                    "type": "boolean"
+                "features": {
+                    "$ref": "#/definitions/subscription.PlanFeatures"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "limits": {
+                    "$ref": "#/definitions/subscription.PlanLimits"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price_monthly": {
+                    "type": "number"
+                },
+                "price_yearly": {
+                    "type": "number"
                 }
             }
         },
-        "uuid.NullUUID": {
+        "subscription.SubscribeRequest": {
+            "type": "object",
+            "required": [
+                "billing_period",
+                "plan_id"
+            ],
+            "properties": {
+                "billing_period": {
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "yearly"
+                    ]
+                },
+                "plan_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "subscription.SubscriptionResponse": {
             "type": "object",
             "properties": {
-                "uuid": {
+                "auto_renew": {
+                    "type": "boolean"
+                },
+                "billing_period": {
                     "type": "string"
                 },
-                "valid": {
-                    "description": "Valid is true if UUID is not NULL",
-                    "type": "boolean"
+                "days_remaining": {
+                    "type": "integer"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "features": {
+                    "$ref": "#/definitions/subscription.PlanFeatures"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "limits": {
+                    "$ref": "#/definitions/subscription.PlanLimits"
+                },
+                "plan_id": {
+                    "type": "string"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "subscription.UsageResponse": {
+            "type": "object",
+            "properties": {
+                "features": {
+                    "$ref": "#/definitions/subscription.PlanFeatures"
+                },
+                "limits": {
+                    "$ref": "#/definitions/subscription.PlanLimits"
+                },
+                "plan_id": {
+                    "type": "string"
+                },
+                "plan_name": {
+                    "type": "string"
+                },
+                "usage": {
+                    "$ref": "#/definitions/subscription.CurrentUsage"
                 }
             }
         }

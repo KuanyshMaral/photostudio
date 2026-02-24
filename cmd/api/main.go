@@ -21,8 +21,10 @@ import (
 	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/payment"
 	"photostudio/internal/domain/profile"
+	"photostudio/internal/domain/relationship"
 	"photostudio/internal/domain/review"
-	"photostudio/internal/domain/wallet"
+	"photostudio/internal/domain/subscription"
+	"photostudio/internal/domain/upload"
 	"photostudio/internal/middleware"
 	jwtsvc "photostudio/internal/pkg/jwt"
 	"photostudio/internal/pkg/response"
@@ -66,7 +68,6 @@ func main() {
 
 	models := []interface{}{
 		&auth.User{},
-		&owner.StudioOwner{},
 		&catalog.Studio{},
 		&catalog.Room{},
 		&catalog.Equipment{},
@@ -75,9 +76,9 @@ func main() {
 		&notification.Notification{},
 		&notification.UserPreferences{},
 		&notification.DeviceToken{},
-		&chat.Conversation{},
+		&chat.Room{},
+		&chat.RoomMember{},
 		&chat.Message{},
-		&chat.BlockedUser{},
 		&favorite.Favorite{},
 		&owner.OwnerPIN{},
 		&owner.ProcurementItem{},
@@ -86,8 +87,6 @@ func main() {
 		&owner.PortfolioProject{},
 		&catalog.StudioWorkingHours{}, // Добавляем новую таблицу
 		&payment.RobokassaPayment{},
-		&wallet.FakeWallet{},
-		&wallet.FakeTransaction{},
 	}
 
 	// Check if migrations should be run via environment variable
@@ -118,10 +117,9 @@ func main() {
 	equipmentRepo := catalog.NewEquipmentRepository(db)
 	bookingRepo := booking.NewBookingRepository(db)
 	reviewRepo := review.NewReviewRepository(db)
-	studioOwnerRepo := owner.NewOwnerRepository(db)
 	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
 
-	chatRepo := chat.NewChatRepository(db)
+	// chatRepo is initialized after relationship service below
 	favoriteRepo := favorite.NewFavoriteRepository(db)
 	ownerCRMRepo := owner.NewOwnerCRMRepository(db)
 	robokassaPaymentRepo := payment.NewRobokassaPaymentRepository(db)
@@ -144,7 +142,7 @@ func main() {
 	profileService := profile.NewService(clientProfileRepo, ownerProfileRepo, adminProfileRepo)
 
 	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev" || authConfig.AppEnv == "development")
-	authService := auth.NewService(userRepo, studioOwnerRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
+	authService := auth.NewService(userRepo, ownerProfileRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
 	authHandler := auth.NewHandler(authService, profileService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
 
 	leadService := lead.NewService(leadRepo, userRepo)
@@ -159,8 +157,10 @@ func main() {
 	notifRepo := notification.NewRepository(db)
 	prefRepo := notification.NewPreferencesRepository(db)
 	deviceTokenRepo := notification.NewDeviceTokenRepository(db)
+	chatHub := chat.NewHub()
 
 	notificationService := notification.NewService(notifRepo, prefRepo, deviceTokenRepo)
+	notificationService.SetRealtimePublisher(chatHub)
 	notificationExtendedService := notification.NewExtendedService(notificationService, &notification.ExternalServices{
 		EmailService: nil, // TODO: integrate email service
 		PushService:  nil, // TODO: integrate push service
@@ -170,6 +170,7 @@ func main() {
 
 	// Initialize notification handlers
 	notificationHandler := notification.NewHandler(notificationService)
+	notificationHandler.SetRealtimeHub(chatHub)
 	preferencesHandler := notification.NewPreferencesHandler(notificationService)
 	deviceTokensHandler := notification.NewDeviceTokensHandler(notificationService)
 
@@ -193,7 +194,7 @@ func main() {
 		studioRepo,
 		bookingRepo,
 		reviewRepo,
-		studioOwnerRepo,
+		ownerProfileRepo,
 		adminRepo,
 		profileService,
 		jwtService,
@@ -204,11 +205,16 @@ func main() {
 	adminManagementHandler := admin.NewManagementHandler(adminService)
 	adminHandler := admin.NewHandler(adminService, adminAuthHandler, adminManagementHandler)
 
-	chatService := chat.NewService(chatRepo, userRepo, studioRepo, bookingRepo, notificationService)
-	chatHandler := chat.NewHandler(chatService)
+	// Relationship service — user blocking
+	relationshipRepo := relationship.NewRepository(db)
+	relationshipService := relationship.NewService(relationshipRepo)
+	relationshipHandler := relationship.NewHandler(relationshipService)
+
+	// Chat service — Room-based (direct + group), with block check
+	chatRepo := chat.NewRepository(db)
+	chatService := chat.NewService(chatRepo, relationshipService)
+	chatHandler := chat.NewHandler(chatService, chatHub)
 	favoriteHandler := favorite.NewHandler(favoriteRepo)
-	chatHub := chat.NewHub()
-	chatWSHandler := chat.NewWSHandler(chatHub, jwtService, chatService)
 
 	ownerHandler := owner.NewHandler(ownerCRMRepo)
 
@@ -222,13 +228,21 @@ func main() {
 	// For now assuming existing payment service signature is correct for the codebase
 	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger) // bookingRepo implements all needed interfaces now
 	paymentHandler := payment.NewHandler(paymentService, paymentLogger)
-	walletService := wallet.NewService(db)
-	walletHandler := wallet.NewHandler(walletService)
 
 	// Initialize new profile handlers
 	clientProfileHandler := profile.NewClientHandler(profileService)
 	ownerProfileHandler := profile.NewOwnerHandler(profileService)
 	adminProfileHandler := profile.NewAdminHandler(profileService)
+
+	// Subscription service (Studio Owners only — clients are NOT affected)
+	subscriptionRepo := subscription.NewRepository(db)
+	subscriptionService := subscription.NewService(subscriptionRepo, roomRepo)
+	subscriptionHandler := subscription.NewHandler(subscriptionService)
+
+	// Upload service — simple local file storage, available to all authenticated users
+	uploadRepo := upload.NewRepository(db)
+	uploadService := upload.NewService(uploadRepo, "./uploads", "/static/uploads")
+	uploadHandler := upload.NewHandler(uploadService)
 
 	// CORS Setup
 	r := gin.Default()
@@ -249,9 +263,10 @@ func main() {
 
 	// Public routes
 	authHandler.RegisterPublicRoutes(v1)
-	catalogHandler.RegisterRoutes(v1)          // Полный набор публичных маршрутов
-	lead.RegisterPublicRoutes(v1, leadHandler) // Changed from RegisterRoutes
-	adminHandler.RegisterPublicRoutes(v1)      // New Admin Login (Public)
+	catalogHandler.RegisterRoutes(v1)                          // Полный набор публичных маршрутов
+	lead.RegisterPublicRoutes(v1, leadHandler)                 // Changed from RegisterRoutes
+	adminHandler.RegisterPublicRoutes(v1)                      // New Admin Login (Public)
+	subscription.RegisterPublicRoutes(v1, subscriptionHandler) // Public plan listing
 
 	// Webhooks
 	paymentHandler.RegisterWebhookRoutes(v1)
@@ -275,12 +290,18 @@ func main() {
 		bookingHandler.RegisterRoutes(protected) // Полный набор маршрутов бронирования
 		bookingHandler.RegisterStudioRoutes(protected, ownershipChecker)
 
+		// Upload routes — any authenticated user can upload files
+		upload.RegisterRoutes(protected, uploadHandler)
+
+		// Chat routes — rooms, messages, WebSocket
+		chat.RegisterRoutes(protected, chatHandler)
+
+		// Relationship routes — block/unblock
+		relationship.RegisterRoutes(protected, relationshipHandler)
+
 		// Notification routes
 		notification.RegisterRoutes(protected, notificationHandler, preferencesHandler, deviceTokensHandler)
 
-		// Chat routes
-		protected.GET("/chat/ws", chatWSHandler.HandleWebSocket)
-		chatHandler.RegisterRoutes(protected)
 		favoriteHandler.RegisterRoutes(protected)
 
 		// Manager routes
@@ -291,7 +312,6 @@ func main() {
 
 		// Payment routes
 		paymentHandler.RegisterProtectedRoutes(protected)
-		walletHandler.RegisterRoutes(protected)
 
 		// Owner CRM routes (require studio_owner role)
 		ownerCRMGroup := protected.Group("")
@@ -299,6 +319,8 @@ func main() {
 		{
 			ownerHandler.RegisterRoutes(ownerCRMGroup)
 			ownerHandler.RegisterCompanyRoutes(ownerCRMGroup)
+			// Subscription management — Studio Owners only
+			subscription.RegisterOwnerRoutes(ownerCRMGroup, subscriptionHandler)
 		}
 
 		managerGroup := protected.Group("")
@@ -308,8 +330,6 @@ func main() {
 		}
 
 	}
-	// Chat WebSocket route (public, auth via query param)
-	r.GET("/ws/chat", chatWSHandler.HandleWebSocket)
 
 	internal := r.Group("/internal")
 	internal.Use(middleware.InternalTokenAuth())
@@ -336,6 +356,7 @@ func main() {
 	}
 
 	// Static files for uploads
+	r.Static("/static/uploads", "./uploads")
 	r.Static("/static", "./uploads")
 
 	// Start server

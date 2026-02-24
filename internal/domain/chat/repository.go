@@ -2,272 +2,200 @@ package chat
 
 import (
 	"context"
-	"errors"
+	"database/sql"
+	"time"
+
 	"gorm.io/gorm"
 )
 
-type ChatRepository struct {
+// Repository handles all DB operations for the chat domain
+type Repository interface {
+	// Rooms
+	CreateRoom(ctx context.Context, room *Room) error
+	GetRoomByID(ctx context.Context, id string) (*Room, error)
+	GetDirectRoomByUsers(ctx context.Context, userA, userB int64) (*Room, error)
+	ListRoomsByUser(ctx context.Context, userID int64) ([]*RoomWithUnread, error)
+
+	// Members
+	AddMember(ctx context.Context, m *RoomMember) error
+	RemoveMember(ctx context.Context, roomID string, userID int64) error
+	GetMember(ctx context.Context, roomID string, userID int64) (*RoomMember, error)
+	GetMembers(ctx context.Context, roomID string) ([]*RoomMember, error)
+	IsMember(ctx context.Context, roomID string, userID int64) (bool, error)
+	UpdateLastRead(ctx context.Context, roomID string, userID int64) error
+
+	// Messages
+	CreateMessage(ctx context.Context, msg *Message) error
+	GetMessages(ctx context.Context, roomID string, limit, offset int) ([]*Message, error)
+	CountUnread(ctx context.Context, roomID string, userID int64) (int, error)
+	MarkRoomAsRead(ctx context.Context, roomID string, userID int64) error
+	CountTotalUnread(ctx context.Context, userID int64) (int, error)
+}
+
+type repository struct {
 	db *gorm.DB
 }
 
-func NewChatRepository(db *gorm.DB) *ChatRepository {
-	return &ChatRepository{db: db}
+func NewRepository(db *gorm.DB) Repository {
+	return &repository{db: db}
 }
 
-// CreateConversation создаёт новый диалог
-//
-// Важно: перед вызовом убедиться что participant_a < participant_b
-// Это гарантирует уникальность при поиске
-func (r *ChatRepository) CreateConversation(ctx context.Context, conv *Conversation) error {
-	return r.db.WithContext(ctx).Create(conv).Error
+func (r *repository) CreateRoom(ctx context.Context, room *Room) error {
+	return r.db.WithContext(ctx).Create(room).Error
 }
 
-// GetConversationByID возвращает диалог по ID
-func (r *ChatRepository) GetConversationByID(ctx context.Context, id int64) (*Conversation, error) {
-	var conv Conversation
-	err := r.db.WithContext(ctx).First(&conv, id).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("conversation not found")
-		}
-		return nil, err
+func (r *repository) GetRoomByID(ctx context.Context, id string) (*Room, error) {
+	var room Room
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&room).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, ErrRoomNotFound
 	}
-	return &conv, nil
+	return &room, err
 }
 
-func (r *ChatRepository) GetConversationByParticipants(
-	ctx context.Context,
-	userA, userB int64,
-	studioID, bookingID *int64,
-) (*Conversation, error) {
-	// Гарантируем порядок: participant_a всегда меньше
-	if userA > userB {
-		userA, userB = userB, userA
-	}
-
-	query := r.db.WithContext(ctx).
-		Where("participant_a = ? AND participant_b = ?", userA, userB)
-
-	// Фильтр по studio_id
-	if studioID != nil {
-		query = query.Where("studio_id = ?", *studioID)
-	} else {
-		query = query.Where("studio_id IS NULL")
-	}
-
-	// Фильтр по booking_id
-	if bookingID != nil {
-		query = query.Where("booking_id = ?", *bookingID)
-	} else {
-		query = query.Where("booking_id IS NULL")
-	}
-
-	var conv Conversation
-	err := query.First(&conv).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil // Диалог не найден — это OK
-		}
-		return nil, err
-	}
-
-	return &conv, nil
-}
-
-func (r *ChatRepository) GetUserConversations(
-	ctx context.Context,
-	userID int64,
-	limit, offset int,
-) ([]Conversation, error) {
-	var convs []Conversation
-
+func (r *repository) GetDirectRoomByUsers(ctx context.Context, userA, userB int64) (*Room, error) {
+	var room Room
 	err := r.db.WithContext(ctx).
-		// Пользователь может быть participant_a или participant_b
-		Where("participant_a = ? OR participant_b = ?", userID, userID).
-		// Сортировка: новые сообщения сверху
-		Order("last_message_at DESC").
-		// Пагинация
-		Limit(limit).
-		Offset(offset).
-		Find(&convs).Error
-
-	return convs, err
-}
-
-// UpdateLastMessageAt обновляет время последнего сообщения в диалоге
-//
-// Вызывается после отправки каждого сообщения
-func (r *ChatRepository) UpdateLastMessageAt(ctx context.Context, conversationID int64) error {
-	return r.db.WithContext(ctx).
-		Model(&Conversation{}).
-		Where("id = ?", conversationID).
-		Update("last_message_at", gorm.Expr("CURRENT_TIMESTAMP")).Error
-}
-
-// CreateMessage создаёт новое сообщение
-func (r *ChatRepository) CreateMessage(ctx context.Context, msg *Message) error {
-	return r.db.WithContext(ctx).Create(msg).Error
-}
-
-// GetMessages возвращает сообщения диалога
-//
-// Параметры:
-// - conversationID: ID диалога
-// - limit: максимум сообщений
-// - beforeID: для пагинации — получить сообщения старше указанного ID
-//
-// Возвращает сообщения в хронологическом порядке (старые первые)
-func (r *ChatRepository) GetMessages(
-	ctx context.Context,
-	conversationID int64,
-	limit int,
-	beforeID *int64,
-) ([]Message, error) {
-	query := r.db.WithContext(ctx).
-		Where("conversation_id = ?", conversationID)
-
-	// Пагинация: сообщения старше указанного ID
-	if beforeID != nil && *beforeID > 0 {
-		query = query.Where("id < ?", *beforeID)
+		Joins("JOIN chat_room_members rm1 ON rm1.room_id = chat_rooms.id AND rm1.user_id = ?", userA).
+		Joins("JOIN chat_room_members rm2 ON rm2.room_id = chat_rooms.id AND rm2.user_id = ?", userB).
+		Where("chat_rooms.type = ?", RoomTypeDirect).
+		First(&room).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
 	}
+	return &room, err
+}
 
-	var messages []Message
-
-	// Получаем в обратном порядке (для LIMIT)
-	err := query.
-		Order("created_at DESC").
-		Limit(limit).
-		Find(&messages).Error
-
+func (r *repository) ListRoomsByUser(ctx context.Context, userID int64) ([]*RoomWithUnread, error) {
+	var rooms []*Room
+	err := r.db.WithContext(ctx).
+		Joins("JOIN chat_room_members rm ON rm.room_id = chat_rooms.id AND rm.user_id = ?", userID).
+		Order("chat_rooms.created_at DESC").
+		Find(&rooms).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// Разворачиваем в хронологический порядок
-	for i, j := 0, len(messages)-1; i < j; i, j = i+1, j-1 {
-		messages[i], messages[j] = messages[j], messages[i]
-	}
-
-	return messages, nil
-}
-
-// MarkMessagesAsRead помечает все непрочитанные сообщения как прочитанные
-//
-// Параметры:
-// - conversationID: ID диалога
-// - readerID: ID пользователя который читает
-//
-// Помечаются только сообщения ОТ другого пользователя (не свои)
-//
-// Возвращает количество помеченных сообщений
-func (r *ChatRepository) MarkMessagesAsRead(
-	ctx context.Context,
-	conversationID, readerID int64,
-) (int64, error) {
-	result := r.db.WithContext(ctx).
-		Model(&Message{}).
-		Where("conversation_id = ?", conversationID).
-		Where("sender_id != ?", readerID). // Не свои сообщения
-		Where("is_read = ?", false).       // Только непрочитанные
-		Updates(map[string]interface{}{
-			"is_read": true,
-			"read_at": gorm.Expr("CURRENT_TIMESTAMP"),
+	result := make([]*RoomWithUnread, 0, len(rooms))
+	for _, room := range rooms {
+		unread, _ := r.CountUnread(ctx, room.ID, userID)
+		members, _ := r.GetMembers(ctx, room.ID)
+		result = append(result, &RoomWithUnread{
+			Room:        room,
+			UnreadCount: unread,
+			Members:     members,
 		})
-
-	return result.RowsAffected, result.Error
-}
-
-// CountUnread считает количество непрочитанных сообщений для пользователя
-//
-// Используется для отображения badge "3" на иконке чата
-func (r *ChatRepository) CountUnread(
-	ctx context.Context,
-	conversationID, userID int64,
-) (int64, error) {
-	var count int64
-
-	err := r.db.WithContext(ctx).
-		Model(&Message{}).
-		Where("conversation_id = ?", conversationID).
-		Where("sender_id != ?", userID). // Сообщения от другого пользователя
-		Where("is_read = ?", false).     // Непрочитанные
-		Count(&count).Error
-
-	return count, err
-}
-
-// CountTotalUnread считает общее количество непрочитанных сообщений
-// во всех диалогах пользователя
-func (r *ChatRepository) CountTotalUnread(ctx context.Context, userID int64) (int64, error) {
-	var count int64
-
-	// Подзапрос: все conversation_id где пользователь участник
-	subQuery := r.db.Model(&Conversation{}).
-		Select("id").
-		Where("participant_a = ? OR participant_b = ?", userID, userID)
-
-	err := r.db.WithContext(ctx).
-		Model(&Message{}).
-		Where("conversation_id IN (?)", subQuery).
-		Where("sender_id != ?", userID).
-		Where("is_read = ?", false).
-		Count(&count).Error
-
-	return count, err
-}
-
-// BlockUser блокирует пользователя
-func (r *ChatRepository) BlockUser(
-	ctx context.Context,
-	blockerID, blockedID int64,
-	reason string,
-) error {
-	blocked := &BlockedUser{
-		BlockerID: blockerID,
-		BlockedID: blockedID,
-		Reason:    reason,
 	}
-	return r.db.WithContext(ctx).Create(blocked).Error
+	return result, nil
 }
 
-// UnblockUser снимает блокировку
-func (r *ChatRepository) UnblockUser(
-	ctx context.Context,
-	blockerID, blockedID int64,
-) error {
+func (r *repository) AddMember(ctx context.Context, m *RoomMember) error {
+	return r.db.WithContext(ctx).Create(m).Error
+}
+
+func (r *repository) RemoveMember(ctx context.Context, roomID string, userID int64) error {
 	return r.db.WithContext(ctx).
-		Where("blocker_id = ? AND blocked_id = ?", blockerID, blockedID).
-		Delete(&BlockedUser{}).Error
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Delete(&RoomMember{}).Error
 }
 
-// IsBlocked проверяет есть ли блокировка между пользователями
-//
-// Проверяется в обе стороны:
-// - userA заблокировал userB
-// - userB заблокировал userA
-//
-// Если любая блокировка существует — возвращает true
-func (r *ChatRepository) IsBlocked(ctx context.Context, userA, userB int64) (bool, error) {
-	var count int64
-
+func (r *repository) GetMember(ctx context.Context, roomID string, userID int64) (*RoomMember, error) {
+	var m RoomMember
 	err := r.db.WithContext(ctx).
-		Model(&BlockedUser{}).
-		Where(
-			"(blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)",
-			userA, userB, userB, userA,
-		).
-		Count(&count).Error
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		First(&m).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &m, err
+}
 
+func (r *repository) GetMembers(ctx context.Context, roomID string) ([]*RoomMember, error) {
+	var members []*RoomMember
+	err := r.db.WithContext(ctx).
+		Where("room_id = ?", roomID).
+		Order("joined_at ASC").
+		Find(&members).Error
+	return members, err
+}
+
+func (r *repository) IsMember(ctx context.Context, roomID string, userID int64) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&RoomMember{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Count(&count).Error
 	return count > 0, err
 }
 
-// GetBlockedByUser возвращает список заблокированных пользователей
-func (r *ChatRepository) GetBlockedByUser(ctx context.Context, userID int64) ([]BlockedUser, error) {
-	var blocked []BlockedUser
+func (r *repository) UpdateLastRead(ctx context.Context, roomID string, userID int64) error {
+	return r.db.WithContext(ctx).
+		Model(&RoomMember{}).
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Update("last_read_at", time.Now()).Error
+}
 
+func (r *repository) CreateMessage(ctx context.Context, msg *Message) error {
+	return r.db.WithContext(ctx).Create(msg).Error
+}
+
+func (r *repository) GetMessages(ctx context.Context, roomID string, limit, offset int) ([]*Message, error) {
+	var msgs []*Message
 	err := r.db.WithContext(ctx).
-		Where("blocker_id = ?", userID).
-		Find(&blocked).Error
+		Where("room_id = ?", roomID).
+		Order("created_at DESC").
+		Limit(limit).Offset(offset).
+		Find(&msgs).Error
+	if err != nil {
+		return nil, err
+	}
 
-	return blocked, err
+	// Enrich with upload attachment data
+	for _, msg := range msgs {
+		if msg.UploadID.Valid {
+			var fileURL, origName, mimeType string
+			r.db.WithContext(ctx).
+				Table("uploads").
+				Select("file_url, original_name, mime_type").
+				Where("id = ?", msg.UploadID.String).
+				Row().Scan(&fileURL, &origName, &mimeType)
+			msg.AttachmentURL = fileURL
+			msg.AttachmentName = origName
+			msg.AttachmentMime = mimeType
+		}
+	}
+	return msgs, nil
+}
+
+func (r *repository) CountUnread(ctx context.Context, roomID string, userID int64) (int, error) {
+	var lastRead sql.NullTime
+	r.db.WithContext(ctx).
+		Model(&RoomMember{}).
+		Select("last_read_at").
+		Where("room_id = ? AND user_id = ?", roomID, userID).
+		Scan(&lastRead)
+
+	var count int64
+	q := r.db.WithContext(ctx).
+		Model(&Message{}).
+		Where("room_id = ? AND sender_id != ?", roomID, userID)
+	if lastRead.Valid {
+		q = q.Where("created_at > ?", lastRead.Time)
+	}
+	err := q.Count(&count).Error
+	return int(count), err
+}
+
+func (r *repository) MarkRoomAsRead(ctx context.Context, roomID string, userID int64) error {
+	return r.UpdateLastRead(ctx, roomID, userID)
+}
+
+func (r *repository) CountTotalUnread(ctx context.Context, userID int64) (int, error) {
+	var total int64
+	err := r.db.WithContext(ctx).
+		Table("messages m").
+		Joins("JOIN chat_room_members rm ON rm.room_id = m.room_id AND rm.user_id = ?", userID).
+		Where("m.sender_id != ? AND (rm.last_read_at IS NULL OR m.created_at > rm.last_read_at)", userID).
+		Count(&total).Error
+	return int(total), err
 }

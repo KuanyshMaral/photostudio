@@ -2,8 +2,10 @@ package auth
 
 import (
 	"context"
-	"gorm.io/gorm"
+	"photostudio/internal/domain/profile"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // UserRepositoryInterface — only the methods auth service uses
@@ -16,9 +18,11 @@ type UserRepositoryInterface interface {
 	DB() *gorm.DB // changed to *gorm.DB for transaction
 }
 
-// StudioOwnerRepositoryInterface — only append docs for now
-type StudioOwnerRepositoryInterface interface {
-	AppendVerificationDocs(ctx context.Context, userID int64, urls []string) error
+// OwnerProfileRepositoryInterface - interface for profile interactions
+type OwnerProfileRepositoryInterface interface {
+	GetByUserID(ctx context.Context, userID int64) (*profile.OwnerProfile, error)
+	Update(ctx context.Context, profile *profile.OwnerProfile) error
+	Create(ctx context.Context, profile *profile.OwnerProfile) error // For completeness if needed
 }
 
 // BookingStats — агрегированная статистика

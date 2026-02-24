@@ -14,23 +14,23 @@ type OwnerProfile struct {
 
 	// Company info
 	CompanyName     string         `db:"company_name" json:"company_name"`
-	Bin             sql.NullString `db:"bin" json:"bin,omitempty"`
-	LegalAddress    sql.NullString `db:"legal_address" json:"legal_address,omitempty"`
-	ContactPerson   sql.NullString `db:"contact_person" json:"contact_person,omitempty"`
-	ContactPosition sql.NullString `db:"contact_position" json:"contact_position,omitempty"`
+	Bin             sql.NullString `db:"bin" json:"bin,omitempty" swaggertype:"string"`
+	LegalAddress    sql.NullString `db:"legal_address" json:"legal_address,omitempty" swaggertype:"string"`
+	ContactPerson   sql.NullString `db:"contact_person" json:"contact_person,omitempty" swaggertype:"string"`
+	ContactPosition sql.NullString `db:"contact_position" json:"contact_position,omitempty" swaggertype:"string"`
 
 	// Contact
-	Phone   sql.NullString `db:"phone" json:"phone,omitempty"`
-	Email   sql.NullString `db:"email" json:"email,omitempty"`
-	Website sql.NullString `db:"website" json:"website,omitempty"`
+	Phone   sql.NullString `db:"phone" json:"phone,omitempty" swaggertype:"string"`
+	Email   sql.NullString `db:"email" json:"email,omitempty" swaggertype:"string"`
+	Website sql.NullString `db:"website" json:"website,omitempty" swaggertype:"string"`
 
 	// Verification
 	VerificationStatus string         `db:"verification_status" json:"verification_status"`
-	VerificationDocs   pq.StringArray `db:"verification_docs" json:"verification_docs,omitempty"`
-	VerifiedAt         sql.NullTime   `db:"verified_at" json:"verified_at,omitempty"`
-	VerifiedBy         sql.NullInt64  `db:"verified_by" json:"verified_by,omitempty"`
-	RejectedReason     sql.NullString `db:"rejected_reason" json:"rejected_reason,omitempty"`
-	AdminNotes         sql.NullString `db:"admin_notes" json:"admin_notes,omitempty"`
+	VerificationDocs   pq.StringArray `db:"verification_docs" json:"verification_docs,omitempty" swaggertype:"array,string"`
+	VerifiedAt         sql.NullTime   `db:"verified_at" json:"verified_at,omitempty" swaggertype:"string"`
+	VerifiedBy         sql.NullInt64  `db:"verified_by" json:"verified_by,omitempty" swaggertype:"integer"`
+	RejectedReason     sql.NullString `db:"rejected_reason" json:"rejected_reason,omitempty" swaggertype:"string"`
+	AdminNotes         sql.NullString `db:"admin_notes" json:"admin_notes,omitempty" swaggertype:"string"`
 
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
@@ -44,4 +44,14 @@ func (p *OwnerProfile) GetDisplayName() string {
 // IsVerified returns true if owner is verified
 func (p *OwnerProfile) IsVerified() bool {
 	return p.VerificationStatus == "verified"
+}
+
+// PendingOwnerProfileRow Row DTO for queries on owner_profiles table for admin panel
+type PendingOwnerProfileRow struct {
+	ID          int64     `json:"id" db:"id"`
+	UserID      int64     `json:"user_id" db:"user_id"`
+	Bin         string    `json:"bin" db:"bin"`
+	CompanyName string    `json:"company_name" db:"company_name"`
+	Status      string    `json:"status" db:"verification_status"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }

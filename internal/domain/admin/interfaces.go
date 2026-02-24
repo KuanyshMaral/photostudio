@@ -4,7 +4,6 @@ import (
 	"context"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
-	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 
@@ -45,9 +44,10 @@ type NotificationSender interface {
 	NotifyVerificationRejected(ctx context.Context, userID, studioID int64, reason string) error
 }
 
-type StudioOwnerRepository interface {
-	FindByID(ctx context.Context, id int64) (*owner.StudioOwner, error)
-	Update(ctx context.Context, owner *owner.StudioOwner) error
-	FindPendingPaginated(ctx context.Context, offset, limit int) ([]owner.PendingStudioOwnerRow, int64, error)
-	DB() *gorm.DB
-}
+type OwnerProfileRepository interface {
+	GetByID(ctx context.Context, id int64) (*profile.OwnerProfile, error)
+	GetByUserID(ctx context.Context, userID int64) (*profile.OwnerProfile, error)
+	Update(ctx context.Context, profile *profile.OwnerProfile) error
+	FindPendingPaginated(ctx context.Context, offset, limit int) ([]profile.PendingOwnerProfileRow, int64, error)
+	UpdateVerificationStatus(ctx context.Context, userID, adminID int64, status, reason, notes string) error
+} // No DB() method needed as we use it via methods

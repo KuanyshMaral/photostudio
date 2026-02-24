@@ -37,7 +37,7 @@ type ProfileService interface {
 // Service contains all business logic for authentication
 type Service struct {
 	users                  UserRepositoryInterface
-	studioOwners           StudioOwnerRepositoryInterface
+	ownerProfiles          OwnerProfileRepositoryInterface
 	profileService         ProfileService
 	jwt                    jwtService
 	mailer                 Mailer
@@ -79,7 +79,7 @@ func (refreshTokenRow) TableName() string { return "refresh_tokens" }
 
 func NewService(
 	users UserRepositoryInterface,
-	studioOwners StudioOwnerRepositoryInterface,
+	ownerProfiles OwnerProfileRepositoryInterface,
 	profileService ProfileService,
 	jwt jwtService,
 	mailer Mailer,
@@ -91,7 +91,7 @@ func NewService(
 ) *Service {
 	return &Service{
 		users:                  users,
-		studioOwners:           studioOwners,
+		ownerProfiles:          ownerProfiles,
 		profileService:         profileService,
 		jwt:                    jwt,
 		mailer:                 mailer,
@@ -207,17 +207,21 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ip str
 		return nil, err
 	}
 
-	_ = s.users.DB().WithContext(ctx).Exec(`
-		UPDATE refresh_tokens SET revoked_at = NOW()
-		WHERE user_id = ?
-		  AND revoked_at IS NULL
-		  AND id IN (
-		    SELECT id FROM refresh_tokens
-		    WHERE user_id = ? AND revoked_at IS NULL
-		    ORDER BY created_at DESC
-		    OFFSET 10
-		  )
-	`, user.ID, user.ID).Error
+	var keepIDs []int64
+	_ = s.users.DB().WithContext(ctx).
+		Table("refresh_tokens").
+		Select("id").
+		Where("user_id = ? AND revoked_at IS NULL", user.ID).
+		Order("created_at DESC").
+		Limit(10).
+		Pluck("id", &keepIDs).Error
+
+	if len(keepIDs) > 0 {
+		_ = s.users.DB().WithContext(ctx).
+			Table("refresh_tokens").
+			Where("user_id = ? AND revoked_at IS NULL AND id NOT IN ?", user.ID, keepIDs).
+			Updates(map[string]interface{}{"revoked_at": time.Now()}).Error
+	}
 
 	user.PasswordHash = ""
 	return &LoginResult{User: user, AccessToken: accessToken, RefreshToken: refreshTokenRaw}, nil
@@ -359,7 +363,20 @@ func (s *Service) AppendVerificationDocs(ctx context.Context, userID int64, urls
 	if len(urls) == 0 {
 		return nil
 	}
-	return s.studioOwners.AppendVerificationDocs(ctx, userID, urls)
+
+	p, err := s.ownerProfiles.GetByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if p == nil {
+		// Just return error or ignore?
+		// If profile doesn't exist, we can't append docs.
+		return errors.New("owner profile not found")
+	}
+
+	p.VerificationDocs = append(p.VerificationDocs, urls...)
+
+	return s.ownerProfiles.Update(ctx, p)
 }
 
 func (s *Service) validateEmailUnique(ctx context.Context, email string) error {

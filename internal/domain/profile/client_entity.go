@@ -11,10 +11,10 @@ type ClientProfile struct {
 	UserID int64 `db:"user_id" json:"user_id"`
 
 	// Basic info
-	Name      sql.NullString `db:"name" json:"name,omitempty"`
-	Nickname  sql.NullString `db:"nickname" json:"nickname,omitempty"`
-	Phone     sql.NullString `db:"phone" json:"phone,omitempty"`
-	AvatarURL sql.NullString `db:"avatar_url" json:"avatar_url,omitempty"`
+	Name      sql.NullString `db:"name" json:"name,omitempty" swaggertype:"string"`
+	Nickname  sql.NullString `db:"nickname" json:"nickname,omitempty" swaggertype:"string"`
+	Phone     sql.NullString `db:"phone" json:"phone,omitempty" swaggertype:"string"`
+	AvatarURL sql.NullString `db:"avatar_url" json:"avatar_url,omitempty" swaggertype:"string"`
 
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`

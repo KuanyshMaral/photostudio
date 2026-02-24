@@ -4,8 +4,8 @@ import (
 	"log"
 	"strings"
 
+	gormsqlite "github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
-	gormsqlite "gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -18,10 +18,7 @@ func Connect(dsn string) (*gorm.DB, error) {
 	log.Println("Using SQLite for local development:", dsn)
 
 	return gorm.Open(
-		gormsqlite.New(gormsqlite.Config{
-			DriverName: "sqlite",
-			DSN:        dsn,
-		}),
+		gormsqlite.Open(dsn),
 		&gorm.Config{},
 	)
 }

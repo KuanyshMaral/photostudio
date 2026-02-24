@@ -58,30 +58,6 @@ func toDomainBooking(m bookingModel) *Booking {
 	}
 }
 
-func toBookingModel(b *Booking) bookingModel {
-	var notes *string
-	if b.Notes != "" {
-		v := b.Notes
-		notes = &v
-	}
-
-	return bookingModel{
-		ID:            b.ID,
-		RoomID:        b.RoomID,
-		StudioID:      b.StudioID,
-		UserID:        b.UserID,
-		StartTime:     b.StartTime,
-		EndTime:       b.EndTime,
-		TotalPrice:    b.TotalPrice,
-		Status:        string(b.Status),
-		PaymentStatus: string(b.PaymentStatus),
-		Notes:         notes,
-		CreatedAt:     b.CreatedAt,
-		UpdatedAt:     b.UpdatedAt,
-		CancelledAt:   b.CancelledAt,
-	}
-}
-
 func (r *bookingRepository) Create(ctx context.Context, booking *Booking) error {
 	// Проверяем пересечение времени (работает на обоих БД)
 	var count int64

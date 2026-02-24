@@ -2,380 +2,257 @@ package chat
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"photostudio/internal/domain/auth"
-	"photostudio/internal/domain/booking"
-	"photostudio/internal/domain/catalog"
-	"photostudio/internal/domain/notification"
-	"strings"
+	"database/sql"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-var (
-	ErrNotParticipant       = errors.New("you are not a participant of this conversation")
-	ErrBlocked              = errors.New("user has blocked you or you have blocked user")
-	ErrRecipientNotFound    = errors.New("recipient not found")
-	ErrEmptyContent         = errors.New("message content cannot be empty")
-	ErrConversationNotFound = errors.New("conversation not found")
-	ErrCannotMessageSelf    = errors.New("cannot send message to yourself")
-)
+// BlockChecker is implemented by the relationship service
+type BlockChecker interface {
+	IsBlocked(ctx context.Context, userA, userB int64) (bool, error)
+}
 
+// Service handles chat business logic
 type Service struct {
-	chatRepo     *ChatRepository
-	userRepo     *auth.UserRepository
-	studioRepo   *catalog.StudioRepository
-	bookingRepo  booking.BookingRepository
-	notifService *notification.Service
+	repo         Repository
+	blockChecker BlockChecker
 }
 
-func NewService(
-	chatRepo *ChatRepository,
-	userRepo *auth.UserRepository,
-	studioRepo *catalog.StudioRepository,
-	bookingRepo booking.BookingRepository,
-	notifService *notification.Service,
-) *Service {
-	return &Service{
-		chatRepo:     chatRepo,
-		userRepo:     userRepo,
-		studioRepo:   studioRepo,
-		bookingRepo:  bookingRepo,
-		notifService: notifService,
-	}
+func NewService(repo Repository, blockChecker BlockChecker) *Service {
+	return &Service{repo: repo, blockChecker: blockChecker}
 }
 
-// ============================================================
-// CONVERSATIONS
-// ============================================================
+// ---- Direct Room ----
 
-func (s *Service) GetOrCreateConversation(
-	ctx context.Context,
-	senderID int64,
-	req CreateConversationRequest,
-) (*Conversation, *Message, error) {
-
-	if senderID == req.RecipientID {
-		return nil, nil, ErrCannotMessageSelf
+// GetOrCreateDirectRoom returns an existing 1-on-1 room or creates a new one.
+// Checks that neither user has blocked the other.
+func (s *Service) GetOrCreateDirectRoom(ctx context.Context, userID, recipientID int64) (*Room, error) {
+	if userID == recipientID {
+		return nil, ErrCannotChatSelf
 	}
 
-	recipient, err := s.userRepo.GetByID(ctx, req.RecipientID)
-	if err != nil || recipient == nil {
-		return nil, nil, ErrRecipientNotFound
-	}
-
-	blocked, err := s.chatRepo.IsBlocked(ctx, senderID, req.RecipientID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to check block status: %w", err)
-	}
-	if blocked {
-		return nil, nil, ErrBlocked
-	}
-
-	participantA, participantB := senderID, req.RecipientID
-	if participantA > participantB {
-		participantA, participantB = participantB, participantA
-	}
-
-	existing, err := s.chatRepo.GetConversationByParticipants(ctx, participantA, participantB, req.StudioID, req.BookingID)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to find conversation: %w", err)
-	}
-
-	if existing != nil {
-		var msg *Message
-		if strings.TrimSpace(req.InitialMessage) != "" {
-			msg, _ = s.SendMessage(ctx, senderID, existing.ID, SendMessageRequest{Content: req.InitialMessage})
+	if s.blockChecker != nil {
+		blocked, err := s.blockChecker.IsBlocked(ctx, userID, recipientID)
+		if err != nil {
+			return nil, err
 		}
-		_ = s.enrichConversation(ctx, existing, senderID)
-		return existing, msg, nil
+		if blocked {
+			return nil, ErrUserBlocked
+		}
 	}
 
-	conv := &Conversation{
-		ParticipantA: participantA,
-		ParticipantB: participantB,
-		StudioID:     req.StudioID,
-		BookingID:    req.BookingID,
-	}
-
-	if err := s.chatRepo.CreateConversation(ctx, conv); err != nil {
-		return nil, nil, fmt.Errorf("failed to create conversation: %w", err)
-	}
-
-	var msg *Message
-	if strings.TrimSpace(req.InitialMessage) != "" {
-		msg, _ = s.SendMessage(ctx, senderID, conv.ID, SendMessageRequest{Content: req.InitialMessage})
-	}
-
-	_ = s.enrichConversation(ctx, conv, senderID)
-	return conv, msg, nil
-}
-
-func (s *Service) GetUserConversations(ctx context.Context, userID int64, limit, offset int) ([]Conversation, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	convs, err := s.chatRepo.GetUserConversations(ctx, userID, limit, offset)
+	existing, err := s.repo.GetDirectRoomByUsers(ctx, userID, recipientID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get conversations: %w", err)
+		return nil, err
+	}
+	if existing != nil {
+		return existing, nil
 	}
 
-	for i := range convs {
-		_ = s.enrichConversation(ctx, &convs[i], userID)
+	room := &Room{
+		ID:        uuid.New().String(),
+		Type:      RoomTypeDirect,
+		CreatedAt: time.Now(),
+	}
+	if err := s.repo.CreateRoom(ctx, room); err != nil {
+		return nil, err
 	}
 
-	return convs, nil
+	now := time.Now()
+	for _, uid := range []int64{userID, recipientID} {
+		if err := s.repo.AddMember(ctx, &RoomMember{
+			RoomID:   room.ID,
+			UserID:   uid,
+			Role:     MemberRoleMember,
+			JoinedAt: now,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	return room, nil
 }
 
-func (s *Service) IsParticipant(ctx context.Context, userID, conversationID int64) bool {
-	conv, err := s.chatRepo.GetConversationByID(ctx, conversationID)
-	if err != nil || conv == nil {
-		return false
+// ---- Group Room ----
+
+// CreateGroupRoom creates a named group room. Creator becomes admin.
+func (s *Service) CreateGroupRoom(ctx context.Context, creatorID int64, name string, memberIDs []int64) (*Room, error) {
+	room := &Room{
+		ID:        uuid.New().String(),
+		Type:      RoomTypeGroup,
+		Name:      sql.NullString{String: name, Valid: name != ""},
+		CreatorID: sql.NullInt64{Int64: creatorID, Valid: true},
+		CreatedAt: time.Now(),
 	}
-	return conv.ParticipantA == userID || conv.ParticipantB == userID
+	if err := s.repo.CreateRoom(ctx, room); err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	// Creator is admin
+	if err := s.repo.AddMember(ctx, &RoomMember{
+		RoomID:   room.ID,
+		UserID:   creatorID,
+		Role:     MemberRoleAdmin,
+		JoinedAt: now,
+	}); err != nil {
+		return nil, err
+	}
+
+	// Other members
+	for _, uid := range memberIDs {
+		if uid == creatorID {
+			continue
+		}
+		_ = s.repo.AddMember(ctx, &RoomMember{
+			RoomID:   room.ID,
+			UserID:   uid,
+			Role:     MemberRoleMember,
+			JoinedAt: now,
+		})
+	}
+	return room, nil
 }
 
-func (s *Service) enrichConversation(ctx context.Context, conv *Conversation, currentUserID int64) error {
-	otherUserID := conv.ParticipantA
-	if otherUserID == currentUserID {
-		otherUserID = conv.ParticipantB
-	}
+// ---- Member Management ----
 
-	otherUser, _ := s.userRepo.GetByID(ctx, otherUserID)
-	conv.OtherUser = otherUser
-
-	if conv.StudioID != nil {
-		st, _ := s.studioRepo.GetByID(ctx, *conv.StudioID)
-		conv.Studio = st
-	}
-
-	if conv.BookingID != nil {
-		bk, _ := s.bookingRepo.GetByID(ctx, *conv.BookingID)
-		conv.Booking = bk
-	}
-
-	msgs, _ := s.chatRepo.GetMessages(ctx, conv.ID, 1, nil)
-	if len(msgs) > 0 {
-		conv.LastMessage = &msgs[0]
-	}
-
-	unread, _ := s.chatRepo.CountUnread(ctx, conv.ID, currentUserID)
-	conv.UnreadCount = int(unread)
-
-	return nil
-}
-
-// ============================================================
-// MESSAGES
-// ============================================================
-
-func (s *Service) SendMessage(ctx context.Context, senderID, conversationID int64, req SendMessageRequest) (*Message, error) {
-	if strings.TrimSpace(req.Content) == "" {
-		return nil, ErrEmptyContent
-	}
-
-	conv, err := s.chatRepo.GetConversationByID(ctx, conversationID)
-	if err != nil || conv == nil {
-		return nil, ErrConversationNotFound
-	}
-
-	if conv.ParticipantA != senderID && conv.ParticipantB != senderID {
-		return nil, ErrNotParticipant
-	}
-
-	recipientID := conv.ParticipantA
-	if recipientID == senderID {
-		recipientID = conv.ParticipantB
-	}
-
-	blocked, _ := s.chatRepo.IsBlocked(ctx, senderID, recipientID)
-	if blocked {
-		return nil, ErrBlocked
-	}
-
-	msg := &Message{
-		ConversationID: conversationID,
-		SenderID:       senderID,
-		Content:        req.Content,
-		MessageType:    MessageTypeText,
-	}
-
-	if err := s.chatRepo.CreateMessage(ctx, msg); err != nil {
-		return nil, fmt.Errorf("failed to create message: %w", err)
-	}
-
-	_ = s.chatRepo.UpdateLastMessageAt(ctx, conversationID)
-
-	sender, _ := s.userRepo.GetByID(ctx, senderID)
-	msg.Sender = sender
-
-	return msg, nil
-}
-
-func (s *Service) GetMessages(ctx context.Context, userID, conversationID int64, limit int, beforeID *int64) ([]Message, bool, error) {
-	if !s.IsParticipant(ctx, userID, conversationID) {
-		return nil, false, ErrNotParticipant
-	}
-
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 100 {
-		limit = 100
-	}
-
-	msgs, err := s.chatRepo.GetMessages(ctx, conversationID, limit+1, beforeID)
-	if err != nil {
-		return nil, false, err
-	}
-
-	hasMore := len(msgs) > limit
-	if hasMore {
-		msgs = msgs[:limit]
-	}
-
-	for i := range msgs {
-		u, _ := s.userRepo.GetByID(ctx, msgs[i].SenderID)
-		msgs[i].Sender = u
-	}
-
-	return msgs, hasMore, nil
-}
-
-func (s *Service) MarkAsRead(ctx context.Context, userID, conversationID int64) (int64, error) {
-	if !s.IsParticipant(ctx, userID, conversationID) {
-		return 0, ErrNotParticipant
-	}
-	return s.chatRepo.MarkMessagesAsRead(ctx, conversationID, userID)
-}
-
-// ============================================================
-// BLOCKING
-// ============================================================
-
-func (s *Service) BlockUser(ctx context.Context, blockerID, blockedID int64, reason string) error {
-	if blockerID == blockedID {
-		return errors.New("cannot block yourself")
-	}
-	return s.chatRepo.BlockUser(ctx, blockerID, blockedID, reason)
-}
-
-func (s *Service) UnblockUser(ctx context.Context, blockerID, blockedID int64) error {
-	return s.chatRepo.UnblockUser(ctx, blockerID, blockedID)
-}
-
-// ============================================================
-// IMAGE MESSAGES
-// ============================================================
-
-// SendImageMessage создаёт сообщение с изображением
-func (s *Service) SendImageMessage(
-	ctx context.Context,
-	senderID int64,
-	conversationID int64,
-	imageURL string,
-) (*Message, error) {
-	conv, err := s.chatRepo.GetConversationByID(ctx, conversationID)
-	if err != nil || conv == nil {
-		return nil, ErrConversationNotFound
-	}
-
-	if conv.ParticipantA != senderID && conv.ParticipantB != senderID {
-		return nil, ErrNotParticipant
-	}
-
-	recipientID := conv.ParticipantA
-	if recipientID == senderID {
-		recipientID = conv.ParticipantB
-	}
-
-	blocked, _ := s.chatRepo.IsBlocked(ctx, senderID, recipientID)
-	if blocked {
-		return nil, ErrBlocked
-	}
-
-	msg := &Message{
-		ConversationID: conversationID,
-		SenderID:       senderID,
-		Content:        "[Изображение]",
-		MessageType:    MessageTypeImage,
-		AttachmentURL:  &imageURL,
-	}
-
-	if err := s.chatRepo.CreateMessage(ctx, msg); err != nil {
-		return nil, fmt.Errorf("failed to create message: %w", err)
-	}
-
-	_ = s.chatRepo.UpdateLastMessageAt(ctx, conversationID)
-
-	sender, _ := s.userRepo.GetByID(ctx, senderID)
-	msg.Sender = sender
-
-	return msg, nil
-}
-
-// ============================================================
-// NOTIFICATIONS
-// ============================================================
-
-// NotifyIfOffline создаёт уведомление если получатель offline
-//
-// Вызывается из Handler после попытки отправки через WebSocket
-// Если WebSocket не доставил — создаём notification
-func (s *Service) NotifyIfOffline(
-	ctx context.Context,
-	recipientID int64,
-	conversation *Conversation,
-	message *Message,
-) error {
-	// Получаем информацию об отправителе
-	sender, err := s.userRepo.GetByID(ctx, message.SenderID)
+// AddMember adds a user to a group room. Only admins can do this.
+func (s *Service) AddMember(ctx context.Context, requesterID int64, roomID string, newMemberID int64) error {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
 	if err != nil {
 		return err
 	}
 
-	// Формируем preview сообщения
-	preview := message.Content
-	if len(preview) > 50 {
-		preview = preview[:50] + "..."
+	isMember, _ := s.repo.IsMember(ctx, roomID, requesterID)
+	if !isMember {
+		return ErrNotRoomMember
 	}
 
-	// Для изображений — специальный текст
-	if message.MessageType == MessageTypeImage {
-		preview = "📷 Изображение"
+	if room.Type == RoomTypeGroup {
+		member, _ := s.repo.GetMember(ctx, roomID, requesterID)
+		if member == nil || !member.IsAdmin() {
+			return ErrNotRoomAdmin
+		}
 	}
 
-	// Создаём уведомление
-	title := fmt.Sprintf("Сообщение от %s", sender.Name)
-	body := preview
+	alreadyMember, _ := s.repo.IsMember(ctx, roomID, newMemberID)
+	if alreadyMember {
+		return ErrAlreadyMember
+	}
 
-	_, err = s.notifService.Create(
-		ctx,
-		recipientID,
-		notification.TypeNewMessage,
-		title,
-		body,
-		&notification.NotificationData{
-			ChatRoomID:     &conversation.ID,
-			MessageID:      &message.ID,
-			SenderName:     &sender.Name,
-			MessagePreview: &preview,
-		},
-	)
-
-	return err
+	return s.repo.AddMember(ctx, &RoomMember{
+		RoomID:   roomID,
+		UserID:   newMemberID,
+		Role:     MemberRoleMember,
+		JoinedAt: time.Now(),
+	})
 }
 
-// GetRecipientID возвращает ID получателя для диалога
-func (s *Service) GetRecipientID(conversation *Conversation, senderID int64) int64 {
-	if conversation.ParticipantA == senderID {
-		return conversation.ParticipantB
+// RemoveMember removes a user from a room. Admin can remove others; anyone can leave.
+func (s *Service) RemoveMember(ctx context.Context, requesterID int64, roomID string, targetID int64) error {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return err
 	}
-	return conversation.ParticipantA
+
+	isMember, _ := s.repo.IsMember(ctx, roomID, requesterID)
+	if !isMember {
+		return ErrNotRoomMember
+	}
+
+	// Self-leave always allowed
+	if requesterID == targetID {
+		return s.repo.RemoveMember(ctx, roomID, targetID)
+	}
+
+	// Only admin can remove others in group rooms
+	if room.Type == RoomTypeGroup {
+		member, _ := s.repo.GetMember(ctx, roomID, requesterID)
+		if member == nil || !member.IsAdmin() {
+			return ErrNotRoomAdmin
+		}
+	}
+
+	return s.repo.RemoveMember(ctx, roomID, targetID)
+}
+
+// GetMembers returns all members of a room (requester must be a member).
+func (s *Service) GetMembers(ctx context.Context, requesterID int64, roomID string) ([]*RoomMember, error) {
+	isMember, _ := s.repo.IsMember(ctx, roomID, requesterID)
+	if !isMember {
+		return nil, ErrNotRoomMember
+	}
+	return s.repo.GetMembers(ctx, roomID)
+}
+
+// ---- Messages ----
+
+// SendMessage sends a message to a room. Validates membership and block status.
+func (s *Service) SendMessage(ctx context.Context, senderID int64, roomID string, content string, uploadID *string) (*Message, error) {
+	room, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+
+	isMember, _ := s.repo.IsMember(ctx, roomID, senderID)
+	if !isMember {
+		return nil, ErrNotRoomMember
+	}
+
+	// For direct rooms, check block status
+	if room.Type == RoomTypeDirect && s.blockChecker != nil {
+		members, _ := s.repo.GetMembers(ctx, roomID)
+		for _, m := range members {
+			if m.UserID != senderID {
+				blocked, _ := s.blockChecker.IsBlocked(ctx, senderID, m.UserID)
+				if blocked {
+					return nil, ErrUserBlocked
+				}
+			}
+		}
+	}
+
+	msg := &Message{
+		ID:        uuid.New().String(),
+		RoomID:    roomID,
+		SenderID:  senderID,
+		Content:   content,
+		CreatedAt: time.Now(),
+	}
+	if uploadID != nil && *uploadID != "" {
+		msg.UploadID = sql.NullString{String: *uploadID, Valid: true}
+	}
+
+	if err := s.repo.CreateMessage(ctx, msg); err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+// GetMessages returns paginated messages for a room.
+func (s *Service) GetMessages(ctx context.Context, userID int64, roomID string, limit, offset int) ([]*Message, error) {
+	isMember, _ := s.repo.IsMember(ctx, roomID, userID)
+	if !isMember {
+		return nil, ErrNotRoomMember
+	}
+	return s.repo.GetMessages(ctx, roomID, limit, offset)
+}
+
+// MarkAsRead marks all messages in a room as read for the user.
+func (s *Service) MarkAsRead(ctx context.Context, userID int64, roomID string) error {
+	isMember, _ := s.repo.IsMember(ctx, roomID, userID)
+	if !isMember {
+		return ErrNotRoomMember
+	}
+	return s.repo.MarkRoomAsRead(ctx, roomID, userID)
+}
+
+// ListRooms returns all rooms the user is a member of.
+func (s *Service) ListRooms(ctx context.Context, userID int64) ([]*RoomWithUnread, error) {
+	return s.repo.ListRoomsByUser(ctx, userID)
+}
+
+// GetUnreadCount returns total unread messages across all rooms.
+func (s *Service) GetUnreadCount(ctx context.Context, userID int64) (int, error) {
+	return s.repo.CountTotalUnread(ctx, userID)
 }
