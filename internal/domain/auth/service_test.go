@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"photostudio/internal/domain/profile"
 	"testing"
 	"time"
 
@@ -51,13 +52,26 @@ func (m *mockUserRepo) DB() *gorm.DB {
 	return &gorm.DB{} // dummy for transaction tests if needed
 }
 
-// Mock Studio Owner Repository
-type mockStudioOwnerRepo struct {
+// Mock Owner Profile Repository
+type mockOwnerProfileRepo struct {
 	mock.Mock
 }
 
-func (m *mockStudioOwnerRepo) AppendVerificationDocs(ctx context.Context, userID int64, urls []string) error {
-	args := m.Called(ctx, userID, urls)
+func (m *mockOwnerProfileRepo) GetByUserID(ctx context.Context, userID int64) (*profile.OwnerProfile, error) {
+	args := m.Called(ctx, userID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*profile.OwnerProfile), args.Error(1)
+}
+
+func (m *mockOwnerProfileRepo) Update(ctx context.Context, p *profile.OwnerProfile) error {
+	args := m.Called(ctx, p)
+	return args.Error(0)
+}
+
+func (m *mockOwnerProfileRepo) Create(ctx context.Context, p *profile.OwnerProfile) error {
+	args := m.Called(ctx, p)
 	return args.Error(0)
 }
 
@@ -73,7 +87,7 @@ func (m *mockJWTService) GenerateToken(userID int64, role string) (string, error
 
 func TestService_RegisterClient_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
+	ownerProfileRepo := new(mockOwnerProfileRepo)
 	jwtSvc := new(mockJWTService)
 
 	// Setup expectations
@@ -81,7 +95,7 @@ func TestService_RegisterClient_Success(t *testing.T) {
 	userRepo.On("Create", mock.Anything, mock.Anything).Return(nil)
 	jwtSvc.On("GenerateToken", mock.Anything, "client").Return("fake-jwt-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
+	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	user, token, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Name:     "Test User",
@@ -100,12 +114,12 @@ func TestService_RegisterClient_Success(t *testing.T) {
 
 func TestService_RegisterClient_EmailExists(t *testing.T) {
 	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
+	ownerProfileRepo := new(mockOwnerProfileRepo)
 	jwtSvc := new(mockJWTService)
 
 	userRepo.On("ExistsByEmail", mock.Anything, "exists@example.com").Return(true, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
+	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	_, _, err := service.RegisterClient(context.Background(), RegisterClientRequest{
 		Email: "exists@example.com",
@@ -116,7 +130,7 @@ func TestService_RegisterClient_EmailExists(t *testing.T) {
 
 func TestService_Login_Success(t *testing.T) {
 	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
+	ownerProfileRepo := new(mockOwnerProfileRepo)
 	jwtSvc := new(mockJWTService)
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
@@ -130,7 +144,7 @@ func TestService_Login_Success(t *testing.T) {
 	userRepo.On("GetByEmail", mock.Anything, "user@example.com").Return(existingUser, nil)
 	jwtSvc.On("GenerateToken", int64(10), "client").Return("login-token", nil)
 
-	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
+	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	res, err := service.Login(context.Background(), LoginRequest{
 		Email:    "user@example.com",
@@ -143,7 +157,7 @@ func TestService_Login_Success(t *testing.T) {
 
 func TestService_Login_WrongPassword(t *testing.T) {
 	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
+	ownerProfileRepo := new(mockOwnerProfileRepo)
 	jwtSvc := new(mockJWTService)
 
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("correct"), bcrypt.DefaultCost)
@@ -151,7 +165,7 @@ func TestService_Login_WrongPassword(t *testing.T) {
 
 	userRepo.On("GetByEmail", mock.Anything, mock.Anything).Return(user, nil)
 
-	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
+	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	_, err := service.Login(context.Background(), LoginRequest{Password: "wrong"}, "", "")
 
@@ -160,17 +174,18 @@ func TestService_Login_WrongPassword(t *testing.T) {
 
 func TestService_AppendVerificationDocs(t *testing.T) {
 	userRepo := new(mockUserRepo)
-	studioOwnerRepo := new(mockStudioOwnerRepo)
+	ownerProfileRepo := new(mockOwnerProfileRepo)
 	jwtSvc := new(mockJWTService)
 
 	urls := []string{"/static/verification/doc1.pdf"}
 
-	studioOwnerRepo.On("AppendVerificationDocs", mock.Anything, int64(5), urls).Return(nil)
+	ownerProfileRepo.On("GetByUserID", mock.Anything, int64(5)).Return(&profile.OwnerProfile{}, nil)
+	ownerProfileRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
 
-	service := NewService(userRepo, studioOwnerRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
+	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
 
 	err := service.AppendVerificationDocs(context.Background(), 5, urls)
 
 	assert.NoError(t, err)
-	studioOwnerRepo.AssertExpectations(t)
+	ownerProfileRepo.AssertExpectations(t)
 }

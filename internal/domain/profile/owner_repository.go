@@ -30,6 +30,19 @@ func (r *OwnerRepository) GetByUserID(ctx context.Context, userID int64) (*Owner
 	return &profile, err
 }
 
+// GetByID retrieves owner profile by ID
+func (r *OwnerRepository) GetByID(ctx context.Context, id int64) (*OwnerProfile, error) {
+	var profile OwnerProfile
+	query := `SELECT * FROM owner_profiles WHERE id = $1`
+	err := r.db.GetContext(ctx, &profile, query, id)
+	if err == sql.ErrNoRows {
+		return nil, nil // or ErrProfileNotFound?
+	}
+	return &profile, err
+}
+
+// Create creates a new owner profile
+
 // Create creates a new owner profile
 func (r *OwnerRepository) Create(ctx context.Context, profile *OwnerProfile) error {
 	query := `
@@ -76,4 +89,27 @@ func (r *OwnerRepository) UpdateVerificationStatus(ctx context.Context, userID, 
 	`
 	_, err := r.db.ExecContext(ctx, query, userID, status, adminID, nullString(reason), nullString(notes))
 	return err
+}
+
+// FindPendingPaginated returns pending applications for moderation
+func (r *OwnerRepository) FindPendingPaginated(ctx context.Context, offset, limit int) ([]PendingOwnerProfileRow, int64, error) {
+	var total int64
+	countQuery := `SELECT COUNT(*) FROM owner_profiles WHERE verification_status = 'pending'`
+	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
+		return nil, 0, err
+	}
+
+	var rows []PendingOwnerProfileRow
+	query := `
+		SELECT id, user_id, bin, company_name, verification_status, created_at
+		FROM owner_profiles
+		WHERE verification_status = 'pending'
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2
+	`
+	if err := r.db.SelectContext(ctx, &rows, query, limit, offset); err != nil {
+		return nil, 0, err
+	}
+
+	return rows, total, nil
 }

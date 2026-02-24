@@ -2,22 +2,6 @@ package owner
 
 import "time"
 
-type StudioOwner struct {
-	ID               int64      `json:"id"`
-	UserID           int64      `json:"user_id"`
-	CompanyName      string     `json:"company_name"`
-	BIN              string     `json:"bin,omitempty"`
-	LegalAddress     string     `json:"legal_address,omitempty"`
-	ContactPerson    string     `json:"contact_person"`
-	ContactPosition  string     `json:"contact_position,omitempty"`
-	VerificationDocs []string   `json:"verification_docs,omitempty" gorm:"type:json"`
-	VerifiedAt       *time.Time `json:"verified_at,omitempty"`
-	VerifiedBy       *int64     `json:"verified_by,omitempty"`
-	RejectedReason   string     `json:"rejected_reason,omitempty"`
-	AdminNotes       string     `json:"admin_notes,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-}
-
 // OwnerPIN хранит хэш PIN-кода владельца
 type OwnerPIN struct {
 	UserID    int64     `json:"user_id" gorm:"primaryKey"`

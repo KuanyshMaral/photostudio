@@ -2,8 +2,9 @@ package admin
 
 import (
 	"context"
+	"database/sql"
 	"photostudio/internal/domain/auth"
-	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/profile"
 	"testing"
 	"time"
 
@@ -33,31 +34,54 @@ func (m *mockUserRepo) Update(ctx context.Context, u *auth.User) error {
 	return nil
 }
 
-type mockStudioOwnerRepo struct {
-	owner     *owner.StudioOwner
-	getErr    error
-	updateErr error
+type mockOwnerProfileRepo struct {
+	profile      *profile.OwnerProfile
+	getErr       error
+	updateErr    error
+	verifyStatus string
+	verifyReason string
+	verifyCalled bool
 }
 
-func (m *mockStudioOwnerRepo) DB() *gorm.DB { return nil }
-
-func (m *mockStudioOwnerRepo) FindByID(ctx context.Context, id int64) (*owner.StudioOwner, error) {
+func (m *mockOwnerProfileRepo) GetByID(ctx context.Context, id int64) (*profile.OwnerProfile, error) {
 	if m.getErr != nil {
 		return nil, m.getErr
 	}
-	return m.owner, nil
+	return m.profile, nil
 }
 
-func (m *mockStudioOwnerRepo) Update(ctx context.Context, o *owner.StudioOwner) error {
+func (m *mockOwnerProfileRepo) GetByUserID(ctx context.Context, userID int64) (*profile.OwnerProfile, error) {
+	if m.getErr != nil {
+		return nil, m.getErr
+	}
+	return m.profile, nil
+}
+
+func (m *mockOwnerProfileRepo) Update(ctx context.Context, p *profile.OwnerProfile) error {
 	if m.updateErr != nil {
 		return m.updateErr
 	}
-	m.owner = o
+	m.profile = p
 	return nil
 }
 
-func (m *mockStudioOwnerRepo) FindPendingPaginated(ctx context.Context, offset, limit int) ([]owner.PendingStudioOwnerRow, int64, error) {
+func (m *mockOwnerProfileRepo) FindPendingPaginated(ctx context.Context, offset, limit int) ([]profile.PendingOwnerProfileRow, int64, error) {
 	return nil, 0, nil
+}
+
+func (m *mockOwnerProfileRepo) UpdateVerificationStatus(ctx context.Context, userID, adminID int64, status, reason, notes string) error {
+	m.verifyCalled = true
+	m.verifyStatus = status
+	m.verifyReason = reason
+	if m.profile != nil {
+		m.profile.VerificationStatus = status
+		m.profile.VerifiedBy = sql.NullInt64{Int64: adminID, Valid: true}
+		if status == "verified" {
+			now := time.Now()
+			m.profile.VerifiedAt = sql.NullTime{Time: now, Valid: true}
+		}
+	}
+	return nil
 }
 
 func TestApproveStudioOwner_Success(t *testing.T) {
@@ -72,13 +96,15 @@ func TestApproveStudioOwner_Success(t *testing.T) {
 		Role:         auth.RoleStudioOwner,
 		StudioStatus: auth.StatusPending,
 	}
-	so := &owner.StudioOwner{
-		ID:     ownerID,
-		UserID: userID,
+	// ownerID here acts as ProfileID passed from frontend
+	prof := &profile.OwnerProfile{
+		ID:                 ownerID,
+		UserID:             userID,
+		VerificationStatus: "pending",
 	}
 
 	userRepo := &mockUserRepo{user: u}
-	ownerRepo := &mockStudioOwnerRepo{owner: so}
+	ownerRepo := &mockOwnerProfileRepo{profile: prof}
 
 	svc := NewService(
 		userRepo,
@@ -92,6 +118,8 @@ func TestApproveStudioOwner_Success(t *testing.T) {
 		nil,
 	)
 
+	// Since implementation logic fetches using ownerRepo.GetByUserID OR GetByID.
+	// We mocked GetByUserID to return same profile.
 	if err := svc.ApproveStudioOwner(ctx, ownerID, adminID); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
@@ -100,19 +128,11 @@ func TestApproveStudioOwner_Success(t *testing.T) {
 		t.Fatalf("expected user studio_status = verified, got %v", userRepo.user.StudioStatus)
 	}
 
-	if ownerRepo.owner.VerifiedAt == nil {
-		t.Fatalf("expected verified_at to be set")
+	if !ownerRepo.verifyCalled {
+		t.Fatal("expected UpdateVerificationStatus to be called")
 	}
-	if time.Since(*ownerRepo.owner.VerifiedAt) > 10*time.Second {
-		t.Fatalf("expected verified_at to be recent, got %v", ownerRepo.owner.VerifiedAt)
-	}
-
-	if ownerRepo.owner.VerifiedBy == nil || *ownerRepo.owner.VerifiedBy != adminID {
-		t.Fatalf("expected verified_by = %d, got %v", adminID, ownerRepo.owner.VerifiedBy)
-	}
-
-	if ownerRepo.owner.RejectedReason != "" {
-		t.Fatalf("expected rejected_reason empty, got %q", ownerRepo.owner.RejectedReason)
+	if ownerRepo.verifyStatus != "verified" {
+		t.Fatalf("expected status verified, got %s", ownerRepo.verifyStatus)
 	}
 }
 
@@ -128,13 +148,14 @@ func TestApproveStudioOwner_NotPending(t *testing.T) {
 		Role:         auth.RoleStudioOwner,
 		StudioStatus: auth.StatusVerified,
 	}
-	so := &owner.StudioOwner{
-		ID:     ownerID,
-		UserID: userID,
+	prof := &profile.OwnerProfile{
+		ID:                 ownerID,
+		UserID:             userID,
+		VerificationStatus: "verified",
 	}
 
 	userRepo := &mockUserRepo{user: u}
-	ownerRepo := &mockStudioOwnerRepo{owner: so}
+	ownerRepo := &mockOwnerProfileRepo{profile: prof}
 
 	svc := NewService(
 		userRepo,
