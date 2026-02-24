@@ -3684,6 +3684,401 @@ const docTemplate = `{
                 }
             }
         },
+        "/chats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List my rooms",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/direct": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Start or get a 1-on-1 room",
+                "parameters": [
+                    {
+                        "description": "Recipient",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.createDirectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/group": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Create a group room",
+                "parameters": [
+                    {
+                        "description": "Group details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.createGroupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/unread": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Total unread messages count",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/ws": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Connect to WebSocket for real-time chat",
+                "responses": {}
+            }
+        },
+        "/chats/{id}/leave": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Leave a room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get room members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Add member to group room (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User to add",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.addMemberRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/members/{user_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Remove member from group room (admin only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "User ID to remove",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get messages in a room",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send a message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.sendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/{id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mark room as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/company/portfolio": {
             "get": {
                 "security": [
@@ -5047,7 +5442,7 @@ const docTemplate = `{
             }
         },
         "/notifications/read-all": {
-            "patch": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -6922,145 +7317,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/rooms": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "List my rooms",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/direct": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Start or get a 1-on-1 room",
-                "parameters": [
-                    {
-                        "description": "Recipient",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.createDirectRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/group": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Create a group room",
-                "parameters": [
-                    {
-                        "description": "Group details",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.createGroupRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/unread": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Total unread messages count",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/ws": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Connect to WebSocket for real-time chat",
-                "responses": {}
-            }
-        },
         "/rooms/{id}/availability": {
             "get": {
                 "description": "Возвращает детальную информацию о доступности указанной комнаты на определённую дату, включая забронированные временные слоты. Помогает пользователю выбрать свободное время для создания новой брони. Ответ включает информацию о всех занятых и свободных промежутках времени.",
@@ -7148,262 +7404,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера при получении занятых слотов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/leave": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Leave a room",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/members": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get room members",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Add member to group room (admin only)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "User to add",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.addMemberRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/members/{user_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Remove member from group room (admin only)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "User ID to remove",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/messages": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Get messages in a room",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit (default 50)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Send a message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Message",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/chat.sendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/read": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Mark room as read",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Room ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -8862,10 +8862,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "assigned_to": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "bin": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "company_name": {
                     "description": "Company info",
@@ -8882,18 +8882,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "contact_position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "converted_at": {
                     "description": "Conversion",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullTime"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "converted_user_id": {
-                    "$ref": "#/definitions/sql.NullInt64"
+                    "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
@@ -8902,44 +8898,36 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "how_found_us": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "last_contacted_at": {
                     "description": "Follow-up",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullTime"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "legal_address": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "next_follow_up_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "notes": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "priority": {
                     "type": "integer"
                 },
                 "referrer_url": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "rejection_reason": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "source": {
                     "description": "UTM tracking",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "status": {
                     "description": "Lead management",
@@ -8954,23 +8942,19 @@ const docTemplate = `{
                 },
                 "use_case": {
                     "description": "Application details",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "utm_campaign": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "utm_medium": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "utm_source": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "website": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 }
             }
         },
@@ -9167,6 +9151,55 @@ const docTemplate = `{
                 }
             }
         },
+        "notification.NotificationData": {
+            "type": "object",
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "cancellation_reason": {
+                    "type": "string"
+                },
+                "chat_room_id": {
+                    "type": "integer"
+                },
+                "end_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "equipment_id": {
+                    "type": "integer"
+                },
+                "message_id": {
+                    "type": "integer"
+                },
+                "message_preview": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "review_id": {
+                    "type": "integer"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "sender_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "description": "ISO8601 format",
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "notification.NotificationListResponse": {
             "type": "object",
             "properties": {
@@ -9194,7 +9227,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "data": {
-                    "$ref": "#/definitions/photostudio_internal_domain_notification.NotificationData"
+                    "$ref": "#/definitions/notification.NotificationData"
                 },
                 "id": {
                     "type": "integer"
@@ -9546,55 +9579,6 @@ const docTemplate = `{
                 }
             }
         },
-        "photostudio_internal_domain_notification.NotificationData": {
-            "type": "object",
-            "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
-                "cancellation_reason": {
-                    "type": "string"
-                },
-                "chat_room_id": {
-                    "type": "integer"
-                },
-                "end_time": {
-                    "description": "ISO8601 format",
-                    "type": "string"
-                },
-                "equipment_id": {
-                    "type": "integer"
-                },
-                "message_id": {
-                    "type": "integer"
-                },
-                "message_preview": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "review_id": {
-                    "type": "integer"
-                },
-                "room_id": {
-                    "type": "integer"
-                },
-                "sender_name": {
-                    "type": "string"
-                },
-                "start_time": {
-                    "description": "ISO8601 format",
-                    "type": "string"
-                },
-                "studio_id": {
-                    "type": "integer"
-                }
-            }
-        },
         "profile.AdminProfile": {
             "type": "object",
             "properties": {
@@ -9602,7 +9586,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "created_by": {
-                    "$ref": "#/definitions/uuid.NullUUID"
+                    "type": "string"
                 },
                 "full_name": {
                     "description": "Admin info",
@@ -9616,16 +9600,16 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "last_login_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "last_login_ip": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9639,7 +9623,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avatar_url": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"
@@ -9649,17 +9633,13 @@ const docTemplate = `{
                 },
                 "name": {
                     "description": "Basic info",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "nickname": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9673,43 +9653,39 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "admin_notes": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "bin": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "company_name": {
                     "description": "Company info",
                     "type": "string"
                 },
                 "contact_person": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "contact_position": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
                 "email": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
                 "legal_address": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "phone": {
                     "description": "Contact",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/sql.NullString"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "rejected_reason": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -9728,13 +9704,13 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "verified_at": {
-                    "$ref": "#/definitions/sql.NullTime"
+                    "type": "string"
                 },
                 "verified_by": {
-                    "$ref": "#/definitions/sql.NullInt64"
+                    "type": "integer"
                 },
                 "website": {
-                    "$ref": "#/definitions/sql.NullString"
+                    "type": "string"
                 }
             }
         },
@@ -9920,43 +9896,6 @@ const docTemplate = `{
                 }
             }
         },
-        "sql.NullInt64": {
-            "type": "object",
-            "properties": {
-                "int64": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "valid": {
-                    "description": "Valid is true if Int64 is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullString": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if String is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
-        "sql.NullTime": {
-            "type": "object",
-            "properties": {
-                "time": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if Time is not NULL",
-                    "type": "boolean"
-                }
-            }
-        },
         "subscription.CancelRequest": {
             "type": "object",
             "properties": {
@@ -10109,18 +10048,6 @@ const docTemplate = `{
                 },
                 "usage": {
                     "$ref": "#/definitions/subscription.CurrentUsage"
-                }
-            }
-        },
-        "uuid.NullUUID": {
-            "type": "object",
-            "properties": {
-                "uuid": {
-                    "type": "string"
-                },
-                "valid": {
-                    "description": "Valid is true if UUID is not NULL",
-                    "type": "boolean"
                 }
             }
         }

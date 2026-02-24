@@ -27,7 +27,7 @@ func NewHandler(service *Service, hub *Hub) *Handler {
 // @Produce json
 // @Param body body createDirectRequest true "Recipient"
 // @Success 201 {object} map[string]interface{}
-// @Router /rooms/direct [post]
+// @Router /chats/direct [post]
 func (h *Handler) CreateDirectRoom(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -54,7 +54,7 @@ func (h *Handler) CreateDirectRoom(c *gin.Context) {
 // @Produce json
 // @Param body body createGroupRequest true "Group details"
 // @Success 201 {object} map[string]interface{}
-// @Router /rooms/group [post]
+// @Router /chats/group [post]
 func (h *Handler) CreateGroupRoom(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -79,7 +79,7 @@ func (h *Handler) CreateGroupRoom(c *gin.Context) {
 // @Security BearerAuth
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms [get]
+// @Router /chats [get]
 func (h *Handler) ListRooms(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -110,7 +110,7 @@ func (h *Handler) ListRooms(c *gin.Context) {
 // @Param limit query int false "Limit (default 50)"
 // @Param offset query int false "Offset"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/messages [get]
+// @Router /chats/{id}/messages [get]
 func (h *Handler) GetMessages(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -146,7 +146,7 @@ func (h *Handler) GetMessages(c *gin.Context) {
 // @Param id path string true "Room ID"
 // @Param body body sendMessageRequest true "Message"
 // @Success 201 {object} map[string]interface{}
-// @Router /rooms/{id}/messages [post]
+// @Router /chats/{id}/messages [post]
 func (h *Handler) SendMessage(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -180,7 +180,7 @@ func (h *Handler) SendMessage(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Room ID"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/read [post]
+// @Router /chats/{id}/read [post]
 func (h *Handler) MarkAsRead(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -199,7 +199,7 @@ func (h *Handler) MarkAsRead(c *gin.Context) {
 // @Tags Chat
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/unread [get]
+// @Router /chats/unread [get]
 func (h *Handler) GetUnreadCount(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -217,7 +217,7 @@ func (h *Handler) GetUnreadCount(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Room ID"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/members [get]
+// @Router /chats/{id}/members [get]
 func (h *Handler) GetMembers(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -247,7 +247,7 @@ func (h *Handler) GetMembers(c *gin.Context) {
 // @Param id path string true "Room ID"
 // @Param body body addMemberRequest true "User to add"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/members [post]
+// @Router /chats/{id}/members [post]
 func (h *Handler) AddMember(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -273,7 +273,7 @@ func (h *Handler) AddMember(c *gin.Context) {
 // @Param id path string true "Room ID"
 // @Param user_id path int true "User ID to remove"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/members/{user_id} [delete]
+// @Router /chats/{id}/members/{user_id} [delete]
 func (h *Handler) RemoveMember(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -298,7 +298,7 @@ func (h *Handler) RemoveMember(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Room ID"
 // @Success 200 {object} map[string]interface{}
-// @Router /rooms/{id}/leave [post]
+// @Router /chats/{id}/leave [post]
 func (h *Handler) LeaveRoom(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {
@@ -318,7 +318,7 @@ func (h *Handler) LeaveRoom(c *gin.Context) {
 // @Summary Connect to WebSocket for real-time chat
 // @Tags Chat
 // @Security BearerAuth
-// @Router /rooms/ws [get]
+// @Router /chats/ws [get]
 func (h *Handler) WebSocket(c *gin.Context) {
 	userID := mustUserID(c)
 	if userID == 0 {

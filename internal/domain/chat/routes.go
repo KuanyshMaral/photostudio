@@ -4,7 +4,7 @@ import "github.com/gin-gonic/gin"
 
 // RegisterRoutes registers all chat routes under the protected group
 func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
-	rooms := r.Group("/rooms")
+	rooms := r.Group("/chats")
 	{
 		// Room creation
 		rooms.POST("/direct", h.CreateDirectRoom)
