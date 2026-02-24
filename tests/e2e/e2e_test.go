@@ -14,7 +14,7 @@ import (
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/domain/notification"
-	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 	"photostudio/internal/middleware"
 	"testing"
@@ -23,6 +23,7 @@ import (
 	jwtsvc "photostudio/internal/pkg/jwt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -74,7 +75,6 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	// Auto-migrate all models
 	models := []interface{}{
 		&auth.User{},
-		&owner.StudioOwner{},
 		&catalog.Studio{},
 		&catalog.Room{},
 		&catalog.Equipment{},
@@ -89,6 +89,51 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		require.NoError(t, err, fmt.Sprintf("Failed to migrate %T", model))
 	}
 
+	// Manually create owner_profiles table because pq.StringArray is unsupported by sqlite
+	err = db.Exec(`
+		CREATE TABLE owner_profiles (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL UNIQUE,
+			company_name TEXT NOT NULL,
+			bin TEXT,
+			legal_address TEXT,
+			contact_person TEXT,
+			contact_position TEXT,
+			phone TEXT,
+			email TEXT,
+			website TEXT,
+			verification_status TEXT DEFAULT 'pending',
+			verification_docs TEXT,
+			verified_at DATETIME,
+			verified_by INTEGER,
+			rejected_reason TEXT,
+			admin_notes TEXT,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Error
+	require.NoError(t, err, "Failed to manually create owner_profiles table")
+
+	// Manually create refresh_tokens table
+	err = db.Exec(`
+		CREATE TABLE refresh_tokens (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_agent TEXT,
+			ip TEXT,
+			user_id INTEGER NOT NULL,
+			token_hash TEXT NOT NULL,
+			jti TEXT NOT NULL,
+			family_id TEXT NOT NULL,
+			rotated_from TEXT,
+			expires_at DATETIME NOT NULL,
+			used_at DATETIME,
+			revoked_at DATETIME,
+			reuse_detected_at DATETIME,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)
+	`).Error
+	require.NoError(t, err, "Failed to manually create refresh_tokens table")
+
 	// Setup repositories
 	userRepo := auth.NewUserRepository(db)
 	studioRepo := catalog.NewStudioRepository(db)
@@ -96,7 +141,14 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	equipmentRepo := catalog.NewEquipmentRepository(db)
 	bookingRepo := booking.NewBookingRepository(db)
 	reviewRepo := review.NewReviewRepository(db)
-	studioOwnerRepo := owner.NewOwnerRepository(db)
+
+	sqlDB, _ := db.DB()
+	sqlxDB := sqlx.NewDb(sqlDB, "sqlite3")
+	ownerProfileRepo := profile.NewOwnerRepository(sqlxDB)
+	clientProfileRepo := profile.NewClientRepository(sqlxDB)
+	adminProfileRepo := profile.NewAdminRepository(sqlxDB)
+	profileService := profile.NewService(clientProfileRepo, ownerProfileRepo, adminProfileRepo)
+
 	notificationRepo := notification.NewRepository(db)
 	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
 	preferencesRepo := notification.NewPreferencesRepository(db)
@@ -107,10 +159,10 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 	authService := auth.NewService(
 		userRepo,
-		studioOwnerRepo,
-		nil, // profileService
+		ownerProfileRepo,
+		profileService,
 		jwtService,
-		nil, // mailer
+		auth.NewDevConsoleMailer(true), // mailer
 		"pepper",
 		5*time.Minute,
 		time.Minute,
@@ -137,9 +189,9 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 		studioRepo,
 		bookingRepo,
 		reviewRepo,
-		studioOwnerRepo,
+		ownerProfileRepo,
 		adminRepo,
-		nil, // profileService
+		profileService,
 		jwtService,
 		nil, // notificationSender
 	)
@@ -288,18 +340,21 @@ func (s *E2ETestSuite) createBookingBody(roomID int64, userID int64, startTime, 
 	}, nil
 }
 
-// Helper function to verify a studio owner (needed for studio creation)
-func (s *E2ETestSuite) verifyStudioOwner(t *testing.T, email string) {
+// Helper function to verify a user (needed for login and studio creation)
+func (s *E2ETestSuite) verifyUser(t *testing.T, email string) {
 	// Find the user by email
 	var user auth.User
 	err := s.db.Where("email = ?", email).First(&user).Error
 	require.NoError(t, err, "Failed to find user for verification")
 
-	// Update user status to verified
-	err = s.db.Model(&user).Update("studio_status", auth.StatusVerified).Error
-	require.NoError(t, err, "Failed to verify studio owner")
+	// Update user status and email_verified
+	err = s.db.Model(&user).Updates(map[string]interface{}{
+		"studio_status":  auth.StatusVerified,
+		"email_verified": true,
+	}).Error
+	require.NoError(t, err, "Failed to verify user")
 
-	t.Logf("✅ Verified studio owner: %s", email)
+	t.Logf("✅ Verified user: %s", email)
 }
 
 // =============================================================================
@@ -329,9 +384,11 @@ func TestFlow1_ClientRegistrationAndAuth(t *testing.T) {
 			logErrorResponse(t, resp, "Client registration failed")
 		}
 		assert.True(t, resp.Success)
-		assert.NotEmpty(t, resp.DataMap()["token"])
-
 		log.Printf("✅ POST /auth/register/client - SUCCESS")
+	})
+
+	t.Run("Setup: Verify client", func(t *testing.T) {
+		suite.verifyUser(t, "client@test.com")
 	})
 
 	t.Run("POST /auth/login", func(t *testing.T) {
@@ -411,7 +468,10 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		clientToken = resp.DataMap()["token"].(string)
+		suite.verifyUser(t, "client2@test.com")
+		loginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "client2@test.com", "password": "Password123!"}, "")
+		loginResp, _ := parseResponse(loginW)
+		clientToken = loginResp.DataMap()["token"].(string)
 
 		// Create studio owner
 		ownerBody := map[string]interface{}{
@@ -426,10 +486,10 @@ func TestFlow2_SearchAndBooking(t *testing.T) {
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.DataMap()["token"].(string)
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, ownerBody["email"].(string))
+		suite.verifyUser(t, ownerBody["email"].(string))
+		ownerLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "owner@test.com", "password": "Password123!@"}, "")
+		ownerLoginResp, _ := parseResponse(ownerLoginW)
+		ownerToken = ownerLoginResp.DataMap()["token"].(string)
 
 		// Create studio
 		studioBody := map[string]interface{}{
@@ -607,10 +667,10 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
 		assert.True(t, resp.Success)
-		ownerToken = resp.DataMap()["token"].(string)
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, "newowner@test.com")
+		suite.verifyUser(t, "newowner@test.com")
+		ownerLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "newowner@test.com", "password": "Password123!@"}, "")
+		ownerLoginResp, _ := parseResponse(ownerLoginW)
+		ownerToken = ownerLoginResp.DataMap()["token"].(string)
 
 		log.Printf("✅ POST /auth/register/studio - SUCCESS")
 	})
@@ -683,9 +743,12 @@ func TestFlow3_StudioOwnerOperations(t *testing.T) {
 		}
 		w, err = suite.makeRequest("POST", "/api/v1/auth/register/client", clientBody, "")
 		require.NoError(t, err)
-		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		clientToken = resp.DataMap()["token"].(string)
+
+		suite.verifyUser(t, "client3@test.com")
+		clientLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "client3@test.com", "password": "Password123!"}, "")
+		clientLoginResp, _ := parseResponse(clientLoginW)
+		clientToken = clientLoginResp.DataMap()["token"].(string)
 
 		// Get client user for ID
 		var client auth.User
@@ -778,10 +841,10 @@ func TestFlow4_AdminOperations(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.DataMap()["token"].(string)
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, "pendingowner@test.com")
+		suite.verifyUser(t, "pendingowner@test.com")
+		ownerLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "pendingowner@test.com", "password": "Password123!@"}, "")
+		ownerLoginResp, _ := parseResponse(ownerLoginW)
+		ownerToken = ownerLoginResp.DataMap()["token"].(string)
 
 		studioBody := map[string]interface{}{
 			"name":        "Pending Studio",
@@ -882,10 +945,10 @@ func TestFlow5_EquipmentManagement(t *testing.T) {
 		require.NoError(t, err)
 		resp, err := parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.DataMap()["token"].(string)
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, "equipowner@test.com")
+		suite.verifyUser(t, "equipowner@test.com")
+		ownerLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "equipowner@test.com", "password": "Password123!@"}, "")
+		ownerLoginResp, _ := parseResponse(ownerLoginW)
+		ownerToken = ownerLoginResp.DataMap()["token"].(string)
 
 		studioBody := map[string]interface{}{
 			"name":        "Equipment Test Studio",
@@ -1058,13 +1121,10 @@ func TestFlow6_ReviewSystem(t *testing.T) {
 		require.NoError(t, err)
 		resp, err = parseResponse(w)
 		require.NoError(t, err)
-		ownerToken = resp.DataMap()["token"].(string)
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, "reviewowner@test.com")
-
-		// Verify the studio owner so they can create studios
-		suite.verifyStudioOwner(t, ownerBody["email"].(string))
+		suite.verifyUser(t, "reviewowner@test.com")
+		ownerLoginW, _ := suite.makeRequest("POST", "/api/v1/auth/login", map[string]interface{}{"email": "reviewowner@test.com", "password": "Password123!@"}, "")
+		ownerLoginResp, _ := parseResponse(ownerLoginW)
+		ownerToken = ownerLoginResp.DataMap()["token"].(string)
 
 		// Create studio
 		studioBody := map[string]interface{}{

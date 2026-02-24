@@ -16,8 +16,12 @@ func (m *mockBookingReader) GetByID(ctx context.Context, id int64) (*booking.Boo
 
 type mockBookingWriter struct{}
 
-func (m *mockBookingWriter) UpdatePaymentStatus(ctx context.Context, bookingID int64, status domain.PaymentStatus) (*booking.Booking, error) {
+func (m *mockBookingWriter) UpdatePaymentStatus(ctx context.Context, bookingID int64, status booking.PaymentStatus) (*booking.Booking, error) {
 	return &booking.Booking{ID: bookingID, PaymentStatus: status}, nil
+}
+
+func (m *mockBookingWriter) UpdatePaymentStatusSystem(ctx context.Context, bookingID int64, status booking.PaymentStatus) (*booking.Booking, error) {
+	return m.UpdatePaymentStatus(ctx, bookingID, status)
 }
 
 type mockPaymentRepo struct {
@@ -34,7 +38,7 @@ func (m *mockPaymentRepo) GetByInvID(ctx context.Context, invID int64) (*Robokas
 	}
 	return m.payment, nil
 }
-func (m *mockPaymentRepo) UpdateStatus(ctx context.Context, invID int64, status domain.RobokassaPaymentStatus, rawBody, reason string, paidAt *time.Time) error {
+func (m *mockPaymentRepo) UpdateStatus(ctx context.Context, invID int64, status RobokassaPaymentStatus, rawBody, reason string, paidAt *time.Time) error {
 	m.updateStatusCalls++
 	return nil
 }

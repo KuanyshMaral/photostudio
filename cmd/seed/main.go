@@ -10,9 +10,11 @@ import (
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/domain/notification"
-	"photostudio/internal/domain/owner"
+	"photostudio/internal/domain/profile"
 	"photostudio/internal/domain/review"
 	"time"
+
+	"github.com/lib/pq"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -30,7 +32,8 @@ func main() {
 	log.Println("Running AutoMigrate...")
 	if err := db.AutoMigrate(
 		&auth.User{},
-		&owner.StudioOwner{},
+		&auth.User{},
+		&profile.OwnerProfile{},
 		&catalog.Studio{},
 		&catalog.Room{},
 		&catalog.Equipment{},
@@ -51,7 +54,7 @@ func main() {
 	db.Exec("DELETE FROM equipment")
 	db.Exec("DELETE FROM rooms")
 	db.Exec("DELETE FROM studios")
-	db.Exec("DELETE FROM studio_owners")
+	db.Exec("DELETE FROM owner_profiles")
 	db.Exec("DELETE FROM users")
 
 	// ================== USERS ==================
@@ -108,14 +111,18 @@ func main() {
 		}
 		owners = append(owners, u)
 
-		// StudioOwner details
-		studioOwner := owner.StudioOwner{
-			UserID:      u.ID,
-			CompanyName: fmt.Sprintf("Studio Company %d", i+1),
-			BIN:         fmt.Sprintf("1234567890%02d", i+12),
+		// OwnerProfile details
+		ownerProfile := profile.OwnerProfile{
+			UserID:             u.ID,
+			CompanyName:        fmt.Sprintf("Studio Company %d", i+1),
+			Bin:                sql.NullString{String: fmt.Sprintf("1234567890%02d", i+12), Valid: true},
+			VerificationStatus: "verified",
+			VerificationDocs:   pq.StringArray{},
+			CreatedAt:          time.Now(),
+			UpdatedAt:          time.Now(),
 		}
-		if err := db.Create(&studioOwner).Error; err != nil {
-			log.Fatal("Failed to create studio owner details:", err)
+		if err := db.Create(&ownerProfile).Error; err != nil {
+			log.Fatal("Failed to create owner profile:", err)
 		}
 	}
 

@@ -45,3 +45,13 @@ func (p *OwnerProfile) GetDisplayName() string {
 func (p *OwnerProfile) IsVerified() bool {
 	return p.VerificationStatus == "verified"
 }
+
+// PendingOwnerProfileRow Row DTO for queries on owner_profiles table for admin panel
+type PendingOwnerProfileRow struct {
+	ID          int64     `json:"id" db:"id"`
+	UserID      int64     `json:"user_id" db:"user_id"`
+	Bin         string    `json:"bin" db:"bin"`
+	CompanyName string    `json:"company_name" db:"company_name"`
+	Status      string    `json:"status" db:"verification_status"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+}

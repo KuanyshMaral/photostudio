@@ -68,7 +68,6 @@ func main() {
 
 	models := []interface{}{
 		&auth.User{},
-		&owner.StudioOwner{},
 		&catalog.Studio{},
 		&catalog.Room{},
 		&catalog.Equipment{},
@@ -118,7 +117,6 @@ func main() {
 	equipmentRepo := catalog.NewEquipmentRepository(db)
 	bookingRepo := booking.NewBookingRepository(db)
 	reviewRepo := review.NewReviewRepository(db)
-	studioOwnerRepo := owner.NewOwnerRepository(db)
 	studioWorkingHoursRepo := catalog.NewStudioWorkingHoursRepository(db)
 
 	// chatRepo is initialized after relationship service below
@@ -144,7 +142,7 @@ func main() {
 	profileService := profile.NewService(clientProfileRepo, ownerProfileRepo, adminProfileRepo)
 
 	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev" || authConfig.AppEnv == "development")
-	authService := auth.NewService(userRepo, studioOwnerRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
+	authService := auth.NewService(userRepo, ownerProfileRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
 	authHandler := auth.NewHandler(authService, profileService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
 
 	leadService := lead.NewService(leadRepo, userRepo)
@@ -193,7 +191,7 @@ func main() {
 		studioRepo,
 		bookingRepo,
 		reviewRepo,
-		studioOwnerRepo,
+		ownerProfileRepo,
 		adminRepo,
 		profileService,
 		jwtService,

@@ -5,7 +5,6 @@ import (
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
-	"photostudio/internal/domain/owner"
 	"photostudio/internal/domain/review"
 	"runtime"
 	"testing"
@@ -73,7 +72,7 @@ func (m *MockStudioRepository) Update(_ context.Context, _ *catalog.Studio) erro
 
 func (m *MockStudioRepository) GetAll(
 	_ context.Context,
-	_ repository.StudioFilters,
+	_ catalog.StudioFilters,
 ) ([]catalog.Studio, int64, error) {
 	return nil, 0, nil
 }
@@ -147,29 +146,6 @@ func (m *MockReviewRepository) Update(_ context.Context, _ *review.Review) error
 	return nil
 }
 
-/* -------- StudioOwnerRepository -------- */
-
-type MockStudioOwnerRepository struct {
-	mock.Mock
-	db *gorm.DB
-}
-
-func (m *MockStudioOwnerRepository) DB() *gorm.DB {
-	return m.db
-}
-
-func (m *MockStudioOwnerRepository) FindByID(_ context.Context, _ int64) (*owner.StudioOwner, error) {
-	return nil, nil
-}
-
-func (m *MockStudioOwnerRepository) Update(_ context.Context, _ *owner.StudioOwner) error {
-	return nil
-}
-
-func (m *MockStudioOwnerRepository) FindPendingPaginated(_ context.Context, _ int, _ int) ([]owner.PendingStudioOwnerRow, int64, error) {
-	return nil, 0, nil
-}
-
 /* ==================== SQLITE TEST DB ==================== */
 
 func testDB(t *testing.T) *gorm.DB {
@@ -187,7 +163,7 @@ func testDB(t *testing.T) *gorm.DB {
 		&catalog.Studio{},
 		&booking.Booking{},
 		&review.Review{},
-		&owner.StudioOwner{},
+		&review.Review{},
 	)
 
 	return db
@@ -222,7 +198,7 @@ func TestVerifyStudio_Success(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
-		&MockStudioOwnerRepository{},
+		&mockOwnerProfileRepo{},
 		nil,
 		nil,
 		nil,
@@ -249,7 +225,7 @@ func TestVerifyStudio_NotFound(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
-		&MockStudioOwnerRepository{},
+		&mockOwnerProfileRepo{},
 		nil,
 		nil,
 		nil,
@@ -289,7 +265,7 @@ func TestRejectStudio_Success(t *testing.T) {
 		studioRepo,
 		&MockBookingRepository{},
 		&MockReviewRepository{},
-		&MockStudioOwnerRepository{},
+		&mockOwnerProfileRepo{},
 		nil,
 		nil,
 		nil,
@@ -313,7 +289,7 @@ func TestGetStatistics_Success(t *testing.T) {
 	mockBooking := &MockBookingRepository{db: db}
 	mockReview := new(MockReviewRepository)
 
-	service := NewService(mockUser, mockStudio, mockBooking, mockReview, &MockStudioOwnerRepository{db: db}, nil, nil, nil, nil)
+	service := NewService(mockUser, mockStudio, mockBooking, mockReview, &mockOwnerProfileRepo{}, nil, nil, nil, nil)
 
 	stats, err := service.GetStatistics(ctx)
 
