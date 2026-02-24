@@ -622,9 +622,9 @@ definitions:
   lead.OwnerLead:
     properties:
       assigned_to:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       bin:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       company_name:
         description: Company info
         type: string
@@ -636,41 +636,38 @@ definitions:
       contact_phone:
         type: string
       contact_position:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       converted_at:
-        allOf:
-        - $ref: '#/definitions/sql.NullTime'
         description: Conversion
+        type: string
       converted_user_id:
-        $ref: '#/definitions/sql.NullInt64'
+        type: integer
       created_at:
         type: string
       follow_up_count:
         type: integer
       how_found_us:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       id:
         type: integer
       last_contacted_at:
-        allOf:
-        - $ref: '#/definitions/sql.NullTime'
         description: Follow-up
+        type: string
       legal_address:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       next_follow_up_at:
-        $ref: '#/definitions/sql.NullTime'
+        type: string
       notes:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       priority:
         type: integer
       referrer_url:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       rejection_reason:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       source:
-        allOf:
-        - $ref: '#/definitions/sql.NullString'
         description: UTM tracking
+        type: string
       status:
         allOf:
         - $ref: '#/definitions/lead.Status'
@@ -678,17 +675,16 @@ definitions:
       updated_at:
         type: string
       use_case:
-        allOf:
-        - $ref: '#/definitions/sql.NullString'
         description: Application details
+        type: string
       utm_campaign:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       utm_medium:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       utm_source:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       website:
-        $ref: '#/definitions/sql.NullString'
+        type: string
     type: object
   lead.Status:
     enum:
@@ -824,6 +820,39 @@ definitions:
       user_id:
         type: integer
     type: object
+  notification.NotificationData:
+    properties:
+      booking_id:
+        type: integer
+      cancellation_reason:
+        type: string
+      chat_room_id:
+        type: integer
+      end_time:
+        description: ISO8601 format
+        type: string
+      equipment_id:
+        type: integer
+      message_id:
+        type: integer
+      message_preview:
+        type: string
+      rating:
+        type: integer
+      reason:
+        type: string
+      review_id:
+        type: integer
+      room_id:
+        type: integer
+      sender_name:
+        type: string
+      start_time:
+        description: ISO8601 format
+        type: string
+      studio_id:
+        type: integer
+    type: object
   notification.NotificationListResponse:
     properties:
       notifications:
@@ -842,7 +871,7 @@ definitions:
       created_at:
         type: string
       data:
-        $ref: '#/definitions/photostudio_internal_domain_notification.NotificationData'
+        $ref: '#/definitions/notification.NotificationData'
       id:
         type: integer
       is_read:
@@ -1077,45 +1106,12 @@ definitions:
         example: true
         type: boolean
     type: object
-  photostudio_internal_domain_notification.NotificationData:
-    properties:
-      booking_id:
-        type: integer
-      cancellation_reason:
-        type: string
-      chat_room_id:
-        type: integer
-      end_time:
-        description: ISO8601 format
-        type: string
-      equipment_id:
-        type: integer
-      message_id:
-        type: integer
-      message_preview:
-        type: string
-      rating:
-        type: integer
-      reason:
-        type: string
-      review_id:
-        type: integer
-      room_id:
-        type: integer
-      sender_name:
-        type: string
-      start_time:
-        description: ISO8601 format
-        type: string
-      studio_id:
-        type: integer
-    type: object
   profile.AdminProfile:
     properties:
       created_at:
         type: string
       created_by:
-        $ref: '#/definitions/uuid.NullUUID'
+        type: string
       full_name:
         description: Admin info
         type: string
@@ -1125,13 +1121,13 @@ definitions:
         description: Access
         type: boolean
       last_login_at:
-        $ref: '#/definitions/sql.NullTime'
+        type: string
       last_login_ip:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       phone:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       position:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       updated_at:
         type: string
       user_id:
@@ -1140,19 +1136,18 @@ definitions:
   profile.ClientProfile:
     properties:
       avatar_url:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       created_at:
         type: string
       id:
         type: integer
       name:
-        allOf:
-        - $ref: '#/definitions/sql.NullString'
         description: Basic info
+        type: string
       nickname:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       phone:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       updated_at:
         type: string
       user_id:
@@ -1161,30 +1156,29 @@ definitions:
   profile.OwnerProfile:
     properties:
       admin_notes:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       bin:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       company_name:
         description: Company info
         type: string
       contact_person:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       contact_position:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       created_at:
         type: string
       email:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       id:
         type: integer
       legal_address:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       phone:
-        allOf:
-        - $ref: '#/definitions/sql.NullString'
         description: Contact
+        type: string
       rejected_reason:
-        $ref: '#/definitions/sql.NullString'
+        type: string
       updated_at:
         type: string
       user_id:
@@ -1197,11 +1191,11 @@ definitions:
         description: Verification
         type: string
       verified_at:
-        $ref: '#/definitions/sql.NullTime'
+        type: string
       verified_by:
-        $ref: '#/definitions/sql.NullInt64'
+        type: integer
       website:
-        $ref: '#/definitions/sql.NullString'
+        type: string
     type: object
   profile.UpdateAdminProfileRequest:
     properties:
@@ -1323,31 +1317,6 @@ definitions:
       user_id:
         type: integer
     type: object
-  sql.NullInt64:
-    properties:
-      int64:
-        format: int64
-        type: integer
-      valid:
-        description: Valid is true if Int64 is not NULL
-        type: boolean
-    type: object
-  sql.NullString:
-    properties:
-      string:
-        type: string
-      valid:
-        description: Valid is true if String is not NULL
-        type: boolean
-    type: object
-  sql.NullTime:
-    properties:
-      time:
-        type: string
-      valid:
-        description: Valid is true if Time is not NULL
-        type: boolean
-    type: object
   subscription.CancelRequest:
     properties:
       reason:
@@ -1449,14 +1418,6 @@ definitions:
         type: string
       usage:
         $ref: '#/definitions/subscription.CurrentUsage'
-    type: object
-  uuid.NullUUID:
-    properties:
-      uuid:
-        type: string
-      valid:
-        description: Valid is true if UUID is not NULL
-        type: boolean
     type: object
 info:
   contact: {}
@@ -3976,6 +3937,250 @@ paths:
       summary: Обновить статус бронирования
       tags:
       - Бронирования
+  /chats:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List my rooms
+      tags:
+      - Chat
+  /chats/{id}/leave:
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Leave a room
+      tags:
+      - Chat
+  /chats/{id}/members:
+    get:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get room members
+      tags:
+      - Chat
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User to add
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.addMemberRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add member to group room (admin only)
+      tags:
+      - Chat
+  /chats/{id}/members/{user_id}:
+    delete:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User ID to remove
+        in: path
+        name: user_id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove member from group room (admin only)
+      tags:
+      - Chat
+  /chats/{id}/messages:
+    get:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Limit (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get messages in a room
+      tags:
+      - Chat
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Message
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.sendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send a message
+      tags:
+      - Chat
+  /chats/{id}/read:
+    post:
+      parameters:
+      - description: Room ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark room as read
+      tags:
+      - Chat
+  /chats/direct:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Recipient
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.createDirectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Start or get a 1-on-1 room
+      tags:
+      - Chat
+  /chats/group:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/chat.createGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a group room
+      tags:
+      - Chat
+  /chats/unread:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Total unread messages count
+      tags:
+      - Chat
+  /chats/ws:
+    get:
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Connect to WebSocket for real-time chat
+      tags:
+      - Chat
   /company/portfolio:
     get:
       description: Возвращает полный список проектов портфолио студии с информацией
@@ -4964,7 +5169,7 @@ paths:
       tags:
       - Уведомления - Настройки
   /notifications/read-all:
-    patch:
+    post:
       description: Отмечает все непрочитанные уведомления пользователя как прочитанные
         одним запросом.
       responses:
@@ -6109,21 +6314,6 @@ paths:
       summary: Ответить на отзыв
       tags:
       - Отзывы
-  /rooms:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List my rooms
-      tags:
-      - Chat
   /rooms/{id}/availability:
     get:
       description: Возвращает детальную информацию о доступности указанной комнаты
@@ -6196,235 +6386,6 @@ paths:
       summary: Получить занятые временные слоты
       tags:
       - Бронирования
-  /rooms/{id}/leave:
-    post:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Leave a room
-      tags:
-      - Chat
-  /rooms/{id}/members:
-    get:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get room members
-      tags:
-      - Chat
-    post:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User to add
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/chat.addMemberRequest'
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Add member to group room (admin only)
-      tags:
-      - Chat
-  /rooms/{id}/members/{user_id}:
-    delete:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: User ID to remove
-        in: path
-        name: user_id
-        required: true
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Remove member from group room (admin only)
-      tags:
-      - Chat
-  /rooms/{id}/messages:
-    get:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Limit (default 50)
-        in: query
-        name: limit
-        type: integer
-      - description: Offset
-        in: query
-        name: offset
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get messages in a room
-      tags:
-      - Chat
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Message
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/chat.sendMessageRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Send a message
-      tags:
-      - Chat
-  /rooms/{id}/read:
-    post:
-      parameters:
-      - description: Room ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Mark room as read
-      tags:
-      - Chat
-  /rooms/direct:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Recipient
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/chat.createDirectRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Start or get a 1-on-1 room
-      tags:
-      - Chat
-  /rooms/group:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Group details
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/chat.createGroupRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create a group room
-      tags:
-      - Chat
-  /rooms/unread:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Total unread messages count
-      tags:
-      - Chat
-  /rooms/ws:
-    get:
-      responses: {}
-      security:
-      - BearerAuth: []
-      summary: Connect to WebSocket for real-time chat
-      tags:
-      - Chat
   /studios/:id/reviews:
     get:
       description: Возвращает постраничный список отзывов о студии. Отзывы отображаются
