@@ -87,6 +87,8 @@ func main() {
 		&owner.PortfolioProject{},
 		&catalog.StudioWorkingHours{}, // Добавляем новую таблицу
 		&payment.RobokassaPayment{},
+		&payment.Payment{},
+		&payment.RecurringSubscription{},
 	}
 
 	// Check if migrations should be run via environment variable
@@ -123,6 +125,7 @@ func main() {
 	favoriteRepo := favorite.NewFavoriteRepository(db)
 	ownerCRMRepo := owner.NewOwnerCRMRepository(db)
 	robokassaPaymentRepo := payment.NewRobokassaPaymentRepository(db)
+	paymentRepoV2 := payment.NewRepository(db)
 
 	// Profile Repositories
 	clientProfileRepo := profile.NewClientRepository(sqlxDB)
@@ -226,7 +229,7 @@ func main() {
 	paymentLogger := func(format string, args ...interface{}) { log.Printf(format, args...) }
 	// Adapter for booking service to match payment expectations if needed, or update payment service
 	// For now assuming existing payment service signature is correct for the codebase
-	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger) // bookingRepo implements all needed interfaces now
+	paymentService := payment.NewService(robokassaPaymentRepo, bookingRepo, bookingRepo, paymentLogger, paymentRepoV2) // bookingRepo implements all needed interfaces now
 	paymentHandler := payment.NewHandler(paymentService, paymentLogger)
 
 	// Initialize new profile handlers
@@ -268,8 +271,8 @@ func main() {
 	adminHandler.RegisterPublicRoutes(v1)                      // New Admin Login (Public)
 	subscription.RegisterPublicRoutes(v1, subscriptionHandler) // Public plan listing
 
-	// Webhooks
-	paymentHandler.RegisterWebhookRoutes(v1)
+	// Public webhooks
+	paymentHandler.RegisterPublicWebhookRoutes(r)
 
 	// Admin routes (Protected by AdminJWTAuth)
 	adminGroup := v1.Group("/admin")

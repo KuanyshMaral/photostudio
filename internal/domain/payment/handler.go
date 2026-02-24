@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
+	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
 )
@@ -20,117 +21,106 @@ func NewHandler(service *Service, loggerf func(format string, args ...interface{
 	return &Handler{service: service, loggerf: loggerf}
 }
 
-// InitPayment godoc
-// @Summary      Initialize Robokassa payment
-// @Description  Creates Robokassa payment link and signature for a booking
-// @Tags         Payments
-// @Security     BearerAuth
-// @Accept       json
-// @Produce      json
-// @Param        body body InitPaymentRequest true "Payment init payload"
-// @Success      200 {object} InitPaymentResponse
-// @Failure      400 {object} ErrorResponse
-// @Failure      500 {object} ErrorResponse
-// @Router       /payments/robokassa/init [post]
-func (h *Handler) InitPayment(c *gin.Context) {
-	var req InitPaymentRequest
-	body, _ := io.ReadAll(c.Request.Body)
-	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
-	h.loggerf("level=info msg=robokassa init request request_body=%s", string(body))
-
+func (h *Handler) CreatePayment(c *gin.Context) {
+	var req CreatePaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.loggerf("level=error msg=invalid robokassa init payload err=%v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-	resp, err := h.service.InitPayment(c.Request.Context(), req)
+	uid := c.GetInt64("user_id")
+	resp, err := h.service.CreatePayment(c.Request.Context(), uid, req.BookingID, req.Amount, req.Description, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
 	if err != nil {
-		h.loggerf("level=error msg=robokassa init failed request=%+v err=%v", req, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		code := http.StatusInternalServerError
+		if err == ErrAmountMismatch {
+			code = http.StatusBadRequest
+		}
+		response.CustomError(c, code, "PAYMENT_CREATE_FAILED", err)
 		return
 	}
-	h.loggerf("level=info msg=robokassa init response response=%+v", resp)
-	c.JSON(http.StatusOK, resp)
+	response.Success(c, http.StatusOK, resp)
 }
 
-// ResultCallback godoc
-// @Summary      Robokassa ResultURL callback
-// @Description  Validates callback signature and marks payment as paid (idempotent)
-// @Tags         Payments
-// @Produce      plain
-// @Param        OutSum formData string true "Amount"
-// @Param        InvId formData integer true "Invoice ID"
-// @Param        SignatureValue formData string true "MD5 signature"
-// @Success      200 {string} string "OK{InvId}"
-// @Failure      400 {string} string "bad request"
-// @Failure      403 {string} string "forbidden"
-// @Failure      500 {string} string "internal error"
-// @Router       /payments/robokassa/result [post]
+func (h *Handler) CreateSubscription(c *gin.Context) {
+	var req CreateSubscriptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+		return
+	}
+	resp, err := h.service.CreateSubscription(c.Request.Context(), c.GetInt64("user_id"), req.Amount)
+	if err != nil {
+		response.CustomError(c, http.StatusInternalServerError, "SUBSCRIPTION_CREATE_FAILED", err)
+		return
+	}
+	response.Success(c, http.StatusOK, resp)
+}
+
+func (h *Handler) MySubscription(c *gin.Context) {
+	sub, err := h.service.GetMySubscription(c.Request.Context(), c.GetInt64("user_id"))
+	if err != nil {
+		response.CustomError(c, http.StatusNotFound, "SUBSCRIPTION_NOT_FOUND", err)
+		return
+	}
+	response.Success(c, http.StatusOK, sub)
+}
+
+func (h *Handler) CancelSubscription(c *gin.Context) {
+	if err := h.service.CancelSubscription(c.Request.Context(), c.GetInt64("user_id")); err != nil {
+		response.CustomError(c, http.StatusBadRequest, "SUBSCRIPTION_CANCEL_FAILED", err)
+		return
+	}
+	response.Success(c, http.StatusOK, gin.H{"status": "canceled"})
+}
+
 func (h *Handler) ResultCallback(c *gin.Context) {
 	rawBody, _ := io.ReadAll(c.Request.Body)
 	c.Request.Body = io.NopCloser(strings.NewReader(string(rawBody)))
-	_ = c.Request.ParseForm()
-	h.loggerf("level=info msg=robokassa result callback raw_body=%s form=%v", string(rawBody), c.Request.PostForm)
-
+	if err := c.Request.ParseForm(); err != nil {
+		c.String(http.StatusBadRequest, "bad request")
+		return
+	}
 	outSum := c.PostForm("OutSum")
 	invID, err := strconv.ParseInt(c.PostForm("InvId"), 10, 64)
 	if err != nil {
 		c.String(http.StatusBadRequest, "bad request")
 		return
 	}
-	signature := c.PostForm("SignatureValue")
-	shp := collectShp(c)
-
-	ack, err := h.service.HandleResultCallback(c.Request.Context(), outSum, invID, signature, shp, string(rawBody))
+	ack, err := h.service.HandleResultCallback(c.Request.Context(), outSum, invID, c.PostForm("SignatureValue"), collectShp(c), string(rawBody))
 	if err != nil {
-		h.loggerf("level=error msg=robokassa result callback failed inv_id=%d err=%v", invID, err)
-		if err == ErrInvalidSignature || err == ErrAmountMismatch {
+		if err == ErrInvalidSignature || err == ErrAmountMismatch || err == ErrReplayDetected {
 			c.String(http.StatusForbidden, "forbidden")
 			return
 		}
 		c.String(http.StatusInternalServerError, "internal error")
 		return
 	}
-	h.loggerf("level=info msg=robokassa result callback handled inv_id=%d ack=%s", invID, ack)
 	c.String(http.StatusOK, ack)
 }
 
-// SuccessCallback godoc
-// @Summary      Robokassa SuccessURL callback
-// @Description  Validates customer return callback signature
-// @Tags         Payments
-// @Produce      json
-// @Param        OutSum query string true "Amount"
-// @Param        InvId query integer true "Invoice ID"
-// @Param        SignatureValue query string true "MD5 signature"
-// @Success      200 {object} SuccessCallbackResponse
-// @Failure      400 {object} ErrorResponse
-// @Failure      403 {object} ErrorResponse
-// @Failure      500 {object} ErrorResponse
-// @Router       /payments/robokassa/success [get]
 func (h *Handler) SuccessCallback(c *gin.Context) {
-	raw := c.Request.URL.RawQuery
-	h.loggerf("level=info msg=robokassa success callback raw_query=%s query=%v", raw, c.Request.URL.Query())
-	outSum := c.Query("OutSum")
-	invID, err := strconv.ParseInt(c.Query("InvId"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid InvId"})
+	var req PaymentCallbackRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-	signature := c.Query("SignatureValue")
-	shp := collectShp(c)
+	ok, err := h.service.HandleSuccessCallback(c.Request.Context(), req.OutSum, req.InvID, req.SignatureValue, req.ShpParams, "")
+	if err != nil {
+		response.CustomError(c, http.StatusForbidden, "PAYMENT_VALIDATION_FAILED", err)
+		return
+	}
+	response.Success(c, http.StatusOK, gin.H{"validated": ok, "redirect_url": h.service.frontSuccess})
+}
 
-	ok, err := h.service.HandleSuccessCallback(c.Request.Context(), outSum, invID, signature, shp, raw)
-	if err != nil {
-		h.loggerf("level=error msg=robokassa success callback failed inv_id=%d err=%v", invID, err)
-		if err == ErrInvalidSignature || err == ErrAmountMismatch {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+func (h *Handler) FailCallback(c *gin.Context) {
+	var req PaymentFailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"status": "ok", "validated": ok})
+	if err := h.service.FailPayment(c.Request.Context(), req.InvID); err != nil {
+		response.CustomError(c, http.StatusInternalServerError, "PAYMENT_FAIL_UPDATE_FAILED", err)
+		return
+	}
+	response.Success(c, http.StatusOK, gin.H{"redirect_url": h.service.frontFail})
 }
 
 func collectShp(c *gin.Context) map[string]string {
@@ -147,7 +137,6 @@ func collectShp(c *gin.Context) map[string]string {
 	}
 	return res
 }
-
 func trimShpKey(k string) string {
 	if len(k) < 4 {
 		return k

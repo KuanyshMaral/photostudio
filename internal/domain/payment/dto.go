@@ -1,24 +1,47 @@
 package payment
 
 type InitPaymentRequest struct {
-	BookingID   int64             `json:"booking_id" binding:"required" example:"123"`
-	OutSum      string            `json:"out_sum" binding:"required" example:"2500.00"`
-	Description string            `json:"description" example:"Room booking #123"`
-	ShpParams   map[string]string `json:"shp_params" example:"{\"booking_id\":\"123\"}"`
+	BookingID   int64             `json:"booking_id" binding:"required"`
+	OutSum      string            `json:"out_sum" binding:"required"`
+	Description string            `json:"description"`
+	ShpParams   map[string]string `json:"shp_params"`
+}
+
+type CreatePaymentRequest struct {
+	BookingID         int64   `json:"booking_id" binding:"required"`
+	Amount            string  `json:"amount" binding:"required"`
+	Description       string  `json:"description"`
+	Recurring         bool    `json:"recurring"`
+	PreviousInvoiceID *int64  `json:"previous_invoice_id"`
+	SubscriptionID    *string `json:"subscription_id"`
+}
+
+type CreateSubscriptionRequest struct {
+	Amount string `json:"amount" binding:"required"`
+}
+
+type PaymentCallbackRequest struct {
+	OutSum         string            `json:"OutSum" binding:"required"`
+	InvID          int64             `json:"InvId" binding:"required"`
+	SignatureValue string            `json:"SignatureValue" binding:"required"`
+	ShpParams      map[string]string `json:"shp_params"`
+}
+
+type PaymentFailRequest struct {
+	InvID int64 `json:"inv_id" binding:"required"`
 }
 
 type InitPaymentResponse struct {
-	InvID      int64  `json:"inv_id" example:"1700000000000000000"`
-	PaymentURL string `json:"payment_url" example:"https://auth.robokassa.ru/Merchant/Index.aspx?..."`
-	Signature  string `json:"signature" example:"ABCDEF1234567890ABCDEF1234567890"`
-	Status     string `json:"status" example:"created"`
+	InvID      int64  `json:"inv_id"`
+	PaymentURL string `json:"payment_url"`
+	Signature  string `json:"signature"`
+	Status     string `json:"status"`
 }
 
 type ErrorResponse struct {
-	Error string `json:"error" example:"invalid request"`
+	Error string `json:"error"`
 }
-
 type SuccessCallbackResponse struct {
-	Status    string `json:"status" example:"ok"`
-	Validated bool   `json:"validated" example:"true"`
+	Status    string `json:"status"`
+	Validated bool   `json:"validated"`
 }
