@@ -137,6 +137,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 	c.SetCookie("refresh_token", result.RefreshToken, 604800, h.cookiePath, "", h.cookieSecure, true)
 
 	response.Success(c, http.StatusOK, gin.H{
+		"token": result.AccessToken,
 		"tokens": gin.H{
 			"access_token": result.AccessToken,
 		},
@@ -243,6 +244,7 @@ func (h *Handler) Login(c *gin.Context) {
 	c.SetCookie("refresh_token", loginResult.RefreshToken, 604800, h.cookiePath, "", h.cookieSecure, true)
 
 	response.Success(c, http.StatusOK, gin.H{
+		"token": loginResult.AccessToken,
 		"user": gin.H{
 			"id":            loginResult.User.ID,
 			"email":         loginResult.User.Email,
