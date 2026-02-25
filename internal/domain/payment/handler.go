@@ -1,12 +1,13 @@
 package payment
 
 import (
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -21,24 +22,23 @@ func NewHandler(service *Service, loggerf func(format string, args ...interface{
 	return &Handler{service: service, loggerf: loggerf}
 }
 
-func (h *Handler) CreatePayment(c *gin.Context) {
-	var req CreatePaymentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
-		return
-	}
-	uid := c.GetInt64("user_id")
-	resp, err := h.service.CreatePayment(c.Request.Context(), uid, req.BookingID, req.Amount, req.Description, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
-	if err != nil {
-		code := http.StatusInternalServerError
-		if err == ErrAmountMismatch {
-			code = http.StatusBadRequest
-		}
-		response.CustomError(c, code, "PAYMENT_CREATE_FAILED", err)
-		return
-	}
-	response.Success(c, http.StatusOK, resp)
-}
+// InitPayment godoc
+// @Summary      Initialize Robokassa payment
+// @Description  Creates Robokassa payment link and signature for a booking
+// @Tags         Payments
+// @Security BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        body body InitPaymentRequest true "Payment init payload"
+// @Success      200 {object} InitPaymentResponse
+// @Failure      400 {object} ErrorResponse
+// @Failure      500 {object} ErrorResponse
+// @Router       /payments/robokassa/init [post]
+func (h *Handler) InitPayment(c *gin.Context) {
+	var req InitPaymentRequest
+	body, _ := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
+	h.loggerf("level=info msg=robokassa init request request_body=%s", string(body))
 
 func (h *Handler) CreateSubscription(c *gin.Context) {
 	var req CreateSubscriptionRequest

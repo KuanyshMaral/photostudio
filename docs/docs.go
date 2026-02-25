@@ -4306,7 +4306,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Получает полные данные профиля компании/студии владельца, включая логотип, контактные данные, описание и специализацию",
@@ -5631,7 +5631,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Получает аналитические данные о работе студии владельца, включая статистику бронирований, доходы и другие метрики",
@@ -5680,7 +5680,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Проверяет, установлен ли PIN код для текущего владельца студии",
@@ -5729,7 +5729,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Получает список записей об обслуживании оборудования и помещений студии. Можно отфильтровать по статусу: all, pending, in_progress, completed",
@@ -5782,7 +5782,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Создаёт новую запись об обслуживании оборудования, помещений или инженерных систем студии. При отсутствии приоритета устанавливается значение medium. Статус по умолчанию - pending",
@@ -5850,7 +5850,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Удаляет запись об обслуживании по ID. Может удалить только владелец студии",
@@ -5919,7 +5919,7 @@ const docTemplate = `{
             "patch": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Обновляет данные существующей записи об обслуживании. Нельзя изменять ID, владельца и дату создания",
@@ -6003,7 +6003,7 @@ const docTemplate = `{
             "get": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Получает список закупок для студии владельца с опциональной фильтрацией по статусу завершённости",
@@ -6056,7 +6056,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Создаёт новую запись о закупке оборудования или материалов для студии. Приоритет по умолчанию - medium, количество - 1",
@@ -6124,7 +6124,7 @@ const docTemplate = `{
             "delete": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Удаляет закупку по ID. Может удалить только владелец студии",
@@ -6193,7 +6193,7 @@ const docTemplate = `{
             "patch": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Обновляет данные существующей закупки. Нельзя изменять ID, владельца и дату создания",
@@ -6277,7 +6277,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Устанавливает PIN код из 4-6 цифр для защиты CRM функций владельца студии",
@@ -6467,7 +6467,7 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
                 "description": "Проверяет корректность введённого PIN кода владельцем студии",
