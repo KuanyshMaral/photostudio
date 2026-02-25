@@ -2,10 +2,11 @@ package owner
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"photostudio/internal/pkg/response"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -38,7 +39,7 @@ type SetPINRequest struct {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/set-pin [post]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) SetPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -77,7 +78,7 @@ type VerifyPINRequest struct {
 // @Failure 404 {object} map[string]interface{} "PIN не установлен"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/verify-pin [post]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) VerifyPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -121,7 +122,7 @@ func (h *Handler) VerifyPIN(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/has-pin [get]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) HasPIN(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	if ownerID == 0 {
@@ -150,7 +151,7 @@ func (h *Handler) HasPIN(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/procurement [get]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) GetProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	showCompleted := c.Query("show_completed") == "true"
@@ -185,7 +186,7 @@ type CreateProcurementRequest struct {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/procurement [post]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) CreateProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -233,7 +234,7 @@ func (h *Handler) CreateProcurement(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Закупка не найдена"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/procurement/{id} [patch]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) UpdateProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -277,7 +278,7 @@ func (h *Handler) UpdateProcurement(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Закупка не найдена"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/procurement/{id} [delete]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) DeleteProcurement(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -310,7 +311,7 @@ func (h *Handler) DeleteProcurement(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/maintenance [get]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) GetMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	status := c.DefaultQuery("status", "all") // all, pending, in_progress, completed
@@ -344,7 +345,7 @@ type CreateMaintenanceRequest struct {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/maintenance [post]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) CreateMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -389,7 +390,7 @@ func (h *Handler) CreateMaintenance(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/maintenance/{id} [patch]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) UpdateMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -432,7 +433,7 @@ func (h *Handler) UpdateMaintenance(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/maintenance/{id} [delete]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) DeleteMaintenance(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -464,7 +465,7 @@ func (h *Handler) DeleteMaintenance(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /owner/analytics [get]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) GetAnalytics(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 
@@ -488,7 +489,7 @@ func (h *Handler) GetAnalytics(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Ошибка сервера"
 // @Router /company/profile [get]
-// @Security Bearer
+// @Security BearerAuth
 func (h *Handler) GetCompanyProfile(c *gin.Context) {
 	ownerID := c.GetInt64("user_id")
 

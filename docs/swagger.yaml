@@ -4362,7 +4362,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Получение профиля компании
       tags:
       - Owner
@@ -5245,7 +5245,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Получение аналитики студии
       tags:
       - Owner
@@ -5277,7 +5277,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Проверка наличия PIN кода
       tags:
       - Owner
@@ -5315,7 +5315,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Получение списка обслуживания
       tags:
       - Owner
@@ -5361,7 +5361,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Создание новой записи об обслуживании
       tags:
       - Owner
@@ -5410,7 +5410,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Удаление записи об обслуживании
       tags:
       - Owner
@@ -5467,7 +5467,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Обновление записи об обслуживании
       tags:
       - Owner
@@ -5504,7 +5504,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Получение списка закупок
       tags:
       - Owner
@@ -5549,7 +5549,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Создание новой закупки
       tags:
       - Owner
@@ -5597,7 +5597,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Удаление закупки
       tags:
       - Owner
@@ -5654,7 +5654,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Обновление закупки
       tags:
       - Owner
@@ -5700,7 +5700,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Установка PIN кода
       tags:
       - Owner
@@ -5823,7 +5823,7 @@ paths:
             additionalProperties: true
             type: object
       security:
-      - Bearer: []
+      - BearerAuth: []
       summary: Проверка PIN кода
       tags:
       - Owner

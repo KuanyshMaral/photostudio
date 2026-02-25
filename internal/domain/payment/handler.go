@@ -1,11 +1,12 @@
 package payment
 
 import (
-	"github.com/gin-gonic/gin"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -24,7 +25,7 @@ func NewHandler(service *Service, loggerf func(format string, args ...interface{
 // @Summary      Initialize Robokassa payment
 // @Description  Creates Robokassa payment link and signature for a booking
 // @Tags         Payments
-// @Security     BearerAuth
+// @Security BearerAuth
 // @Accept       json
 // @Produce      json
 // @Param        body body InitPaymentRequest true "Payment init payload"
