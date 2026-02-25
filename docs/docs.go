@@ -6542,10 +6542,10 @@ const docTemplate = `{
             "post": {
                 "security": [
                     {
-                        "Bearer": []
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Creates RoboKassa payment link for an existing booking with server-side amount validation",
+                "description": "Creates Robokassa payment link and signature for a booking",
                 "consumes": [
                     "application/json"
                 ],
@@ -6555,15 +6555,15 @@ const docTemplate = `{
                 "tags": [
                     "Payments"
                 ],
-                "summary": "Create RoboKassa payment",
+                "summary": "Create Robokassa payment",
                 "parameters": [
                     {
-                        "description": "Payment create payload",
+                        "description": "Payment init payload",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payment.CreatePaymentRequest"
+                            "$ref": "#/definitions/payment.InitPaymentRequest"
                         }
                     }
                 ],
@@ -6571,305 +6571,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/payment.InitPaymentResponse"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/payment.InitPaymentResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/payments/robokassa/fail": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Marks payment as failed and returns frontend fail redirect URL",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Handle RoboKassa fail callback",
-                "parameters": [
-                    {
-                        "description": "Payment fail payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/payment.PaymentFailRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/payments/robokassa/success": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Validates success callback payload and returns frontend success redirect URL",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Handle RoboKassa success callback",
-                "parameters": [
-                    {
-                        "description": "Payment success payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/payment.PaymentCallbackRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/subscriptions": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Creates recurring subscription and initializes first recurring RoboKassa payment",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Create recurring subscription",
-                "parameters": [
-                    {
-                        "description": "Create subscription payload",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/payment.CreateSubscriptionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/subscriptions/cancel": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Cancel my recurring subscription",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/subscriptions/me": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "Get my recurring subscription",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/webhooks/robokassa/result": {
-            "post": {
-                "description": "Public RoboKassa ResultURL webhook endpoint with signature validation and idempotent processing",
-                "produces": [
-                    "text/plain"
-                ],
-                "tags": [
-                    "Payments"
-                ],
-                "summary": "RoboKassa ResultURL webhook",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Amount",
-                        "name": "OutSum",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Invoice ID",
-                        "name": "InvId",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "MD5 signature",
-                        "name": "SignatureValue",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK{InvId}",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "bad request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "403": {
-                        "description": "forbidden",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "internal error",
-                        "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/payment.ErrorResponse"
                         }
                     }
                 }
@@ -9674,8 +9388,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "error": {
-                    "type": "string",
-                    "example": "invalid request"
+                    "type": "string"
                 }
             }
         },
@@ -9687,24 +9400,18 @@ const docTemplate = `{
             ],
             "properties": {
                 "booking_id": {
-                    "type": "integer",
-                    "example": 123
+                    "type": "integer"
                 },
                 "description": {
-                    "type": "string",
-                    "example": "Room booking #123"
+                    "type": "string"
                 },
                 "out_sum": {
-                    "type": "string",
-                    "example": "2500.00"
+                    "type": "string"
                 },
                 "shp_params": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
-                    },
-                    "example": {
-                        "{\"booking_id\"": "\"123\"}"
                     }
                 }
             }
@@ -9713,33 +9420,16 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "inv_id": {
-                    "type": "integer",
-                    "example": 1700000000000000000
+                    "type": "integer"
                 },
                 "payment_url": {
-                    "type": "string",
-                    "example": "https://auth.robokassa.ru/Merchant/Index.aspx?..."
+                    "type": "string"
                 },
                 "signature": {
-                    "type": "string",
-                    "example": "ABCDEF1234567890ABCDEF1234567890"
+                    "type": "string"
                 },
                 "status": {
-                    "type": "string",
-                    "example": "created"
-                }
-            }
-        },
-        "payment.SuccessCallbackResponse": {
-            "type": "object",
-            "properties": {
-                "status": {
-                    "type": "string",
-                    "example": "ok"
-                },
-                "validated": {
-                    "type": "boolean",
-                    "example": true
+                    "type": "string"
                 }
             }
         },
