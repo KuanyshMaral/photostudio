@@ -22,23 +22,37 @@ func NewHandler(service *Service, loggerf func(format string, args ...interface{
 	return &Handler{service: service, loggerf: loggerf}
 }
 
-// InitPayment godoc
-// @Summary      Initialize Robokassa payment
+// CreatePayment godoc
+// @Summary      Create Robokassa payment
 // @Description  Creates Robokassa payment link and signature for a booking
 // @Tags         Payments
-// @Security BearerAuth
+// @Security     BearerAuth
 // @Accept       json
 // @Produce      json
 // @Param        body body InitPaymentRequest true "Payment init payload"
 // @Success      200 {object} InitPaymentResponse
 // @Failure      400 {object} ErrorResponse
 // @Failure      500 {object} ErrorResponse
-// @Router       /payments/robokassa/init [post]
-func (h *Handler) InitPayment(c *gin.Context) {
+// @Router       /payments/robokassa/create [post]
+func (h *Handler) CreatePayment(c *gin.Context) {
 	var req InitPaymentRequest
 	body, _ := io.ReadAll(c.Request.Body)
 	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
 	h.loggerf("level=info msg=robokassa init request request_body=%s", string(body))
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.loggerf("level=error msg=invalid robokassa init payload err=%v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.service.InitPayment(c.Request.Context(), req)
+	if err != nil {
+		h.loggerf("level=error msg=robokassa init failed request=%+v err=%v", req, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.loggerf("level=info msg=robokassa init response response=%+v", resp)
+	c.JSON(http.StatusOK, resp)
+}
 
 func (h *Handler) CreateSubscription(c *gin.Context) {
 	var req CreateSubscriptionRequest
