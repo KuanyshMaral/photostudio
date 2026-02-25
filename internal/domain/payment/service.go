@@ -15,17 +15,22 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var (
 	ErrInvalidSignature = errors.New("invalid signature")
 	ErrAmountMismatch   = errors.New("amount mismatch")
+	ErrReplayDetected   = errors.New("replay detected")
 )
 
 type Service struct {
 	payments      paymentRepo
 	bookings      bookingReader
 	bookingWriter bookingPaymentWriter
+	repo          *Repository
 	loggerf       func(format string, args ...interface{})
 
 	merchantLogin string
@@ -34,25 +39,40 @@ type Service struct {
 	baseURL       string
 	resultURL     string
 	successURL    string
+	failURL       string
+	frontSuccess  string
+	frontFail     string
 	isTest        string
 }
 
-func NewService(payments paymentRepo, bookings bookingReader, bookingWriter bookingPaymentWriter, loggerf func(format string, args ...interface{})) *Service {
+func NewService(payments paymentRepo, bookings bookingReader, bookingWriter bookingPaymentWriter, loggerf func(format string, args ...interface{}), repo ...*Repository) *Service {
 	if loggerf == nil {
 		loggerf = func(string, ...interface{}) {}
 	}
-	return &Service{
-		payments:      payments,
-		bookings:      bookings,
-		bookingWriter: bookingWriter,
-		loggerf:       loggerf,
+	r := (*Repository)(nil)
+	if len(repo) > 0 {
+		r = repo[0]
+	}
+	isTest := envOrDefault("ROBOKASSA_IS_TEST", "1")
+	password1 := os.Getenv("ROBOKASSA_PROD_PASSWORD_1")
+	password2 := os.Getenv("ROBOKASSA_PROD_PASSWORD_2")
+	if isTest == "1" {
+		password1 = os.Getenv("ROBOKASSA_TEST_PASSWORD_1")
+		password2 = os.Getenv("ROBOKASSA_TEST_PASSWORD_2")
+	}
+	if password1 == "" {
+		password1 = os.Getenv("ROBOKASSA_PASSWORD1")
+	}
+	if password2 == "" {
+		password2 = os.Getenv("ROBOKASSA_PASSWORD2")
+	}
+	return &Service{payments: payments, bookings: bookings, bookingWriter: bookingWriter, repo: r, loggerf: loggerf,
 		merchantLogin: os.Getenv("ROBOKASSA_MERCHANT_LOGIN"),
-		password1:     os.Getenv("ROBOKASSA_PASSWORD1"),
-		password2:     os.Getenv("ROBOKASSA_PASSWORD2"),
-		baseURL:       envOrDefault("ROBOKASSA_BASE_URL", "https://auth.robokassa.ru/Merchant/Index.aspx"),
-		resultURL:     os.Getenv("ROBOKASSA_RESULT_URL"),
-		successURL:    os.Getenv("ROBOKASSA_SUCCESS_URL"),
-		isTest:        envOrDefault("ROBOKASSA_IS_TEST", "1"),
+		password1:     password1, password2: password2,
+		baseURL:   envOrDefault("ROBOKASSA_BASE_URL", "https://auth.robokassa.ru/Merchant/Index.aspx"),
+		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
+		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
+		isTest: isTest,
 	}
 }
 
@@ -63,23 +83,34 @@ func envOrDefault(name, def string) string {
 	return def
 }
 
-func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*InitPaymentResponse, error) {
-	if s.merchantLogin == "" || s.password1 == "" || s.password2 == "" {
-		return nil, fmt.Errorf("robokassa credentials are not configured")
+func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, amount string, description string, recurring bool, previousInvoiceID *int64, subscriptionID *string) (*InitPaymentResponse, error) {
+	if s.repo == nil {
+		return nil, fmt.Errorf("payment repository is not configured")
 	}
-	if _, err := s.bookings.GetByID(ctx, req.BookingID); err != nil {
-		return nil, fmt.Errorf("booking check failed: %w", err)
+	bk, err := s.bookings.GetByID(ctx, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	if bk.UserID != userID {
+		return nil, fmt.Errorf("booking does not belong to user")
+	}
+	if !amountEqual(amount, fmt.Sprintf("%.2f", bk.TotalPrice)) {
+		return nil, ErrAmountMismatch
 	}
 
 	invID := time.Now().UnixNano()
-	signature := s.generateSignatureForInit(req.OutSum, invID, req.ShpParams)
+	shp := map[string]string{"user_id": strconv.FormatInt(userID, 10), "booking_id": strconv.FormatInt(bookingID, 10)}
+	if subscriptionID != nil {
+		shp["subscription_id"] = *subscriptionID
+	}
+	sig := s.generateSignatureForInit(amount, invID, shp)
 
 	u := url.Values{}
 	u.Set("MerchantLogin", s.merchantLogin)
-	u.Set("OutSum", req.OutSum)
+	u.Set("OutSum", amount)
 	u.Set("InvId", strconv.FormatInt(invID, 10))
-	u.Set("Description", req.Description)
-	u.Set("SignatureValue", signature)
+	u.Set("Description", description)
+	u.Set("SignatureValue", sig)
 	u.Set("IsTest", s.isTest)
 	if s.resultURL != "" {
 		u.Set("ResultURL", s.resultURL)
@@ -87,88 +118,217 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	if s.successURL != "" {
 		u.Set("SuccessURL", s.successURL)
 	}
-	for k, v := range req.ShpParams {
+	if s.failURL != "" {
+		u.Set("FailURL", s.failURL)
+	}
+	if recurring {
+		u.Set("Recurring", "true")
+	}
+	if previousInvoiceID != nil {
+		u.Set("PreviousInvoiceID", strconv.FormatInt(*previousInvoiceID, 10))
+	}
+	for k, v := range shp {
 		u.Set("Shp_"+k, v)
 	}
 	paymentURL := s.baseURL + "?" + u.Encode()
 
-	shpRaw, _ := json.Marshal(req.ShpParams)
-	p := &RobokassaPayment{
-		BookingID:    req.BookingID,
-		OutSum:       req.OutSum,
-		InvID:        invID,
-		Description:  req.Description,
-		Status:       RobokassaPaymentStatus(booking.PaymentUnpaid),
-		Signature:    signature,
-		RobokassaURL: paymentURL,
-		ShpParams:    string(shpRaw),
+	p := &Payment{UserID: userID, BookingID: &bookingID, SubscriptionID: subscriptionID, RobokassaInvoiceID: invID, Amount: amount, Status: "created", IsRecurring: recurring}
+	if err := s.repo.CreatePayment(ctx, p); err != nil {
+		return nil, err
 	}
-	if err := s.payments.Create(ctx, p); err != nil {
-		return nil, fmt.Errorf("save payment failed: %w", err)
-	}
-	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, req.BookingID, booking.PaymentUnpaid); err != nil {
-		s.loggerf("level=error msg=failed to sync booking payment status on init booking_id=%d err=%v", req.BookingID, err)
+	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, bookingID, booking.PaymentUnpaid); err != nil {
+		return nil, err
 	}
 
+	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: sig, Status: "created"}, nil
+}
+
+func (s *Service) CreateSubscription(ctx context.Context, userID int64, amount string) (*InitPaymentResponse, error) {
+	if s.repo == nil {
+		return nil, fmt.Errorf("payment repository is not configured")
+	}
+	sub := &RecurringSubscription{ID: uuid.NewString(), UserID: userID, Status: "pending"}
+	if err := s.repo.CreateSubscription(ctx, sub); err != nil {
+		return nil, err
+	}
+	return s.createSubscriptionPayment(ctx, sub, amount, nil)
+}
+
+func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringSubscription, amount string, previous *int64) (*InitPaymentResponse, error) {
+	invID := time.Now().UnixNano()
+	shp := map[string]string{"user_id": strconv.FormatInt(sub.UserID, 10), "subscription_id": sub.ID}
+	sig := s.generateSignatureForInit(amount, invID, shp)
+	u := url.Values{}
+	u.Set("MerchantLogin", s.merchantLogin)
+	u.Set("OutSum", amount)
+	u.Set("InvId", strconv.FormatInt(invID, 10))
+	u.Set("Description", "Monthly subscription")
+	u.Set("SignatureValue", sig)
+	u.Set("IsTest", s.isTest)
+	u.Set("Recurring", "true")
+	if s.resultURL != "" {
+		u.Set("ResultURL", s.resultURL)
+	}
+	if s.successURL != "" {
+		u.Set("SuccessURL", s.successURL)
+	}
+	if s.failURL != "" {
+		u.Set("FailURL", s.failURL)
+	}
+	if previous != nil {
+		u.Set("PreviousInvoiceID", strconv.FormatInt(*previous, 10))
+	}
+	for k, v := range shp {
+		u.Set("Shp_"+k, v)
+	}
+	paymentURL := s.baseURL + "?" + u.Encode()
+	if err := s.repo.CreatePayment(ctx, &Payment{UserID: sub.UserID, SubscriptionID: &sub.ID, RobokassaInvoiceID: invID, Amount: amount, Status: "created", IsRecurring: true}); err != nil {
+		return nil, err
+	}
+	if sub.FirstInvoiceID == nil {
+		next := time.Now().UTC().AddDate(0, 1, 0)
+		if err := s.repo.UpdateSubscription(ctx, sub.ID, map[string]interface{}{"first_invoice_id": invID, "next_billing_at": next}); err != nil {
+			return nil, err
+		}
+	}
+	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: sig, Status: "created"}, nil
+}
+
+// Legacy init endpoint compatibility.
+func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*InitPaymentResponse, error) {
+	if _, err := s.bookings.GetByID(ctx, req.BookingID); err != nil {
+		return nil, fmt.Errorf("booking check failed: %w", err)
+	}
+	invID := time.Now().UnixNano()
+	signature := s.generateSignatureForInit(req.OutSum, invID, req.ShpParams)
+	u := url.Values{}
+	u.Set("MerchantLogin", s.merchantLogin)
+	u.Set("OutSum", req.OutSum)
+	u.Set("InvId", strconv.FormatInt(invID, 10))
+	u.Set("Description", req.Description)
+	u.Set("SignatureValue", signature)
+	u.Set("IsTest", s.isTest)
+	for k, v := range req.ShpParams {
+		u.Set("Shp_"+k, v)
+	}
+	paymentURL := s.baseURL + "?" + u.Encode()
+	shpRaw, _ := json.Marshal(req.ShpParams)
+	p := &RobokassaPayment{BookingID: req.BookingID, OutSum: req.OutSum, InvID: invID, Description: req.Description, Status: RobokassaPaymentStatus(booking.PaymentUnpaid), Signature: signature, RobokassaURL: paymentURL, ShpParams: string(shpRaw)}
+	if err := s.payments.Create(ctx, p); err != nil {
+		return nil, err
+	}
+	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, req.BookingID, booking.PaymentUnpaid); err != nil {
+		return nil, err
+	}
 	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: signature, Status: string(booking.PaymentUnpaid)}, nil
 }
 
 func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID int64, signature string, shpParams map[string]string, rawBody string) (string, error) {
-	valid := strings.EqualFold(signature, s.generateSignatureForResult(outSum, invID, shpParams))
-	s.loggerf("level=info msg=robokassa result signature validation inv_id=%d signature_valid=%t", invID, valid)
-	if !valid {
-		_ = s.payments.UpdateStatus(ctx, invID, RobokassaPaymentStatus(booking.PaymentUnpaid), rawBody, "invalid signature", nil)
+	if !strings.EqualFold(signature, s.generateSignatureForResult(outSum, invID, shpParams)) {
 		return "", ErrInvalidSignature
 	}
-
+	if s.repo != nil {
+		return s.handleResultV2(ctx, outSum, invID)
+	}
 	p, err := s.payments.GetByInvID(ctx, invID)
 	if err != nil {
 		return "", err
 	}
 	if !amountEqual(outSum, p.OutSum) {
-		reason := fmt.Sprintf("amount mismatch callback=%s expected=%s", outSum, p.OutSum)
-		_ = s.payments.UpdateStatus(ctx, invID, RobokassaPaymentStatus(booking.PaymentUnpaid), rawBody, reason, nil)
+		if err := s.payments.UpdateStatus(ctx, invID, RobokassaPaymentStatus(booking.PaymentUnpaid), rawBody, "amount mismatch", nil); err != nil {
+			return "", err
+		}
 		return "", ErrAmountMismatch
 	}
-
-	changed, err := s.payments.MarkPaidIdempotent(ctx, invID, rawBody, time.Now().UTC())
+	_, err = s.payments.MarkPaidIdempotent(ctx, invID, rawBody, time.Now().UTC())
 	if err != nil {
 		return "", err
 	}
-	if _, err = s.bookingWriter.UpdatePaymentStatusSystem(ctx, p.BookingID, booking.PaymentPaid); err != nil {
-		s.loggerf("level=error msg=failed to update booking payment status to paid booking_id=%d err=%v", p.BookingID, err)
+	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, p.BookingID, booking.PaymentPaid); err != nil {
+		return "", err
 	}
+	return "OK" + strconv.FormatInt(invID, 10), nil
+}
 
+func (s *Service) handleResultV2(ctx context.Context, outSum string, invID int64) (string, error) {
+	p, err := s.repo.GetPaymentByInvoiceID(ctx, invID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", ErrInvalidSignature
+		}
+		return "", err
+	}
+	if !amountEqual(outSum, p.Amount) {
+		return "", ErrAmountMismatch
+	}
+	now := time.Now().UTC()
+	changed, err := s.repo.MarkPaymentStatus(ctx, invID, "paid", &now)
+	if err != nil {
+		return "", err
+	}
+	if p.BookingID != nil {
+		if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, *p.BookingID, booking.PaymentPaid); err != nil {
+			return "", err
+		}
+	}
+	if p.SubscriptionID != nil && changed {
+		next := now.AddDate(0, 1, 0)
+		if err := s.repo.UpdateSubscription(ctx, *p.SubscriptionID, map[string]interface{}{"status": "active", "next_billing_at": next}); err != nil {
+			return "", err
+		}
+	}
 	if !changed {
-		s.loggerf("level=info msg=idempotent callback already paid inv_id=%d", invID)
+		return "", ErrReplayDetected
 	}
 	return "OK" + strconv.FormatInt(invID, 10), nil
 }
 
 func (s *Service) HandleSuccessCallback(ctx context.Context, outSum string, invID int64, signature string, shpParams map[string]string, rawBody string) (bool, error) {
-	if err := s.payments.SaveSuccessRawBody(ctx, invID, rawBody); err != nil {
-		s.loggerf("level=error msg=failed to save success callback body inv_id=%d err=%v", invID, err)
-	}
 	valid := strings.EqualFold(signature, s.generateSignatureForSuccess(outSum, invID, shpParams))
-	s.loggerf("level=info msg=robokassa success signature validation inv_id=%d signature_valid=%t", invID, valid)
 	if !valid {
 		return false, ErrInvalidSignature
 	}
-
+	if s.repo != nil {
+		p, err := s.repo.GetPaymentByInvoiceID(ctx, invID)
+		if err != nil {
+			return false, err
+		}
+		if !amountEqual(outSum, p.Amount) {
+			return false, ErrAmountMismatch
+		}
+		return true, nil
+	}
 	p, err := s.payments.GetByInvID(ctx, invID)
 	if err != nil {
 		return false, err
 	}
 	if !amountEqual(outSum, p.OutSum) {
-		s.loggerf("level=error msg=amount mismatch on success callback inv_id=%d callback_out_sum=%s expected_out_sum=%s", invID, outSum, p.OutSum)
 		return false, ErrAmountMismatch
 	}
-
 	if err := s.payments.UpdateStatusPendingIfNotPaid(ctx, invID, rawBody); err != nil {
-		s.loggerf("level=error msg=failed to set pending status from success callback inv_id=%d err=%v", invID, err)
 		return false, err
 	}
 	return true, nil
+}
+
+func (s *Service) FailPayment(ctx context.Context, invID int64) error {
+	if s.repo == nil {
+		return nil
+	}
+	_, err := s.repo.MarkPaymentStatus(ctx, invID, "failed", nil)
+	return err
+}
+
+func (s *Service) CancelSubscription(ctx context.Context, userID int64) error {
+	sub, err := s.repo.GetSubscriptionByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpdateSubscription(ctx, sub.ID, map[string]interface{}{"status": "canceled"})
+}
+
+func (s *Service) GetMySubscription(ctx context.Context, userID int64) (*RecurringSubscription, error) {
+	return s.repo.GetSubscriptionByUserID(ctx, userID)
 }
 
 func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams map[string]string) string {
@@ -176,13 +336,11 @@ func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams
 	parts = append(parts, flattenShpParams(shpParams)...)
 	return md5Hex(strings.Join(parts, ":"))
 }
-
 func (s *Service) generateSignatureForResult(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{outSum, strconv.FormatInt(invID, 10), s.password2}
 	parts = append(parts, flattenShpParams(shpParams)...)
 	return md5Hex(strings.Join(parts, ":"))
 }
-
 func (s *Service) generateSignatureForSuccess(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{outSum, strconv.FormatInt(invID, 10), s.password1}
 	parts = append(parts, flattenShpParams(shpParams)...)
@@ -201,7 +359,6 @@ func flattenShpParams(shp map[string]string) []string {
 	}
 	return out
 }
-
 func amountEqual(a, b string) bool {
 	ar, ok := new(big.Rat).SetString(strings.TrimSpace(a))
 	if !ok {
@@ -213,7 +370,6 @@ func amountEqual(a, b string) bool {
 	}
 	return ar.Cmp(br) == 0
 }
-
 func md5Hex(s string) string {
 	h := md5.Sum([]byte(s))
 	return strings.ToUpper(hex.EncodeToString(h[:]))

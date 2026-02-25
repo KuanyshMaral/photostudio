@@ -2,17 +2,27 @@ package payment
 
 import "github.com/gin-gonic/gin"
 
-func (h *Handler) RegisterWebhookRoutes(r *gin.RouterGroup) {
-	robokassa := r.Group("/payments/robokassa")
+func (h *Handler) RegisterPublicWebhookRoutes(r *gin.Engine) {
+	w := r.Group("/webhooks/robokassa")
 	{
-		robokassa.POST("/result", h.ResultCallback)
-		robokassa.GET("/success", h.SuccessCallback)
+		w.POST("/result", h.ResultCallback)
 	}
 }
 
 func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
-	robokassa := r.Group("/payments/robokassa")
+	rb := r.Group("/payments/robokassa")
 	{
-		robokassa.POST("/init", h.InitPayment)
+		rb.POST("/create", h.CreatePayment)
+		rb.POST("/success", h.SuccessCallback)
+		rb.POST("/fail", h.FailCallback)
+		rb.POST("/init", h.InitPayment)
+	}
+	s := r.Group("/subscriptions")
+	{
+		s.POST("", h.CreateSubscription)
+		s.GET("/me", h.MySubscription)
+		s.POST("/cancel", h.CancelSubscription)
 	}
 }
+
+func (h *Handler) InitPayment(c *gin.Context) { h.CreatePayment(c) }

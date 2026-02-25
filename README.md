@@ -199,3 +199,28 @@ backend/
 - ✅ Admin-панель
 - ✅ Локальная разработка без внешней БД
 - ✅ Docker + seed + документация
+
+## 💳 RoboKassa payments and recurring subscriptions
+
+Required env vars:
+- `ROBOKASSA_MERCHANT_LOGIN`
+- `ROBOKASSA_IS_TEST`
+- `ROBOKASSA_TEST_PASSWORD_1`, `ROBOKASSA_TEST_PASSWORD_2`
+- `ROBOKASSA_PROD_PASSWORD_1`, `ROBOKASSA_PROD_PASSWORD_2`
+- `ROBOKASSA_RESULT_URL`, `ROBOKASSA_SUCCESS_URL`, `ROBOKASSA_FAIL_URL`
+- `ROBOKASSA_FRONTEND_SUCCESS_URL`, `ROBOKASSA_FRONTEND_FAIL_URL`
+
+Flow:
+1. Client creates booking payment via `POST /api/v1/payments/robokassa/create`.
+2. Backend validates booking ownership and amount, stores payment, returns signed RoboKassa URL.
+3. RoboKassa sends server-to-server callback to `POST /webhooks/robokassa/result`.
+4. Backend verifies signature (`PASSWORD_2`), checks amount, marks payment paid idempotently.
+5. For recurring subscription first payment, `first_invoice_id` is persisted and subscription becomes active.
+
+
+Production readiness checklist (RoboKassa):
+- Use only public webhook endpoint `POST /webhooks/robokassa/result` (single ResultURL target).
+- Keep `ROBOKASSA_IS_TEST=0` in production and set only PROD passwords in runtime secrets.
+- Verify DB migration `000035` is applied before rollout.
+- Ensure application can write booking/payment/subscription state updates (callback handlers now fail closed on write errors).
+- Monitor webhook 4xx/5xx rates and replay detection (`ErrReplayDetected`) as fraud/security signals.

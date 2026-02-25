@@ -5827,41 +5827,178 @@ paths:
       summary: Проверка PIN кода
       tags:
       - Owner
-  /payments/robokassa/init:
+  /payments/robokassa/create:
     post:
       consumes:
       - application/json
-      description: Creates Robokassa payment link and signature for a booking
+      description: Creates RoboKassa payment link for an existing booking with server-side amount validation
       parameters:
-      - description: Payment init payload
+      - description: Payment create payload
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/payment.InitPaymentRequest'
+          $ref: '#/definitions/payment.CreatePaymentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/payment.InitPaymentResponse'
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/payment.InitPaymentResponse'
+              type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/response.Response'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/payment.ErrorResponse'
+            $ref: '#/definitions/response.Response'
       security:
-      - BearerAuth: []
-      summary: Initialize Robokassa payment
+      - Bearer: []
+      summary: Create RoboKassa payment
       tags:
       - Payments
-  /payments/robokassa/result:
+  /payments/robokassa/fail:
     post:
-      description: Validates callback signature and marks payment as paid (idempotent)
+      consumes:
+      - application/json
+      description: Marks payment as failed and returns frontend fail redirect URL
+      parameters:
+      - description: Payment fail payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/payment.PaymentFailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - Bearer: []
+      summary: Handle RoboKassa fail callback
+      tags:
+      - Payments
+  /payments/robokassa/success:
+    post:
+      consumes:
+      - application/json
+      description: Validates success callback payload and returns frontend success redirect URL
+      parameters:
+      - description: Payment success payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/payment.PaymentCallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - Bearer: []
+      summary: Handle RoboKassa success callback
+      tags:
+      - Payments
+  /subscriptions:
+    post:
+      consumes:
+      - application/json
+      description: Creates recurring subscription and initializes first recurring RoboKassa payment
+      parameters:
+      - description: Create subscription payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/payment.CreateSubscriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - Bearer: []
+      summary: Create recurring subscription
+      tags:
+      - Payments
+  /subscriptions/cancel:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - Bearer: []
+      summary: Cancel my recurring subscription
+      tags:
+      - Payments
+  /subscriptions/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - Bearer: []
+      summary: Get my recurring subscription
+      tags:
+      - Payments
+  /webhooks/robokassa/result:
+    post:
+      description: Public RoboKassa ResultURL webhook endpoint with signature validation and idempotent processing
       parameters:
       - description: Amount
         in: formData
@@ -5897,48 +6034,7 @@ paths:
           description: internal error
           schema:
             type: string
-      summary: Robokassa ResultURL callback
-      tags:
-      - Payments
-  /payments/robokassa/success:
-    get:
-      description: Validates customer return callback signature
-      parameters:
-      - description: Amount
-        in: query
-        name: OutSum
-        required: true
-        type: string
-      - description: Invoice ID
-        in: query
-        name: InvId
-        required: true
-        type: integer
-      - description: MD5 signature
-        in: query
-        name: SignatureValue
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/payment.SuccessCallbackResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/payment.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/payment.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/payment.ErrorResponse'
-      summary: Robokassa SuccessURL callback
+      summary: RoboKassa ResultURL webhook
       tags:
       - Payments
   /profile/admin:
