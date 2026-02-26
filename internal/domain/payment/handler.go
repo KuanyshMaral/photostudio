@@ -55,7 +55,12 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.ShpParams, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
 	if err != nil {
 		h.loggerf("level=error msg=robokassa create failed request=%+v err=%v", req, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		status := http.StatusInternalServerError
+		switch err {
+		case ErrAmountMismatch, ErrInvalidAmount:
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 	h.loggerf("level=info msg=robokassa create response response=%+v", resp)
