@@ -168,6 +168,23 @@ func TestHandleResultCallback_ReplayDetected(t *testing.T) {
 	}
 }
 
+func TestRobokassaBaseURLDefaultsByMerchantRegion(t *testing.T) {
+	t.Setenv("ROBOKASSA_BASE_URL", "")
+	if got := robokassaBaseURL("photostudio_kz"); got != "https://auth.robokassa.kz/Merchant/Index.aspx" {
+		t.Fatalf("expected kz base url, got %s", got)
+	}
+	if got := robokassaBaseURL("photostudio"); got != "https://auth.robokassa.ru/Merchant/Index.aspx" {
+		t.Fatalf("expected ru base url, got %s", got)
+	}
+}
+
+func TestRobokassaBaseURLRespectsConfiguredOverride(t *testing.T) {
+	t.Setenv("ROBOKASSA_BASE_URL", "https://custom.robokassa/Merchant/Index.aspx")
+	if got := robokassaBaseURL("photostudio_kz"); got != "https://custom.robokassa/Merchant/Index.aspx" {
+		t.Fatalf("expected configured override, got %s", got)
+	}
+}
+
 func TestCreatePaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file:payment_urls?mode=memory&cache=private"), &gorm.Config{})
 	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
