@@ -46,7 +46,7 @@ func (e *errBookingWriter) UpdatePaymentStatusSystem(ctx context.Context, bookin
 
 func TestServiceErrorBranches(t *testing.T) {
 	s := &Service{payments: &errPaymentRepo{}, bookings: &errBookingReader{err: errors.New("bk")}, bookingWriter: &errBookingWriter{}, merchantLogin: "m", password1: "p1", password2: "p2", isTest: "1", baseURL: "http://x"}
-	if _, err := s.CreatePayment(context.Background(), 1, 2, "1.00", "x", false, nil, nil); err == nil {
+	if _, err := s.CreatePayment(context.Background(), 1, 2, "1.00", "x", nil, false, nil, nil); err == nil {
 		t.Fatal("expected err")
 	}
 	if _, err := s.CreateSubscription(context.Background(), 1, "1.00"); err == nil {

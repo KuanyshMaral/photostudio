@@ -26,6 +26,7 @@ var (
 	ErrAmountMismatch   = errors.New("amount mismatch")
 	ErrReplayDetected   = errors.New("replay detected")
 	ErrPaymentNotFound  = errors.New("payment not found")
+	ErrMisconfigured    = errors.New("robokassa is misconfigured")
 )
 
 type Service struct {
@@ -87,9 +88,12 @@ func envOrDefault(name, def string) string {
 	return def
 }
 
-func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, amount string, description string, recurring bool, previousInvoiceID *int64, subscriptionID *string) (*InitPaymentResponse, error) {
+func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, amount string, description string, shpParams map[string]string, recurring bool, previousInvoiceID *int64, subscriptionID *string) (*InitPaymentResponse, error) {
 	if s.repo == nil {
 		return nil, fmt.Errorf("payment repository is not configured")
+	}
+	if err := s.validateInitConfig(); err != nil {
+		return nil, err
 	}
 	bk, err := s.bookings.GetByID(ctx, bookingID)
 	if err != nil {
@@ -104,6 +108,9 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 
 	invID := time.Now().UnixNano()
 	shp := map[string]string{"user_id": strconv.FormatInt(userID, 10), "booking_id": strconv.FormatInt(bookingID, 10)}
+	for k, v := range shpParams {
+		shp[k] = v
+	}
 	if subscriptionID != nil {
 		shp["subscription_id"] = *subscriptionID
 	}
@@ -160,6 +167,9 @@ func (s *Service) CreateSubscription(ctx context.Context, userID int64, amount s
 }
 
 func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringSubscription, amount string, previous *int64) (*InitPaymentResponse, error) {
+	if err := s.validateInitConfig(); err != nil {
+		return nil, err
+	}
 	invID := time.Now().UnixNano()
 	shp := map[string]string{"user_id": strconv.FormatInt(sub.UserID, 10), "subscription_id": sub.ID}
 	sig := s.generateSignatureForInit(amount, invID, shp)
@@ -202,6 +212,9 @@ func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringS
 
 // Legacy init endpoint compatibility.
 func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*InitPaymentResponse, error) {
+	if err := s.validateInitConfig(); err != nil {
+		return nil, err
+	}
 	if _, err := s.bookings.GetByID(ctx, req.BookingID); err != nil {
 		return nil, fmt.Errorf("booking check failed: %w", err)
 	}
@@ -240,6 +253,9 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 }
 
 func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID int64, signature string, shpParams map[string]string, rawBody string) (string, error) {
+	if err := s.validateCallbackConfig(); err != nil {
+		return "", err
+	}
 	if !strings.EqualFold(signature, s.generateSignatureForResult(outSum, invID, shpParams)) {
 		return "", ErrInvalidSignature
 	}
@@ -312,6 +328,9 @@ func (s *Service) handleResultV2(ctx context.Context, outSum string, invID int64
 }
 
 func (s *Service) HandleSuccessCallback(ctx context.Context, outSum string, invID int64, signature string, shpParams map[string]string, rawBody string) (bool, error) {
+	if err := s.validateInitConfig(); err != nil {
+		return false, err
+	}
 	valid := strings.EqualFold(signature, s.generateSignatureForSuccess(outSum, invID, shpParams))
 	if !valid {
 		return false, ErrInvalidSignature
@@ -345,6 +364,20 @@ func (s *Service) HandleSuccessCallback(ctx context.Context, outSum string, invI
 		return false, err
 	}
 	return true, nil
+}
+
+func (s *Service) validateInitConfig() error {
+	if strings.TrimSpace(s.merchantLogin) == "" || strings.TrimSpace(s.password1) == "" {
+		return ErrMisconfigured
+	}
+	return nil
+}
+
+func (s *Service) validateCallbackConfig() error {
+	if strings.TrimSpace(s.password2) == "" {
+		return ErrMisconfigured
+	}
+	return nil
 }
 
 func (s *Service) FailPayment(ctx context.Context, invID int64) error {

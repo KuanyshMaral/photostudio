@@ -103,7 +103,7 @@ func TestCreatePaymentAndFailPayment(t *testing.T) {
 	_ = db.Create(&booking.Booking{ID: 12, UserID: 2, TotalPrice: 150, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
 	bRepo := booking.NewBookingRepository(db)
 	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
-	resp, err := svc.CreatePayment(context.Background(), 2, 12, "150.00", "x", false, nil, nil)
+	resp, err := svc.CreatePayment(context.Background(), 2, 12, "150.00", "x", nil, false, nil, nil)
 	if err != nil || resp.InvID == 0 {
 		t.Fatalf("unexpected %v", err)
 	}
@@ -157,7 +157,7 @@ func TestCreatePaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
 	svc.resultURL = "http://example.com/result"
 	svc.successURL = "http://example.com/success"
 	svc.failURL = "http://example.com/fail"
-	resp, err := svc.CreatePayment(context.Background(), 12, 13, "100.00", "x", false, nil, nil)
+	resp, err := svc.CreatePayment(context.Background(), 12, 13, "100.00", "x", nil, false, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,5 +235,30 @@ func TestLegacyInitPaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
 	}
 	if !strings.Contains(resp.PaymentURL, "ResultURL=") || !strings.Contains(resp.PaymentURL, "SuccessURL=") || !strings.Contains(resp.PaymentURL, "FailURL=") || !strings.Contains(resp.PaymentURL, "Encoding=utf-8") {
 		t.Fatalf("expected callback URLs + encoding in legacy payment URL: %s", resp.PaymentURL)
+	}
+}
+
+func TestCreatePaymentURLIncludesPassedShpParams(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:payment_shp?mode=memory&cache=private"), &gorm.Config{})
+	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
+	_ = db.Create(&auth.User{ID: 22, Email: "shp@u.kz"}).Error
+	_ = db.Create(&booking.Booking{ID: 23, UserID: 22, TotalPrice: 100, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
+	bRepo := booking.NewBookingRepository(db)
+	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
+
+	resp, err := svc.CreatePayment(context.Background(), 22, 23, "100.00", "x", map[string]string{"custom": "v"}, false, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resp.PaymentURL, "Shp_custom=v") {
+		t.Fatalf("expected custom shp parameter in payment URL: %s", resp.PaymentURL)
+	}
+}
+
+func TestHandleResultCallbackFailsOnMissingPassword2(t *testing.T) {
+	svc := &Service{password2: ""}
+	_, err := svc.HandleResultCallback(context.Background(), "100.00", 1, "sig", nil, "")
+	if !errors.Is(err, ErrMisconfigured) {
+		t.Fatalf("expected ErrMisconfigured, got %v", err)
 	}
 }
