@@ -117,3 +117,20 @@ func TestResultCallbackBadRequestOnMissingParams(t *testing.T) {
 		t.Fatalf("expected 400 got %d", w.Code)
 	}
 }
+
+func TestCreatePaymentInvalidAmountReturnsBadRequest(t *testing.T) {
+	_, h, _ := setupPaymentTest(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	g := r.Group("/")
+	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
+	h.RegisterProtectedRoutes(g)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"out_sum":"-1"}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 got %d body=%s", w.Code, w.Body.String())
+	}
+}
