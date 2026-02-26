@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -24,6 +25,7 @@ var (
 	ErrInvalidSignature = errors.New("invalid signature")
 	ErrAmountMismatch   = errors.New("amount mismatch")
 	ErrReplayDetected   = errors.New("replay detected")
+	ErrPaymentNotFound  = errors.New("payment not found")
 )
 
 type Service struct {
@@ -43,6 +45,7 @@ type Service struct {
 	frontSuccess  string
 	frontFail     string
 	isTest        string
+	hashAlgo      string
 }
 
 func NewService(payments paymentRepo, bookings bookingReader, bookingWriter bookingPaymentWriter, loggerf func(format string, args ...interface{}), repo ...*Repository) *Service {
@@ -72,7 +75,8 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		baseURL:   envOrDefault("ROBOKASSA_BASE_URL", "https://auth.robokassa.ru/Merchant/Index.aspx"),
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
-		isTest: isTest,
+		isTest:   isTest,
+		hashAlgo: strings.ToLower(envOrDefault("ROBOKASSA_HASH_ALGO", "md5")),
 	}
 }
 
@@ -112,6 +116,7 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	u.Set("Description", description)
 	u.Set("SignatureValue", sig)
 	u.Set("IsTest", s.isTest)
+	u.Set("Encoding", "utf-8")
 	if s.resultURL != "" {
 		u.Set("ResultURL", s.resultURL)
 	}
@@ -165,6 +170,7 @@ func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringS
 	u.Set("Description", "Monthly subscription")
 	u.Set("SignatureValue", sig)
 	u.Set("IsTest", s.isTest)
+	u.Set("Encoding", "utf-8")
 	u.Set("Recurring", "true")
 	if s.resultURL != "" {
 		u.Set("ResultURL", s.resultURL)
@@ -208,19 +214,29 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	u.Set("Description", req.Description)
 	u.Set("SignatureValue", signature)
 	u.Set("IsTest", s.isTest)
+	u.Set("Encoding", "utf-8")
+	if s.resultURL != "" {
+		u.Set("ResultURL", s.resultURL)
+	}
+	if s.successURL != "" {
+		u.Set("SuccessURL", s.successURL)
+	}
+	if s.failURL != "" {
+		u.Set("FailURL", s.failURL)
+	}
 	for k, v := range req.ShpParams {
 		u.Set("Shp_"+k, v)
 	}
 	paymentURL := s.baseURL + "?" + u.Encode()
 	shpRaw, _ := json.Marshal(req.ShpParams)
-	p := &RobokassaPayment{BookingID: req.BookingID, OutSum: req.OutSum, InvID: invID, Description: req.Description, Status: RobokassaPaymentStatus(booking.PaymentUnpaid), Signature: signature, RobokassaURL: paymentURL, ShpParams: string(shpRaw)}
+	p := &RobokassaPayment{BookingID: req.BookingID, OutSum: req.OutSum, InvID: invID, Description: req.Description, Status: PaymentStatusCreated, Signature: signature, RobokassaURL: paymentURL, ShpParams: string(shpRaw)}
 	if err := s.payments.Create(ctx, p); err != nil {
 		return nil, err
 	}
 	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, req.BookingID, booking.PaymentUnpaid); err != nil {
 		return nil, err
 	}
-	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: signature, Status: string(booking.PaymentUnpaid)}, nil
+	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: signature, Status: string(PaymentStatusCreated)}, nil
 }
 
 func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID int64, signature string, shpParams map[string]string, rawBody string) (string, error) {
@@ -228,14 +244,26 @@ func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID
 		return "", ErrInvalidSignature
 	}
 	if s.repo != nil {
-		return s.handleResultV2(ctx, outSum, invID)
+		ack, err := s.handleResultV2(ctx, outSum, invID)
+		if err == nil {
+			return ack, nil
+		}
+		if !errors.Is(err, ErrPaymentNotFound) {
+			return "", err
+		}
+	}
+	if s.payments == nil {
+		return "", ErrInvalidSignature
 	}
 	p, err := s.payments.GetByInvID(ctx, invID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", ErrInvalidSignature
+		}
 		return "", err
 	}
 	if !amountEqual(outSum, p.OutSum) {
-		if err := s.payments.UpdateStatus(ctx, invID, RobokassaPaymentStatus(booking.PaymentUnpaid), rawBody, "amount mismatch", nil); err != nil {
+		if err := s.payments.UpdateStatus(ctx, invID, PaymentStatusFailed, rawBody, "amount mismatch", nil); err != nil {
 			return "", err
 		}
 		return "", ErrAmountMismatch
@@ -254,7 +282,7 @@ func (s *Service) handleResultV2(ctx context.Context, outSum string, invID int64
 	p, err := s.repo.GetPaymentByInvoiceID(ctx, invID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", ErrInvalidSignature
+			return "", ErrPaymentNotFound
 		}
 		return "", err
 	}
@@ -278,7 +306,7 @@ func (s *Service) handleResultV2(ctx context.Context, outSum string, invID int64
 		}
 	}
 	if !changed {
-		return "", ErrReplayDetected
+		s.loggerf("level=warn msg=duplicate robokassa result callback inv_id=%d", invID)
 	}
 	return "OK" + strconv.FormatInt(invID, 10), nil
 }
@@ -290,16 +318,24 @@ func (s *Service) HandleSuccessCallback(ctx context.Context, outSum string, invI
 	}
 	if s.repo != nil {
 		p, err := s.repo.GetPaymentByInvoiceID(ctx, invID)
-		if err != nil {
+		if err == nil {
+			if !amountEqual(outSum, p.Amount) {
+				return false, ErrAmountMismatch
+			}
+			return true, nil
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, err
 		}
-		if !amountEqual(outSum, p.Amount) {
-			return false, ErrAmountMismatch
-		}
-		return true, nil
+	}
+	if s.payments == nil {
+		return false, ErrInvalidSignature
 	}
 	p, err := s.payments.GetByInvID(ctx, invID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, ErrInvalidSignature
+		}
 		return false, err
 	}
 	if !amountEqual(outSum, p.OutSum) {
@@ -334,17 +370,17 @@ func (s *Service) GetMySubscription(ctx context.Context, userID int64) (*Recurri
 func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{s.merchantLogin, outSum, strconv.FormatInt(invID, 10), s.password1}
 	parts = append(parts, flattenShpParams(shpParams)...)
-	return md5Hex(strings.Join(parts, ":"))
+	return s.hashHex(strings.Join(parts, ":"))
 }
 func (s *Service) generateSignatureForResult(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{outSum, strconv.FormatInt(invID, 10), s.password2}
 	parts = append(parts, flattenShpParams(shpParams)...)
-	return md5Hex(strings.Join(parts, ":"))
+	return s.hashHex(strings.Join(parts, ":"))
 }
 func (s *Service) generateSignatureForSuccess(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{outSum, strconv.FormatInt(invID, 10), s.password1}
 	parts = append(parts, flattenShpParams(shpParams)...)
-	return md5Hex(strings.Join(parts, ":"))
+	return s.hashHex(strings.Join(parts, ":"))
 }
 
 func flattenShpParams(shp map[string]string) []string {
@@ -370,7 +406,16 @@ func amountEqual(a, b string) bool {
 	}
 	return ar.Cmp(br) == 0
 }
-func md5Hex(s string) string {
-	h := md5.Sum([]byte(s))
-	return strings.ToUpper(hex.EncodeToString(h[:]))
+func (s *Service) hashHex(input string) string {
+	switch strings.ToLower(s.hashAlgo) {
+	case "", "md5":
+		h := md5.Sum([]byte(input))
+		return strings.ToUpper(hex.EncodeToString(h[:]))
+	case "sha256", "sha-256":
+		h := sha256.Sum256([]byte(input))
+		return strings.ToUpper(hex.EncodeToString(h[:]))
+	default:
+		h := md5.Sum([]byte(input))
+		return strings.ToUpper(hex.EncodeToString(h[:]))
+	}
 }

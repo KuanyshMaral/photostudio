@@ -34,12 +34,16 @@ func (m *mockBookingWriter) UpdatePaymentStatusSystem(ctx context.Context, booki
 
 type mockPaymentRepo struct {
 	payment             *RobokassaPayment
+	created             *RobokassaPayment
 	updateStatusCalls   int
 	markPaidCalls       int
 	pendingUpdateCalled int
 }
 
-func (m *mockPaymentRepo) Create(ctx context.Context, p *RobokassaPayment) error { return nil }
+func (m *mockPaymentRepo) Create(ctx context.Context, p *RobokassaPayment) error {
+	m.created = p
+	return nil
+}
 func (m *mockPaymentRepo) GetByInvID(ctx context.Context, invID int64) (*RobokassaPayment, error) {
 	if m.payment == nil || m.payment.InvID != invID {
 		return nil, errors.New("not found")
@@ -138,8 +142,8 @@ func TestHandleResultCallback_ReplayDetected(t *testing.T) {
 	svc.password2 = "p2"
 	sig := svc.generateSignatureForResult("100.00", 555, nil)
 	_, err := svc.HandleResultCallback(context.Background(), "100.00", 555, sig, nil, "")
-	if !errors.Is(err, ErrReplayDetected) {
-		t.Fatalf("expected replay error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected idempotent OK, got %v", err)
 	}
 }
 
@@ -157,7 +161,79 @@ func TestCreatePaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(resp.PaymentURL, "ResultURL=") || !strings.Contains(resp.PaymentURL, "SuccessURL=") || !strings.Contains(resp.PaymentURL, "FailURL=") {
+	if !strings.Contains(resp.PaymentURL, "ResultURL=") || !strings.Contains(resp.PaymentURL, "SuccessURL=") || !strings.Contains(resp.PaymentURL, "FailURL=") || !strings.Contains(resp.PaymentURL, "Encoding=utf-8") {
 		t.Fatalf("expected callback URLs in payment URL: %s", resp.PaymentURL)
+	}
+}
+
+func TestInitPayment_UsesCreatedStatusForLegacyPayment(t *testing.T) {
+	repo := &mockPaymentRepo{}
+	svc := &Service{
+		payments:      repo,
+		bookings:      &mockBookingReader{},
+		bookingWriter: &mockBookingWriter{},
+		merchantLogin: "merchant",
+		password1:     "p1",
+		loggerf:       func(string, ...interface{}) {},
+		baseURL:       "https://auth.robokassa.ru/Merchant/Index.aspx",
+		isTest:        "1",
+	}
+
+	resp, err := svc.InitPayment(context.Background(), InitPaymentRequest{
+		BookingID:   77,
+		OutSum:      "25000",
+		Description: "invoice",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if repo.created == nil {
+		t.Fatal("expected payment to be persisted")
+	}
+	if repo.created.Status != PaymentStatusCreated {
+		t.Fatalf("expected status %q, got %q", PaymentStatusCreated, repo.created.Status)
+	}
+	if resp.Status != string(PaymentStatusCreated) {
+		t.Fatalf("expected response status %q, got %q", PaymentStatusCreated, resp.Status)
+	}
+}
+
+func TestSignatureHashAlgorithmSHA256(t *testing.T) {
+	t.Setenv("ROBOKASSA_HASH_ALGO", "sha256")
+	t.Setenv("ROBOKASSA_IS_TEST", "1")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_1", "p1")
+	s := NewService(&mockPaymentRepo{}, &mockBookingReader{}, &mockBookingWriter{}, nil)
+	s.merchantLogin = "m"
+	if s.hashAlgo != "sha256" {
+		t.Fatalf("expected hash algorithm sha256, got %s", s.hashAlgo)
+	}
+	got := s.generateSignatureForInit("100.00", 10, map[string]string{"k": "v"})
+	if len(got) != 64 {
+		t.Fatalf("expected SHA256 length 64, got %d", len(got))
+	}
+}
+
+func TestLegacyInitPaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
+	repo := &mockPaymentRepo{}
+	svc := &Service{
+		payments:      repo,
+		bookings:      &mockBookingReader{},
+		bookingWriter: &mockBookingWriter{},
+		merchantLogin: "merchant",
+		password1:     "p1",
+		loggerf:       func(string, ...interface{}) {},
+		baseURL:       "https://auth.robokassa.ru/Merchant/Index.aspx",
+		isTest:        "1",
+		resultURL:     "http://example.com/result",
+		successURL:    "http://example.com/success",
+		failURL:       "http://example.com/fail",
+	}
+
+	resp, err := svc.InitPayment(context.Background(), InitPaymentRequest{BookingID: 77, OutSum: "25000", Description: "invoice"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(resp.PaymentURL, "ResultURL=") || !strings.Contains(resp.PaymentURL, "SuccessURL=") || !strings.Contains(resp.PaymentURL, "FailURL=") || !strings.Contains(resp.PaymentURL, "Encoding=utf-8") {
+		t.Fatalf("expected callback URLs + encoding in legacy payment URL: %s", resp.PaymentURL)
 	}
 }
