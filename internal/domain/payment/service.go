@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -51,7 +50,6 @@ type Service struct {
 	frontSuccess  string
 	frontFail     string
 	isTest        string
-	hashAlgo      string
 }
 
 func NewService(payments paymentRepo, bookings bookingReader, bookingWriter bookingPaymentWriter, loggerf func(format string, args ...interface{}), repo ...*Repository) *Service {
@@ -63,41 +61,48 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		r = repo[0]
 	}
 	isTest := normalizeRobokassaIsTest(envOrDefault("ROBOKASSA_IS_TEST", "0"))
-	password1 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_1"))
-	password2 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_2"))
+	password1, password2 := selectRobokassaPasswords(isTest)
+	merchantLogin := strings.TrimSpace(os.Getenv("ROBOKASSA_MERCHANT_LOGIN"))
+	baseURL := robokassaBaseURL(merchantLogin)
 	if isTest == "1" {
-		password1 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_1"))
-		password2 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_2"))
-	}
-	if password1 == "" {
-		password1 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD1"))
-	}
-	if password2 == "" {
-		password2 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD2"))
+		if v := strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_BASE_URL")); v != "" {
+			baseURL = v
+		}
+	} else if v := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_BASE_URL")); v != "" {
+		baseURL = v
 	}
 	return &Service{payments: payments, bookings: bookings, bookingWriter: bookingWriter, repo: r, loggerf: loggerf,
-		merchantLogin: strings.TrimSpace(os.Getenv("ROBOKASSA_MERCHANT_LOGIN")),
+		merchantLogin: merchantLogin,
 		password1:     password1, password2: password2,
-		baseURL:   robokassaBaseURL(os.Getenv("ROBOKASSA_MERCHANT_LOGIN")),
+		baseURL:   baseURL,
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
 		isTest:   isTest,
-		hashAlgo: resolveRobokassaHashAlgorithm(),
 	}
 }
 
-func resolveRobokassaHashAlgorithm() string {
-	for _, key := range []string{"ROBOKASSA_HASH_ALGO", "ROBOKASSA_HASH_ALGORITHM", "ROBOKASSA_CHECKOUT_HASH"} {
-		if val := strings.ToLower(strings.TrimSpace(os.Getenv(key))); val != "" {
-			switch val {
-			case "sha256", "sha-256":
-				return "sha256"
-			case "md5":
-				return "md5"
-			}
+func selectRobokassaPasswords(isTest string) (string, string) {
+	if isTest == "1" {
+		p1 := strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_1"))
+		if p1 == "" {
+			p1 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD1"))
 		}
+		p2 := strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_2"))
+		if p2 == "" {
+			p2 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD2"))
+		}
+		return p1, p2
 	}
-	return "md5"
+
+	p1 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_1"))
+	if p1 == "" {
+		p1 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD1"))
+	}
+	p2 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_2"))
+	if p2 == "" {
+		p2 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD2"))
+	}
+	return p1, p2
 }
 
 func robokassaBaseURL(merchantLogin string) string {
@@ -468,7 +473,6 @@ func (s *Service) GetMySubscription(ctx context.Context, userID int64) (*Recurri
 
 func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{s.merchantLogin, outSum, strconv.FormatInt(invID, 10), s.password1}
-	parts = append(parts, flattenShpParams(shpParams)...)
 	return s.hashHex(strings.Join(parts, ":"))
 }
 func (s *Service) generateSignatureForResult(outSum string, invID int64, shpParams map[string]string) string {
@@ -506,17 +510,8 @@ func amountEqual(a, b string) bool {
 	return ar.Cmp(br) == 0
 }
 func (s *Service) hashHex(input string) string {
-	switch strings.ToLower(s.hashAlgo) {
-	case "", "md5":
-		h := md5.Sum([]byte(input))
-		return strings.ToUpper(hex.EncodeToString(h[:]))
-	case "sha256", "sha-256":
-		h := sha256.Sum256([]byte(input))
-		return strings.ToUpper(hex.EncodeToString(h[:]))
-	default:
-		h := md5.Sum([]byte(input))
-		return strings.ToUpper(hex.EncodeToString(h[:]))
-	}
+	h := md5.Sum([]byte(input))
+	return hex.EncodeToString(h[:])
 }
 
 func sanitizeShpParams(shp map[string]string) map[string]string {
