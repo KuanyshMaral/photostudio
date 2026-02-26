@@ -52,8 +52,8 @@ type Room struct {
 	RoomType        RoomType  `json:"room_type" validate:"required"`
 	PricePerHourMin float64   `json:"price_per_hour_min" validate:"required,gte=0"`
 	PricePerHourMax *float64  `json:"price_per_hour_max,omitempty"`
-	Amenities       []string  `gorm:"type:jsonb" json:"amenities,omitempty"`
-	Photos          []string  `gorm:"type:jsonb" json:"photos,omitempty"`
+	Amenities       []string  `gorm:"type:text[]" json:"amenities,omitempty"`
+	Photos          []string  `gorm:"type:text[]" json:"photos,omitempty"`
 	IsActive        bool      `json:"is_active"`
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
