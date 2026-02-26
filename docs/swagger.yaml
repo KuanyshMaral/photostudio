@@ -2919,7 +2919,7 @@ paths:
       summary: Добавить оборудование в комнату
       tags:
       - Catalog - Оборудование
-  /api/v1/studios:
+  /studios:
     get:
       consumes:
       - application/json
@@ -3039,7 +3039,7 @@ paths:
       summary: Создать новую студию
       tags:
       - Catalog - Студии
-  /api/v1/studios/{id}:
+  /studios/{id}:
     get:
       consumes:
       - application/json
@@ -3135,7 +3135,7 @@ paths:
       summary: Обновить студию
       tags:
       - Catalog - Студии
-  /api/v1/studios/{id}/photos:
+  /studios/{id}/photos:
     post:
       consumes:
       - multipart/form-data
@@ -3187,7 +3187,7 @@ paths:
       summary: Загрузить фотографии студии
       tags:
       - Catalog - Фотографии
-  /api/v1/studios/{id}/rooms:
+  /studios/{id}/rooms:
     post:
       consumes:
       - application/json
@@ -3245,7 +3245,7 @@ paths:
       summary: Создать новую комнату
       tags:
       - Catalog - Комнаты
-  /api/v1/studios/{id}/working-hours:
+  /studios/{id}/working-hours:
     get:
       consumes:
       - application/json
@@ -3337,7 +3337,7 @@ paths:
       summary: Обновить часы работы студии
       tags:
       - Catalog - Часы работы
-  /api/v1/studios/{id}/working-hours/v2:
+  /studios/{id}/working-hours/v2:
     get:
       consumes:
       - application/json
@@ -3377,7 +3377,7 @@ paths:
       summary: Получить часы работы студии (v2)
       tags:
       - Catalog - Часы работы
-  /api/v1/studios/my:
+  /studios/my:
     get:
       consumes:
       - application/json

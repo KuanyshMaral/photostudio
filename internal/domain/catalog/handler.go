@@ -47,7 +47,7 @@ func NewHandler(service *Service, userRepo *auth.UserRepository) *Handler {
 // @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий и информацией о пагинации"
 // @Failure 400 {object} map[string]interface{} "Некорректные параметры запроса"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios [get]
+// @Router /studios [get]
 func (h *Handler) GetStudios(c *gin.Context) {
 	var f StudioFilters
 
@@ -120,7 +120,7 @@ func (h *Handler) GetStudios(c *gin.Context) {
 // @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
 // @Failure 404 {object} map[string]interface{} "Студия не найдена"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id} [get]
+// @Router /studios/{id} [get]
 func (h *Handler) GetStudioByID(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -170,7 +170,7 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 // @Failure 404 {object} map[string]interface{} "Студия не найдена"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
 // @Deprecated
-// @Router /api/v1/studios/{id}/working-hours [get]
+// @Router /studios/{id}/working-hours [get]
 func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -208,7 +208,7 @@ func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 // @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
 // @Failure 404 {object} map[string]interface{} "Студия не найдена"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id}/working-hours/v2 [get]
+// @Router /studios/{id}/working-hours/v2 [get]
 func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
 	studioIDStr := c.Param("id")
 	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
@@ -244,7 +244,7 @@ func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id}/working-hours [put]
+// @Router /studios/{id}/working-hours [put]
 func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -287,7 +287,7 @@ func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
 // @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий владельца"
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/my [get]
+// @Router /studios/my [get]
 func (h *Handler) GetMyStudios(c *gin.Context) {
 	userID := c.GetInt64("user_id")
 	if userID == 0 {
@@ -317,7 +317,7 @@ func (h *Handler) GetMyStudios(c *gin.Context) {
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 403 {object} map[string]interface{} "Пользователь не является верифицированным владельцем студии"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios [post]
+// @Router /studios [post]
 func (h *Handler) CreateStudio(c *gin.Context) {
 	var req CreateStudioRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -400,7 +400,7 @@ func (h *Handler) CreateStudio(c *gin.Context) {
 // @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
 // @Failure 404 {object} map[string]interface{} "Студия не найдена"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id} [put]
+// @Router /studios/{id} [put]
 func (h *Handler) UpdateStudio(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -557,7 +557,7 @@ func (h *Handler) DeleteRoom(c *gin.Context) {
 // @Failure 400 {object} map[string]interface{} "Некорректный формат запроса, файл слишком большой или недопустимый формат"
 // @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id}/photos [post]
+// @Router /studios/{id}/photos [post]
 func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 	// 1. Extract studio ID from URL param
 	studioIDStr := c.Param("id")
@@ -755,7 +755,7 @@ func (h *Handler) GetRoomByID(c *gin.Context) {
 // @Failure 403 {object} map[string]interface{} "Недостаточно прав для добавления комнат в эту студию"
 // @Failure 404 {object} map[string]interface{} "Студия не найдена"
 // @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/studios/{id}/rooms [post]
+// @Router /studios/{id}/rooms [post]
 func (h *Handler) CreateRoom(c *gin.Context) {
 	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
