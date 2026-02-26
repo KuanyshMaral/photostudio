@@ -47,3 +47,33 @@ func TestSuccessAndFailEndpoints(t *testing.T) {
 		t.Fatalf("expected 200 got %d", fw.Code)
 	}
 }
+
+func TestSuccessEndpointAcceptsLegacyInitPayment(t *testing.T) {
+	s, h, _ := setupPaymentTest(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	g := r.Group("/")
+	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
+	h.RegisterProtectedRoutes(g)
+
+	initBody, _ := json.Marshal(InitPaymentRequest{BookingID: 10, OutSum: "100.00", Description: "legacy"})
+	iw := httptest.NewRecorder()
+	ireq := httptest.NewRequest(http.MethodPost, "/payments/robokassa/init", bytes.NewReader(initBody))
+	ireq.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(iw, ireq)
+	if iw.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", iw.Code)
+	}
+	var ir InitPaymentResponse
+	_ = json.Unmarshal(iw.Body.Bytes(), &ir)
+
+	sig := s.generateSignatureForSuccess("100.00", ir.InvID, map[string]string{})
+	succBody, _ := json.Marshal(PaymentCallbackRequest{OutSum: "100.00", InvID: ir.InvID, SignatureValue: sig})
+	sw := httptest.NewRecorder()
+	sreq := httptest.NewRequest(http.MethodPost, "/payments/robokassa/success", bytes.NewReader(succBody))
+	sreq.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(sw, sreq)
+	if sw.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d", sw.Code)
+	}
+}

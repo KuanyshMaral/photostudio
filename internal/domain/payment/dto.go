@@ -9,7 +9,8 @@ type InitPaymentRequest struct {
 
 type CreatePaymentRequest struct {
 	BookingID         int64   `json:"booking_id" binding:"required"`
-	Amount            string  `json:"amount" binding:"required"`
+	Amount            string  `json:"amount"`
+	OutSum            string  `json:"out_sum"`
 	Description       string  `json:"description"`
 	Recurring         bool    `json:"recurring"`
 	PreviousInvoiceID *int64  `json:"previous_invoice_id"`

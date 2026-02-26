@@ -29,29 +29,37 @@ func NewHandler(service *Service, loggerf func(format string, args ...interface{
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
-// @Param        body body InitPaymentRequest true "Payment init payload"
+// @Param        body body CreatePaymentRequest true "Payment init payload"
 // @Success      200 {object} InitPaymentResponse
 // @Failure      400 {object} ErrorResponse
 // @Failure      500 {object} ErrorResponse
 // @Router       /payments/robokassa/create [post]
 func (h *Handler) CreatePayment(c *gin.Context) {
-	var req InitPaymentRequest
+	var req CreatePaymentRequest
 	body, _ := io.ReadAll(c.Request.Body)
 	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
-	h.loggerf("level=info msg=robokassa init request request_body=%s", string(body))
+	h.loggerf("level=info msg=robokassa create request request_body=%s", string(body))
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.loggerf("level=error msg=invalid robokassa init payload err=%v", err)
+		h.loggerf("level=error msg=invalid robokassa create payload err=%v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	resp, err := h.service.InitPayment(c.Request.Context(), req)
+	amount := strings.TrimSpace(req.Amount)
+	if amount == "" {
+		amount = strings.TrimSpace(req.OutSum)
+	}
+	if amount == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount or out_sum is required"})
+		return
+	}
+	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
 	if err != nil {
-		h.loggerf("level=error msg=robokassa init failed request=%+v err=%v", req, err)
+		h.loggerf("level=error msg=robokassa create failed request=%+v err=%v", req, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	h.loggerf("level=info msg=robokassa init response response=%+v", resp)
-	c.JSON(http.StatusOK, resp)
+	h.loggerf("level=info msg=robokassa create response response=%+v", resp)
+	response.Success(c, http.StatusOK, resp)
 }
 
 func (h *Handler) CreateSubscription(c *gin.Context) {
@@ -93,12 +101,18 @@ func (h *Handler) ResultCallback(c *gin.Context) {
 		return
 	}
 	outSum := c.PostForm("OutSum")
-	invID, err := strconv.ParseInt(c.PostForm("InvId"), 10, 64)
+	invIDRaw := c.PostForm("InvId")
+	signature := c.PostForm("SignatureValue")
+	if strings.TrimSpace(outSum) == "" || strings.TrimSpace(invIDRaw) == "" || strings.TrimSpace(signature) == "" {
+		c.String(http.StatusBadRequest, "bad request")
+		return
+	}
+	invID, err := strconv.ParseInt(invIDRaw, 10, 64)
 	if err != nil {
 		c.String(http.StatusBadRequest, "bad request")
 		return
 	}
-	ack, err := h.service.HandleResultCallback(c.Request.Context(), outSum, invID, c.PostForm("SignatureValue"), collectShp(c), string(rawBody))
+	ack, err := h.service.HandleResultCallback(c.Request.Context(), outSum, invID, signature, collectShp(c), string(rawBody))
 	if err != nil {
 		if err == ErrInvalidSignature || err == ErrAmountMismatch || err == ErrReplayDetected {
 			c.String(http.StatusForbidden, "forbidden")

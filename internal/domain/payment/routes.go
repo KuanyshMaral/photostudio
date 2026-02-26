@@ -1,6 +1,10 @@
 package payment
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
 
 func (h *Handler) RegisterPublicWebhookRoutes(r *gin.Engine) {
 	w := r.Group("/webhooks/robokassa")
@@ -25,4 +29,16 @@ func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
 	}
 }
 
-func (h *Handler) InitPayment(c *gin.Context) { h.CreatePayment(c) }
+func (h *Handler) InitPayment(c *gin.Context) {
+	var req InitPaymentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	resp, err := h.service.InitPayment(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}

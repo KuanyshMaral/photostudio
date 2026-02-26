@@ -54,7 +54,7 @@ func TestInitPaymentRouteAndReplayForbidden(t *testing.T) {
 	h.RegisterProtectedRoutes(g)
 	h.RegisterPublicWebhookRoutes(r)
 
-	b, _ := json.Marshal(CreatePaymentRequest{BookingID: 10, Amount: "100.00"})
+	b, _ := json.Marshal(InitPaymentRequest{BookingID: 10, OutSum: "100.00"})
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/init", bytes.NewReader(b))
 	req.Header.Set("Content-Type", "application/json")
@@ -63,23 +63,21 @@ func TestInitPaymentRouteAndReplayForbidden(t *testing.T) {
 		t.Fatalf("init code=%d", w.Code)
 	}
 
-	var cr struct {
-		Data InitPaymentResponse `json:"data"`
-	}
+	var cr InitPaymentResponse
 	_ = json.Unmarshal(w.Body.Bytes(), &cr)
-	sig := s.generateSignatureForResult("100.00", cr.Data.InvID, map[string]string{})
+	sig := s.generateSignatureForResult("100.00", cr.InvID, map[string]string{})
 	first := httptest.NewRecorder()
-	firstReq := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("OutSum=100.00&InvId="+fmt.Sprintf("%d", cr.Data.InvID)+"&SignatureValue="+sig))
+	firstReq := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("OutSum=100.00&InvId="+fmt.Sprintf("%d", cr.InvID)+"&SignatureValue="+sig))
 	firstReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.ServeHTTP(first, firstReq)
 	if first.Code != http.StatusOK {
 		t.Fatalf("first=%d", first.Code)
 	}
 	replay := httptest.NewRecorder()
-	replayReq := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("OutSum=100.00&InvId="+fmt.Sprintf("%d", cr.Data.InvID)+"&SignatureValue="+sig))
+	replayReq := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("OutSum=100.00&InvId="+fmt.Sprintf("%d", cr.InvID)+"&SignatureValue="+sig))
 	replayReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	r.ServeHTTP(replay, replayReq)
-	if replay.Code != http.StatusForbidden {
+	if replay.Code != http.StatusOK {
 		t.Fatalf("replay=%d", replay.Code)
 	}
 }
@@ -102,5 +100,19 @@ func TestCollectShpWithQueryAndForm(t *testing.T) {
 	r.ServeHTTP(w, req)
 	if w.Code != 200 {
 		t.Fatal(w.Code)
+	}
+}
+
+func TestResultCallbackBadRequestOnMissingParams(t *testing.T) {
+	_, h, _ := setupPaymentTest(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	h.RegisterPublicWebhookRoutes(r)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("InvId=123"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 got %d", w.Code)
 	}
 }
