@@ -295,6 +295,18 @@ func TestNormalizeAmount(t *testing.T) {
 	}
 }
 
+func TestGenerateInvoiceID_RobokassaRange(t *testing.T) {
+	for i := 0; i < 1000; i++ {
+		id := generateInvoiceID()
+		if id <= 0 {
+			t.Fatalf("invoice id must be positive, got %d", id)
+		}
+		if id > 2_147_483_647 {
+			t.Fatalf("invoice id must fit int32 range for robokassa, got %d", id)
+		}
+	}
+}
+
 func TestCreatePayment_PreventsShpOverrideOfSystemKeys(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file:payment_shp_override?mode=memory&cache=private"), &gorm.Config{})
 	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
