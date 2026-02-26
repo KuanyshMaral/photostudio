@@ -7,6 +7,7 @@ import (
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/pkg/response"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -32,8 +33,16 @@ func NewHandler(service *Service) *Handler {
 // @Failure		500 {object} map[string]interface{} "Внутренняя ошибка сервера"
 // @Router		/bookings [post]
 func (h *Handler) CreateBooking(c *gin.Context) {
-	var req CreateBookingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var payload struct {
+		RoomID    int64  `json:"room_id" binding:"required"`
+		StudioID  int64  `json:"studio_id" binding:"required"`
+		UserID    int64  `json:"user_id"`
+		StartTime string `json:"start_time" binding:"required"`
+		EndTime   string `json:"end_time" binding:"required"`
+		Notes     string `json:"notes,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
@@ -42,6 +51,38 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 			},
 		})
 		return
+	}
+
+	startTime, err := parseBookingDateTime(payload.StartTime)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "VALIDATION_ERROR",
+				"message": "Invalid start_time format",
+			},
+		})
+		return
+	}
+
+	endTime, err := parseBookingDateTime(payload.EndTime)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "VALIDATION_ERROR",
+				"message": "Invalid end_time format",
+			},
+		})
+		return
+	}
+
+	req := CreateBookingRequest{
+		RoomID:    payload.RoomID,
+		StudioID:  payload.StudioID,
+		StartTime: startTime,
+		EndTime:   endTime,
+		Notes:     payload.Notes,
 	}
 
 	// Extract user_id from context (set by JWT or MWork middleware)
@@ -109,17 +150,43 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 	})
 }
 
+func parseBookingDateTime(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, errors.New("empty datetime")
+	}
+
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02T15:04",
+		"2006-01-02 15:04",
+	}
+
+	for _, format := range formats {
+		if parsed, err := time.Parse(format, raw); err == nil {
+			return parsed, nil
+		}
+	}
+
+	if parsed, err := time.Parse("15:04", raw); err == nil {
+		now := time.Now()
+		return time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, now.Location()), nil
+	}
+
+	return time.Time{}, errors.New("unsupported datetime format")
+}
+
 type BusySlotDTO struct {
 	Start string `json:"start"` // "10:00"
 	End   string `json:"end"`   // "12:00"
 }
 
 type BusySlotsResponse struct {
-	Date      string     `json:"date"`
-	RoomID    int64      `json:"room_id"`
+	Date      string        `json:"date"`
+	RoomID    int64         `json:"room_id"`
 	BusySlots []BusySlotDTO `json:"busy_slots"`
-	OpenTime  string     `json:"open_time"`
-	CloseTime string     `json:"close_time"`
+	OpenTime  string        `json:"open_time"`
+	CloseTime string        `json:"close_time"`
 }
 
 // GetBusySlots возвращает список занятых временных слотов для конкретной комнаты на указанную дату
