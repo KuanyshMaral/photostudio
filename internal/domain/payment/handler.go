@@ -52,7 +52,7 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "amount or out_sum is required"})
 		return
 	}
-	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
+	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.ShpParams, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
 	if err != nil {
 		h.loggerf("level=error msg=robokassa create failed request=%+v err=%v", req, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -125,12 +125,23 @@ func (h *Handler) ResultCallback(c *gin.Context) {
 }
 
 func (h *Handler) SuccessCallback(c *gin.Context) {
-	var req PaymentCallbackRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.Request.ParseForm(); err != nil {
 		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-	ok, err := h.service.HandleSuccessCallback(c.Request.Context(), req.OutSum, req.InvID, req.SignatureValue, req.ShpParams, "")
+	outSum := firstNonEmpty(c.PostForm("OutSum"), c.Query("OutSum"))
+	invIDRaw := firstNonEmpty(c.PostForm("InvId"), c.Query("InvId"))
+	signature := firstNonEmpty(c.PostForm("SignatureValue"), c.Query("SignatureValue"))
+	if strings.TrimSpace(outSum) == "" || strings.TrimSpace(invIDRaw) == "" || strings.TrimSpace(signature) == "" {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "OutSum, InvId and SignatureValue are required")
+		return
+	}
+	invID, err := strconv.ParseInt(invIDRaw, 10, 64)
+	if err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "InvId must be an integer")
+		return
+	}
+	ok, err := h.service.HandleSuccessCallback(c.Request.Context(), outSum, invID, signature, collectShp(c), "")
 	if err != nil {
 		response.CustomError(c, http.StatusForbidden, "PAYMENT_VALIDATION_FAILED", err)
 		return
@@ -139,12 +150,21 @@ func (h *Handler) SuccessCallback(c *gin.Context) {
 }
 
 func (h *Handler) FailCallback(c *gin.Context) {
-	var req PaymentFailRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.Request.ParseForm(); err != nil {
 		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-	if err := h.service.FailPayment(c.Request.Context(), req.InvID); err != nil {
+	invIDRaw := firstNonEmpty(c.PostForm("InvId"), c.Query("InvId"), c.PostForm("inv_id"), c.Query("inv_id"))
+	if strings.TrimSpace(invIDRaw) == "" {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "InvId is required")
+		return
+	}
+	invID, err := strconv.ParseInt(invIDRaw, 10, 64)
+	if err != nil {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "InvId must be an integer")
+		return
+	}
+	if err := h.service.FailPayment(c.Request.Context(), invID); err != nil {
 		response.CustomError(c, http.StatusInternalServerError, "PAYMENT_FAIL_UPDATE_FAILED", err)
 		return
 	}
@@ -170,4 +190,13 @@ func trimShpKey(k string) string {
 		return k
 	}
 	return k[4:]
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }

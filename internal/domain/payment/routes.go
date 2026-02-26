@@ -10,6 +10,10 @@ func (h *Handler) RegisterPublicWebhookRoutes(r *gin.Engine) {
 	w := r.Group("/webhooks/robokassa")
 	{
 		w.POST("/result", h.ResultCallback)
+		w.GET("/success", h.SuccessCallback)
+		w.POST("/success", h.SuccessCallback)
+		w.GET("/fail", h.FailCallback)
+		w.POST("/fail", h.FailCallback)
 	}
 }
 
@@ -17,8 +21,6 @@ func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
 	rb := r.Group("/payments/robokassa")
 	{
 		rb.POST("/create", h.CreatePayment)
-		rb.POST("/success", h.SuccessCallback)
-		rb.POST("/fail", h.FailCallback)
 		rb.POST("/init", h.InitPayment)
 	}
 	s := r.Group("/subscriptions")

@@ -37,10 +37,10 @@ func TestServiceInitPaymentLegacySuccess(t *testing.T) {
 
 func TestServiceCreatePaymentOwnershipAndRepoNil(t *testing.T) {
 	s := &Service{bookings: &mockBookingReader{bk: &booking.Booking{ID: 1, UserID: 2, TotalPrice: 10}}}
-	if _, err := s.CreatePayment(context.Background(), 1, 1, "10.00", "", false, nil, nil); err == nil {
+	if _, err := s.CreatePayment(context.Background(), 1, 1, "10.00", "", nil, false, nil, nil); err == nil {
 		t.Fatal("expected owner err")
 	}
-	if _, err := s.CreatePayment(context.Background(), 2, 1, "10.00", "", false, nil, nil); err == nil {
+	if _, err := s.CreatePayment(context.Background(), 2, 1, "10.00", "", nil, false, nil, nil); err == nil {
 		t.Fatal("expected repo err")
 	}
 }
@@ -60,7 +60,7 @@ func TestServiceHandleResultV2Branches(t *testing.T) {
 }
 
 func TestServiceHandleSuccessBranchesAndFailPaymentNilRepo(t *testing.T) {
-	s := &Service{payments: &mockPaymentRepo{payment: &RobokassaPayment{InvID: 4, OutSum: "4.00"}}, password1: "p1"}
+	s := &Service{payments: &mockPaymentRepo{payment: &RobokassaPayment{InvID: 4, OutSum: "4.00"}}, merchantLogin: "m", password1: "p1"}
 	if _, err := s.HandleSuccessCallback(context.Background(), "4.00", 4, "bad", nil, ""); !errors.Is(err, ErrInvalidSignature) {
 		t.Fatal(err)
 	}

@@ -18,8 +18,9 @@ func TestHandlerSubscriptionAndValidationBranches(t *testing.T) {
 	g := r.Group("/")
 	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
 	h.RegisterProtectedRoutes(g)
+	h.RegisterPublicWebhookRoutes(r)
 
-	for _, tc := range []string{"/payments/robokassa/create", "/payments/robokassa/success", "/payments/robokassa/fail", "/subscriptions"} {
+	for _, tc := range []string{"/payments/robokassa/create", "/subscriptions"} {
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, tc, bytes.NewBufferString("{"))
 		req.Header.Set("Content-Type", "application/json")

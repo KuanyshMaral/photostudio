@@ -8,13 +8,14 @@ type InitPaymentRequest struct {
 }
 
 type CreatePaymentRequest struct {
-	BookingID         int64   `json:"booking_id" binding:"required"`
-	Amount            string  `json:"amount"`
-	OutSum            string  `json:"out_sum"`
-	Description       string  `json:"description"`
-	Recurring         bool    `json:"recurring"`
-	PreviousInvoiceID *int64  `json:"previous_invoice_id"`
-	SubscriptionID    *string `json:"subscription_id"`
+	BookingID         int64             `json:"booking_id" binding:"required"`
+	Amount            string            `json:"amount"`
+	OutSum            string            `json:"out_sum"`
+	Description       string            `json:"description"`
+	ShpParams         map[string]string `json:"shp_params"`
+	Recurring         bool              `json:"recurring"`
+	PreviousInvoiceID *int64            `json:"previous_invoice_id"`
+	SubscriptionID    *string           `json:"subscription_id"`
 }
 
 type CreateSubscriptionRequest struct {
