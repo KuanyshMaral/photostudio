@@ -2279,7 +2279,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios": {
+        "/studios": {
             "get": {
                 "description": "Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.",
                 "consumes": [
@@ -2448,7 +2448,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/my": {
+        "/studios/my": {
             "get": {
                 "security": [
                     {
@@ -2491,7 +2491,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/{id}": {
+        "/studios/{id}": {
             "get": {
                 "description": "Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.",
                 "consumes": [
@@ -2627,7 +2627,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/{id}/photos": {
+        "/studios/{id}/photos": {
             "post": {
                 "security": [
                     {
@@ -2698,7 +2698,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/{id}/rooms": {
+        "/studios/{id}/rooms": {
             "post": {
                 "security": [
                     {
@@ -2781,7 +2781,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/{id}/working-hours": {
+        "/studios/{id}/working-hours": {
             "get": {
                 "description": "Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.",
                 "consumes": [
@@ -2911,7 +2911,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/studios/{id}/working-hours/v2": {
+        "/studios/{id}/working-hours/v2": {
             "get": {
                 "description": "Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.",
                 "consumes": [
