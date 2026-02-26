@@ -2,13 +2,14 @@ package booking
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -151,6 +152,10 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 }
 
 func parseBookingDateTime(raw string) (time.Time, error) {
+	return parseBookingDateTimeAt(raw, time.Now())
+}
+
+func parseBookingDateTimeAt(raw string, now time.Time) (time.Time, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return time.Time{}, errors.New("empty datetime")
@@ -169,8 +174,11 @@ func parseBookingDateTime(raw string) (time.Time, error) {
 	}
 
 	if parsed, err := time.Parse("15:04", raw); err == nil {
-		now := time.Now()
-		return time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, now.Location()), nil
+		candidate := time.Date(now.Year(), now.Month(), now.Day(), parsed.Hour(), parsed.Minute(), 0, 0, now.Location())
+		if !candidate.After(now) {
+			candidate = candidate.Add(24 * time.Hour)
+		}
+		return candidate, nil
 	}
 
 	return time.Time{}, errors.New("unsupported datetime format")
