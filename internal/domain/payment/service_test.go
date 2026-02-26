@@ -236,33 +236,32 @@ func TestInitPayment_UsesCreatedStatusForLegacyPayment(t *testing.T) {
 	}
 }
 
-func TestSignatureHashAlgorithmSHA256(t *testing.T) {
-	t.Setenv("ROBOKASSA_HASH_ALGO", "sha256")
-	t.Setenv("ROBOKASSA_IS_TEST", "1")
-	t.Setenv("ROBOKASSA_TEST_PASSWORD_1", "p1")
-	s := NewService(&mockPaymentRepo{}, &mockBookingReader{}, &mockBookingWriter{}, nil)
-	s.merchantLogin = "m"
-	if s.hashAlgo != "sha256" {
-		t.Fatalf("expected hash algorithm sha256, got %s", s.hashAlgo)
+func TestInitSignatureDoesNotIncludeShpParams(t *testing.T) {
+	s := &Service{merchantLogin: "merchant", password1: "pass1"}
+	withShp := s.generateSignatureForInit("100.00", 10, map[string]string{"k": "v"})
+	withoutShp := s.generateSignatureForInit("100.00", 10, nil)
+	if withShp != withoutShp {
+		t.Fatalf("init signature must ignore shp params; with=%s without=%s", withShp, withoutShp)
 	}
-	got := s.generateSignatureForInit("100.00", 10, map[string]string{"k": "v"})
-	if len(got) != 64 {
-		t.Fatalf("expected SHA256 length 64, got %d", len(got))
+	if withShp != "f23421cdc4908465357929050dcfdebc" {
+		t.Fatalf("unexpected md5 signature %s", withShp)
 	}
 }
 
-func TestResolveRobokassaHashAlgorithmSupportsAliases(t *testing.T) {
-	t.Setenv("ROBOKASSA_HASH_ALGO", "")
-	t.Setenv("ROBOKASSA_HASH_ALGORITHM", "sha-256")
-	t.Setenv("ROBOKASSA_CHECKOUT_HASH", "")
-	if got := resolveRobokassaHashAlgorithm(); got != "sha256" {
-		t.Fatalf("expected sha256 from alias var, got %s", got)
+func TestSelectRobokassaPasswordsByMode(t *testing.T) {
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_1", "prod1")
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_2", "prod2")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_1", "test1")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_2", "test2")
+
+	p1, p2 := selectRobokassaPasswords("1")
+	if p1 != "test1" || p2 != "test2" {
+		t.Fatalf("expected test credentials, got %s/%s", p1, p2)
 	}
 
-	t.Setenv("ROBOKASSA_HASH_ALGORITHM", "")
-	t.Setenv("ROBOKASSA_CHECKOUT_HASH", "md5")
-	if got := resolveRobokassaHashAlgorithm(); got != "md5" {
-		t.Fatalf("expected md5 from checkout var, got %s", got)
+	p1, p2 = selectRobokassaPasswords("0")
+	if p1 != "prod1" || p2 != "prod2" {
+		t.Fatalf("expected prod credentials, got %s/%s", p1, p2)
 	}
 }
 
