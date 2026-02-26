@@ -251,6 +251,32 @@ func TestSignatureHashAlgorithmSHA256(t *testing.T) {
 	}
 }
 
+func TestResolveRobokassaHashAlgorithmSupportsAliases(t *testing.T) {
+	t.Setenv("ROBOKASSA_HASH_ALGO", "")
+	t.Setenv("ROBOKASSA_HASH_ALGORITHM", "sha-256")
+	t.Setenv("ROBOKASSA_CHECKOUT_HASH", "")
+	if got := resolveRobokassaHashAlgorithm(); got != "sha256" {
+		t.Fatalf("expected sha256 from alias var, got %s", got)
+	}
+
+	t.Setenv("ROBOKASSA_HASH_ALGORITHM", "")
+	t.Setenv("ROBOKASSA_CHECKOUT_HASH", "md5")
+	if got := resolveRobokassaHashAlgorithm(); got != "md5" {
+		t.Fatalf("expected md5 from checkout var, got %s", got)
+	}
+}
+
+func TestNormalizeRobokassaIsTestSupportsBooleanFlags(t *testing.T) {
+	for _, value := range []string{"1", "true", "yes", "on", " TRUE "} {
+		if got := normalizeRobokassaIsTest(value); got != "1" {
+			t.Fatalf("expected IsTest=1 for value %q, got %s", value, got)
+		}
+	}
+	if got := normalizeRobokassaIsTest("0"); got != "0" {
+		t.Fatalf("expected IsTest=0 for value 0, got %s", got)
+	}
+}
+
 func TestLegacyInitPaymentURLIncludesConfiguredCallbackURLs(t *testing.T) {
 	repo := &mockPaymentRepo{}
 	svc := &Service{
