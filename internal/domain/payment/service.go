@@ -78,12 +78,22 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 	return &Service{payments: payments, bookings: bookings, bookingWriter: bookingWriter, repo: r, loggerf: loggerf,
 		merchantLogin: os.Getenv("ROBOKASSA_MERCHANT_LOGIN"),
 		password1:     password1, password2: password2,
-		baseURL:   envOrDefault("ROBOKASSA_BASE_URL", "https://auth.robokassa.ru/Merchant/Index.aspx"),
+		baseURL:   robokassaBaseURL(os.Getenv("ROBOKASSA_MERCHANT_LOGIN")),
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
 		isTest:   isTest,
 		hashAlgo: strings.ToLower(envOrDefault("ROBOKASSA_HASH_ALGO", "md5")),
 	}
+}
+
+func robokassaBaseURL(merchantLogin string) string {
+	if configured := strings.TrimSpace(os.Getenv("ROBOKASSA_BASE_URL")); configured != "" {
+		return configured
+	}
+	if strings.HasSuffix(strings.ToLower(strings.TrimSpace(merchantLogin)), "_kz") {
+		return "https://auth.robokassa.kz/Merchant/Index.aspx"
+	}
+	return "https://auth.robokassa.ru/Merchant/Index.aspx"
 }
 
 func normalizeRobokassaIsTest(v string) string {
