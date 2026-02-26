@@ -62,7 +62,7 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 	if len(repo) > 0 {
 		r = repo[0]
 	}
-	isTest := envOrDefault("ROBOKASSA_IS_TEST", "1")
+	isTest := normalizeRobokassaIsTest(envOrDefault("ROBOKASSA_IS_TEST", "0"))
 	password1 := os.Getenv("ROBOKASSA_PROD_PASSWORD_1")
 	password2 := os.Getenv("ROBOKASSA_PROD_PASSWORD_2")
 	if isTest == "1" {
@@ -84,6 +84,14 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		isTest:   isTest,
 		hashAlgo: strings.ToLower(envOrDefault("ROBOKASSA_HASH_ALGO", "md5")),
 	}
+}
+
+func normalizeRobokassaIsTest(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "1" {
+		return "1"
+	}
+	return "0"
 }
 
 func envOrDefault(name, def string) string {

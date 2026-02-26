@@ -71,6 +71,22 @@ func (m *mockPaymentRepo) MarkPaidIdempotent(ctx context.Context, invID int64, r
 	return true, nil
 }
 
+func TestDefaultIsTestIsProductionMode(t *testing.T) {
+	t.Setenv("ROBOKASSA_IS_TEST", "")
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_1", "prod1")
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_2", "prod2")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_1", "test1")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_2", "test2")
+
+	s := NewService(&mockPaymentRepo{}, &mockBookingReader{}, &mockBookingWriter{}, nil)
+	if s.isTest != "0" {
+		t.Fatalf("expected default IsTest=0, got %s", s.isTest)
+	}
+	if s.password1 != "prod1" || s.password2 != "prod2" {
+		t.Fatalf("expected prod passwords to be selected by default")
+	}
+}
+
 func TestSignatureSelectionByMode(t *testing.T) {
 	os.Setenv("ROBOKASSA_IS_TEST", "1")
 	os.Setenv("ROBOKASSA_TEST_PASSWORD_1", "t1")
