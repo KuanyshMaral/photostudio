@@ -548,12 +548,14 @@ func normalizeAmount(v string) (string, error) {
 }
 
 func generateInvoiceID() int64 {
-	var rnd [3]byte
-	if _, err := rand.Read(rnd[:]); err != nil {
-		// fallback preserves process-level uniqueness
-		next := atomic.AddUint32(&invSeq, 1) % 1000000
-		return time.Now().UTC().Unix()*1_000_000 + int64(next)
+	const maxRobokassaInvoiceID = int64(2_147_483_647)
+
+	n, err := rand.Int(rand.Reader, big.NewInt(maxRobokassaInvoiceID))
+	if err == nil {
+		return n.Int64() + 1
 	}
-	r := int64(rnd[0])<<16 | int64(rnd[1])<<8 | int64(rnd[2])
-	return time.Now().UTC().Unix()*1_000_000 + (r % 1_000_000)
+
+	// fallback preserves process-level uniqueness while staying in Robokassa range
+	next := atomic.AddUint32(&invSeq, 1)
+	return int64(next%uint32(maxRobokassaInvoiceID)) + 1
 }
