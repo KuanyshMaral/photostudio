@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,7 +28,10 @@ var (
 	ErrReplayDetected   = errors.New("replay detected")
 	ErrPaymentNotFound  = errors.New("payment not found")
 	ErrMisconfigured    = errors.New("robokassa is misconfigured")
+	ErrInvalidAmount    = errors.New("invalid amount")
 )
+
+var invSeq uint32
 
 type Service struct {
 	payments      paymentRepo
@@ -95,6 +99,10 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	if err := s.validateInitConfig(); err != nil {
 		return nil, err
 	}
+	normalizedAmount, err := normalizeAmount(amount)
+	if err != nil {
+		return nil, err
+	}
 	bk, err := s.bookings.GetByID(ctx, bookingID)
 	if err != nil {
 		return nil, err
@@ -102,23 +110,26 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	if bk.UserID != userID {
 		return nil, fmt.Errorf("booking does not belong to user")
 	}
-	if !amountEqual(amount, fmt.Sprintf("%.2f", bk.TotalPrice)) {
+	if !amountEqual(normalizedAmount, fmt.Sprintf("%.2f", bk.TotalPrice)) {
 		return nil, ErrAmountMismatch
 	}
 
-	invID := time.Now().UnixNano()
+	invID := generateInvoiceID()
 	shp := map[string]string{"user_id": strconv.FormatInt(userID, 10), "booking_id": strconv.FormatInt(bookingID, 10)}
-	for k, v := range shpParams {
+	for k, v := range sanitizeShpParams(shpParams) {
+		if _, protected := shp[k]; protected {
+			continue
+		}
 		shp[k] = v
 	}
 	if subscriptionID != nil {
 		shp["subscription_id"] = *subscriptionID
 	}
-	sig := s.generateSignatureForInit(amount, invID, shp)
+	sig := s.generateSignatureForInit(normalizedAmount, invID, shp)
 
 	u := url.Values{}
 	u.Set("MerchantLogin", s.merchantLogin)
-	u.Set("OutSum", amount)
+	u.Set("OutSum", normalizedAmount)
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", description)
 	u.Set("SignatureValue", sig)
@@ -144,7 +155,7 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	}
 	paymentURL := s.baseURL + "?" + u.Encode()
 
-	p := &Payment{UserID: userID, BookingID: &bookingID, SubscriptionID: subscriptionID, RobokassaInvoiceID: invID, Amount: amount, Status: "created", IsRecurring: recurring}
+	p := &Payment{UserID: userID, BookingID: &bookingID, SubscriptionID: subscriptionID, RobokassaInvoiceID: invID, Amount: normalizedAmount, Status: "created", IsRecurring: recurring}
 	if err := s.repo.CreatePayment(ctx, p); err != nil {
 		return nil, err
 	}
@@ -170,12 +181,16 @@ func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringS
 	if err := s.validateInitConfig(); err != nil {
 		return nil, err
 	}
-	invID := time.Now().UnixNano()
+	normalizedAmount, err := normalizeAmount(amount)
+	if err != nil {
+		return nil, err
+	}
+	invID := generateInvoiceID()
 	shp := map[string]string{"user_id": strconv.FormatInt(sub.UserID, 10), "subscription_id": sub.ID}
-	sig := s.generateSignatureForInit(amount, invID, shp)
+	sig := s.generateSignatureForInit(normalizedAmount, invID, shp)
 	u := url.Values{}
 	u.Set("MerchantLogin", s.merchantLogin)
-	u.Set("OutSum", amount)
+	u.Set("OutSum", normalizedAmount)
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", "Monthly subscription")
 	u.Set("SignatureValue", sig)
@@ -198,7 +213,7 @@ func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringS
 		u.Set("Shp_"+k, v)
 	}
 	paymentURL := s.baseURL + "?" + u.Encode()
-	if err := s.repo.CreatePayment(ctx, &Payment{UserID: sub.UserID, SubscriptionID: &sub.ID, RobokassaInvoiceID: invID, Amount: amount, Status: "created", IsRecurring: true}); err != nil {
+	if err := s.repo.CreatePayment(ctx, &Payment{UserID: sub.UserID, SubscriptionID: &sub.ID, RobokassaInvoiceID: invID, Amount: normalizedAmount, Status: "created", IsRecurring: true}); err != nil {
 		return nil, err
 	}
 	if sub.FirstInvoiceID == nil {
@@ -218,11 +233,16 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	if _, err := s.bookings.GetByID(ctx, req.BookingID); err != nil {
 		return nil, fmt.Errorf("booking check failed: %w", err)
 	}
-	invID := time.Now().UnixNano()
-	signature := s.generateSignatureForInit(req.OutSum, invID, req.ShpParams)
+	normalizedAmount, err := normalizeAmount(req.OutSum)
+	if err != nil {
+		return nil, err
+	}
+	invID := generateInvoiceID()
+	shp := sanitizeShpParams(req.ShpParams)
+	signature := s.generateSignatureForInit(normalizedAmount, invID, shp)
 	u := url.Values{}
 	u.Set("MerchantLogin", s.merchantLogin)
-	u.Set("OutSum", req.OutSum)
+	u.Set("OutSum", normalizedAmount)
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", req.Description)
 	u.Set("SignatureValue", signature)
@@ -237,12 +257,12 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	if s.failURL != "" {
 		u.Set("FailURL", s.failURL)
 	}
-	for k, v := range req.ShpParams {
+	for k, v := range shp {
 		u.Set("Shp_"+k, v)
 	}
 	paymentURL := s.baseURL + "?" + u.Encode()
-	shpRaw, _ := json.Marshal(req.ShpParams)
-	p := &RobokassaPayment{BookingID: req.BookingID, OutSum: req.OutSum, InvID: invID, Description: req.Description, Status: PaymentStatusCreated, Signature: signature, RobokassaURL: paymentURL, ShpParams: string(shpRaw)}
+	shpRaw, _ := json.Marshal(shp)
+	p := &RobokassaPayment{BookingID: req.BookingID, OutSum: normalizedAmount, InvID: invID, Description: req.Description, Status: PaymentStatusCreated, Signature: signature, RobokassaURL: paymentURL, ShpParams: string(shpRaw)}
 	if err := s.payments.Create(ctx, p); err != nil {
 		return nil, err
 	}
@@ -284,12 +304,16 @@ func (s *Service) HandleResultCallback(ctx context.Context, outSum string, invID
 		}
 		return "", ErrAmountMismatch
 	}
-	_, err = s.payments.MarkPaidIdempotent(ctx, invID, rawBody, time.Now().UTC())
+	changed, err := s.payments.MarkPaidIdempotent(ctx, invID, rawBody, time.Now().UTC())
 	if err != nil {
 		return "", err
 	}
-	if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, p.BookingID, booking.PaymentPaid); err != nil {
-		return "", err
+	if changed {
+		if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, p.BookingID, booking.PaymentPaid); err != nil {
+			return "", err
+		}
+	} else {
+		s.loggerf("level=warn msg=duplicate robokassa result callback inv_id=%d", invID)
 	}
 	return "OK" + strconv.FormatInt(invID, 10), nil
 }
@@ -311,8 +335,10 @@ func (s *Service) handleResultV2(ctx context.Context, outSum string, invID int64
 		return "", err
 	}
 	if p.BookingID != nil {
-		if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, *p.BookingID, booking.PaymentPaid); err != nil {
-			return "", err
+		if changed {
+			if _, err := s.bookingWriter.UpdatePaymentStatusSystem(ctx, *p.BookingID, booking.PaymentPaid); err != nil {
+				return "", err
+			}
 		}
 	}
 	if p.SubscriptionID != nil && changed {
@@ -451,4 +477,78 @@ func (s *Service) hashHex(input string) string {
 		h := md5.Sum([]byte(input))
 		return strings.ToUpper(hex.EncodeToString(h[:]))
 	}
+}
+
+func sanitizeShpParams(shp map[string]string) map[string]string {
+	out := make(map[string]string, len(shp))
+	for rawK, rawV := range shp {
+		k := strings.TrimSpace(rawK)
+		if k == "" {
+			continue
+		}
+		k = strings.TrimPrefix(strings.TrimPrefix(k, "Shp_"), "shp_")
+		if strings.ContainsAny(k, "=:\x00") {
+			continue
+		}
+		v := strings.TrimSpace(rawV)
+		if strings.ContainsAny(v, "\x00") {
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
+func normalizeAmount(v string) (string, error) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "", ErrInvalidAmount
+	}
+	if strings.HasPrefix(v, "+") {
+		v = strings.TrimPrefix(v, "+")
+	}
+	if strings.HasPrefix(v, "-") {
+		return "", ErrInvalidAmount
+	}
+	if strings.Count(v, ".") > 1 {
+		return "", ErrInvalidAmount
+	}
+	parts := strings.SplitN(v, ".", 2)
+	if len(parts[0]) == 0 {
+		return "", ErrInvalidAmount
+	}
+	for _, ch := range parts[0] {
+		if ch < '0' || ch > '9' {
+			return "", ErrInvalidAmount
+		}
+	}
+	frac := ""
+	if len(parts) == 2 {
+		frac = parts[1]
+		if len(frac) == 0 || len(frac) > 2 {
+			return "", ErrInvalidAmount
+		}
+		for _, ch := range frac {
+			if ch < '0' || ch > '9' {
+				return "", ErrInvalidAmount
+			}
+		}
+	}
+	whole := strings.TrimLeft(parts[0], "0")
+	if whole == "" {
+		whole = "0"
+	}
+	if len(frac) == 0 {
+		frac = "00"
+	} else if len(frac) == 1 {
+		frac += "0"
+	}
+	return whole + "." + frac, nil
+}
+
+func generateInvoiceID() int64 {
+	// Keep invoice IDs deterministic, unique within process, and safe for JSON/JS number precision.
+	// Value stays well below 2^53 (about 9e15): current epoch_seconds*1e6 ~= 1.7e15.
+	next := atomic.AddUint32(&invSeq, 1) % 1_000_000
+	return time.Now().UTC().Unix()*1_000_000 + int64(next)
 }
