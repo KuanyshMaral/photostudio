@@ -63,27 +63,41 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		r = repo[0]
 	}
 	isTest := normalizeRobokassaIsTest(envOrDefault("ROBOKASSA_IS_TEST", "0"))
-	password1 := os.Getenv("ROBOKASSA_PROD_PASSWORD_1")
-	password2 := os.Getenv("ROBOKASSA_PROD_PASSWORD_2")
+	password1 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_1"))
+	password2 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_2"))
 	if isTest == "1" {
-		password1 = os.Getenv("ROBOKASSA_TEST_PASSWORD_1")
-		password2 = os.Getenv("ROBOKASSA_TEST_PASSWORD_2")
+		password1 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_1"))
+		password2 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_2"))
 	}
 	if password1 == "" {
-		password1 = os.Getenv("ROBOKASSA_PASSWORD1")
+		password1 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD1"))
 	}
 	if password2 == "" {
-		password2 = os.Getenv("ROBOKASSA_PASSWORD2")
+		password2 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD2"))
 	}
 	return &Service{payments: payments, bookings: bookings, bookingWriter: bookingWriter, repo: r, loggerf: loggerf,
-		merchantLogin: os.Getenv("ROBOKASSA_MERCHANT_LOGIN"),
+		merchantLogin: strings.TrimSpace(os.Getenv("ROBOKASSA_MERCHANT_LOGIN")),
 		password1:     password1, password2: password2,
 		baseURL:   robokassaBaseURL(os.Getenv("ROBOKASSA_MERCHANT_LOGIN")),
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
 		isTest:   isTest,
-		hashAlgo: strings.ToLower(envOrDefault("ROBOKASSA_HASH_ALGO", "md5")),
+		hashAlgo: resolveRobokassaHashAlgorithm(),
 	}
+}
+
+func resolveRobokassaHashAlgorithm() string {
+	for _, key := range []string{"ROBOKASSA_HASH_ALGO", "ROBOKASSA_HASH_ALGORITHM", "ROBOKASSA_CHECKOUT_HASH"} {
+		if val := strings.ToLower(strings.TrimSpace(os.Getenv(key))); val != "" {
+			switch val {
+			case "sha256", "sha-256":
+				return "sha256"
+			case "md5":
+				return "md5"
+			}
+		}
+	}
+	return "md5"
 }
 
 func robokassaBaseURL(merchantLogin string) string {
@@ -97,11 +111,12 @@ func robokassaBaseURL(merchantLogin string) string {
 }
 
 func normalizeRobokassaIsTest(v string) string {
-	v = strings.TrimSpace(v)
-	if v == "1" {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
 		return "1"
+	default:
+		return "0"
 	}
-	return "0"
 }
 
 func envOrDefault(name, def string) string {
@@ -152,7 +167,9 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", description)
 	u.Set("SignatureValue", sig)
-	u.Set("IsTest", s.isTest)
+	if s.isTest == "1" {
+		u.Set("IsTest", "1")
+	}
 	u.Set("Encoding", "utf-8")
 	if s.resultURL != "" {
 		u.Set("ResultURL", s.resultURL)
@@ -213,7 +230,9 @@ func (s *Service) createSubscriptionPayment(ctx context.Context, sub *RecurringS
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", "Monthly subscription")
 	u.Set("SignatureValue", sig)
-	u.Set("IsTest", s.isTest)
+	if s.isTest == "1" {
+		u.Set("IsTest", "1")
+	}
 	u.Set("Encoding", "utf-8")
 	u.Set("Recurring", "true")
 	if s.resultURL != "" {
@@ -265,7 +284,9 @@ func (s *Service) InitPayment(ctx context.Context, req InitPaymentRequest) (*Ini
 	u.Set("InvId", strconv.FormatInt(invID, 10))
 	u.Set("Description", req.Description)
 	u.Set("SignatureValue", signature)
-	u.Set("IsTest", s.isTest)
+	if s.isTest == "1" {
+		u.Set("IsTest", "1")
+	}
 	u.Set("Encoding", "utf-8")
 	if s.resultURL != "" {
 		u.Set("ResultURL", s.resultURL)
