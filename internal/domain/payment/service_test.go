@@ -236,15 +236,18 @@ func TestInitPayment_UsesCreatedStatusForLegacyPayment(t *testing.T) {
 	}
 }
 
-func TestInitSignatureDoesNotIncludeShpParams(t *testing.T) {
+func TestInitSignatureIncludesShpParams(t *testing.T) {
 	s := &Service{merchantLogin: "merchant", password1: "pass1"}
 	withShp := s.generateSignatureForInit("100.00", 10, map[string]string{"k": "v"})
 	withoutShp := s.generateSignatureForInit("100.00", 10, nil)
-	if withShp != withoutShp {
-		t.Fatalf("init signature must ignore shp params; with=%s without=%s", withShp, withoutShp)
+	if withShp == withoutShp {
+		t.Fatalf("init signature must include shp params; with=%s without=%s", withShp, withoutShp)
 	}
-	if withShp != "f23421cdc4908465357929050dcfdebc" {
+	if withShp != "beea1c1a7213810e9c9ef5237751290c" {
 		t.Fatalf("unexpected md5 signature %s", withShp)
+	}
+	if withoutShp != "f23421cdc4908465357929050dcfdebc" {
+		t.Fatalf("unexpected md5 signature without shp %s", withoutShp)
 	}
 }
 

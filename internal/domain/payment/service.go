@@ -473,6 +473,7 @@ func (s *Service) GetMySubscription(ctx context.Context, userID int64) (*Recurri
 
 func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{s.merchantLogin, outSum, strconv.FormatInt(invID, 10), s.password1}
+	parts = append(parts, flattenShpParams(shpParams)...)
 	return s.hashHex(strings.Join(parts, ":"))
 }
 func (s *Service) generateSignatureForResult(outSum string, invID int64, shpParams map[string]string) string {
