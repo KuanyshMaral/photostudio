@@ -5,6 +5,8 @@ import (
 	"errors"
 	"photostudio/internal/domain/auth"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 var (
@@ -121,10 +123,10 @@ func (s *Service) UpdateRoom(ctx context.Context, roomID int64, req UpdateRoomRe
 		room.PricePerHourMax = req.PricePerHourMax
 	}
 	if req.Amenities != nil {
-		room.Amenities = *req.Amenities
+		room.Amenities = pq.StringArray(*req.Amenities)
 	}
 	if req.Photos != nil {
-		room.Photos = *req.Photos
+		room.Photos = pq.StringArray(*req.Photos)
 	}
 
 	if err := s.roomRepo.Update(ctx, room); err != nil {
@@ -164,8 +166,8 @@ func (s *Service) CreateRoom(ctx context.Context, userID, studioID int64, req Cr
 		RoomType:        roomType,
 		PricePerHourMin: req.PricePerHourMin,
 		PricePerHourMax: req.PricePerHourMax,
-		Amenities:       req.Amenities,
-		Photos:          req.Photos,
+		Amenities:       pq.StringArray(req.Amenities),
+		Photos:          pq.StringArray(req.Photos),
 		IsActive:        true,
 	}
 
@@ -237,10 +239,10 @@ func (s *Service) AddStudioPhotos(ctx context.Context, userID, studioID int64, u
 
 // WorkingStatusResponse представляет статус работы студии
 type WorkingStatusResponse struct {
-	IsOpen       bool                   `json:"is_open"`
-	Message      string                 `json:"message"`
-	OpenTime     string                 `json:"open_time,omitempty"`
-	CloseTime    string                 `json:"close_time,omitempty"`
+	IsOpen       bool            `json:"is_open"`
+	Message      string          `json:"message"`
+	OpenTime     string          `json:"open_time,omitempty"`
+	CloseTime    string          `json:"close_time,omitempty"`
 	WorkingHours WorkingHoursMap `json:"working_hours,omitempty"`
 }
 
