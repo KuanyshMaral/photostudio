@@ -385,6 +385,69 @@ func TestCreatePayment_RecurringIncludesRecurringOnlyParams(t *testing.T) {
 	}
 }
 
+func TestCreatePayment_NonRecurringIgnoresCaseInsensitiveShpSubscriptionID(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:payment_nonrecurring_shp_case?mode=memory&cache=private"), &gorm.Config{})
+	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
+	_ = db.Create(&auth.User{ID: 52, Email: "nonrec-case@u.kz"}).Error
+	_ = db.Create(&booking.Booking{ID: 53, UserID: 52, TotalPrice: 100, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
+	bRepo := booking.NewBookingRepository(db)
+	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
+
+	resp, err := svc.CreatePayment(context.Background(), 52, 53, "100", "x", map[string]string{"ShP_subscription_id": "malicious-sub-id", "custom": "ok"}, false, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(resp.PaymentURL, "Shp_subscription_id=") {
+		t.Fatalf("non-recurring payment must omit Shp_subscription_id from incoming params: %s", resp.PaymentURL)
+	}
+	if !strings.Contains(resp.PaymentURL, "Shp_custom=ok") {
+		t.Fatalf("expected other shp params to stay in payment URL: %s", resp.PaymentURL)
+	}
+}
+
+func TestSanitizeShpParams_StripsCaseInsensitivePrefix(t *testing.T) {
+	got := sanitizeShpParams(map[string]string{"ShP_custom": "v", "SHP_other": "x"})
+	if got["custom"] != "v" {
+		t.Fatalf("expected ShP_ prefix to be trimmed, got: %#v", got)
+	}
+	if got["other"] != "x" {
+		t.Fatalf("expected SHP_ prefix to be trimmed, got: %#v", got)
+	}
+}
+
+func TestCreatePayment_PreventsMixedCaseShpOverrideOfSystemKeys(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:payment_shp_override_mixed_case?mode=memory&cache=private"), &gorm.Config{})
+	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
+	_ = db.Create(&auth.User{ID: 62, Email: "secure-mixed@u.kz"}).Error
+	_ = db.Create(&booking.Booking{ID: 63, UserID: 62, TotalPrice: 100, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
+	bRepo := booking.NewBookingRepository(db)
+	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
+
+	resp, err := svc.CreatePayment(context.Background(), 62, 63, "100.00", "x", map[string]string{"User_ID": "999", "BOOKING_ID": "999", "Custom": "ok"}, false, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(resp.PaymentURL, "Shp_user_id=999") || strings.Contains(resp.PaymentURL, "Shp_booking_id=999") {
+		t.Fatalf("mixed-case system shp params were overridden in URL: %s", resp.PaymentURL)
+	}
+	if !strings.Contains(resp.PaymentURL, "Shp_user_id=62") || !strings.Contains(resp.PaymentURL, "Shp_booking_id=63") {
+		t.Fatalf("system shp params are missing in URL: %s", resp.PaymentURL)
+	}
+	if !strings.Contains(resp.PaymentURL, "Shp_custom=ok") {
+		t.Fatalf("expected custom param to be lower-cased and preserved: %s", resp.PaymentURL)
+	}
+}
+
+func TestSanitizeShpParams_NormalizesKeysToLowercase(t *testing.T) {
+	got := sanitizeShpParams(map[string]string{"ShP_CuStOm": "v", "BOOKING_ID": "1"})
+	if got["custom"] != "v" {
+		t.Fatalf("expected normalized lowercase custom key, got: %#v", got)
+	}
+	if got["booking_id"] != "1" {
+		t.Fatalf("expected normalized lowercase booking_id key, got: %#v", got)
+	}
+}
+
 func TestHandleResultCallbackFailsOnMissingPassword2(t *testing.T) {
 	svc := &Service{password2: ""}
 	_, err := svc.HandleResultCallback(context.Background(), "100.00", 1, "sig", nil, "")

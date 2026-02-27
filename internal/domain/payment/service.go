@@ -559,14 +559,31 @@ func (s *Service) hashHex(input string) string {
 }
 
 func sanitizeShpParams(shp map[string]string) map[string]string {
-	out := make(map[string]string, len(shp))
-	for rawK, rawV := range shp {
+	keys := make([]string, 0, len(shp))
+	for rawK := range shp {
+		keys = append(keys, rawK)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		li := strings.ToLower(strings.TrimSpace(keys[i]))
+		lj := strings.ToLower(strings.TrimSpace(keys[j]))
+		if li == lj {
+			return keys[i] < keys[j]
+		}
+		return li < lj
+	})
+
+	out := make(map[string]string, len(keys))
+	for _, rawK := range keys {
+		rawV := shp[rawK]
 		k := strings.TrimSpace(rawK)
 		if k == "" {
 			continue
 		}
-		k = strings.TrimPrefix(strings.TrimPrefix(k, "Shp_"), "shp_")
-		if strings.ContainsAny(k, "=:\x00") {
+		if len(k) >= 4 && strings.EqualFold(k[:4], "shp_") {
+			k = k[4:]
+		}
+		k = strings.ToLower(strings.TrimSpace(k))
+		if k == "" || strings.ContainsAny(k, "=:\x00") {
 			continue
 		}
 		v := strings.TrimSpace(rawV)
