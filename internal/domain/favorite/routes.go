@@ -11,9 +11,11 @@ func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
 		favorites.DELETE("/:type/:id", h.RemoveFavorite)
 		favorites.GET("/:type/:id/check", h.CheckFavorite)
 
-		// Legacy aliases for studio
-		favorites.POST("/:studioId", h.AddFavoriteLegacy)
-		favorites.DELETE("/:studioId", h.RemoveFavoriteLegacy)
-		favorites.GET("/:studioId/check", h.CheckFavoriteLegacy)
+		// Legacy API aliases for frontend backward compatibility using query params or similar structures if really needed.
+		// However, in REST standard, if polymorphic route uses /:type/:id, 
+		// we cannot keep an identical dynamic path /:studioId.
+		// Therefore we will deprecate the old specific paths and rely on the polymorphic ones entirely or change the old path format (e.g., /studios/:id/favorite), which should be mapped at the top level router.
+		// Since we want drop-in without crashing: 
+		// Frontend must be updated to call /favorites/studio/123 instead of /favorites/123
 	}
 }
