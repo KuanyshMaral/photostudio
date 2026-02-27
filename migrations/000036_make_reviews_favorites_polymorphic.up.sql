@@ -104,6 +104,14 @@ EXECUTE FUNCTION trg_reviews_update_studio_rating();
 -- FAVORITES
 -- ==========================================
 
+-- Fallback for fresh DB initialized purely with SQL migrations (since favorites was previously only defined via GORM AutoMigrate)
+CREATE TABLE IF NOT EXISTS favorites (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    studio_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 1. Rename studio_id to entity_id for generic use
 ALTER TABLE favorites RENAME COLUMN studio_id TO entity_id;
 

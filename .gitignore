@@ -9,3 +9,5 @@ uploads/
 .idea/
 .vscode/
 *.swp
+docker-compose.local.yml
+.env.docker.local
