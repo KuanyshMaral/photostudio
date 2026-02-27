@@ -11,3 +11,4 @@ uploads/
 *.swp
 docker-compose.local.yml
 .env.docker.local
+.env.docker
