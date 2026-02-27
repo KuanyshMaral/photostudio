@@ -117,6 +117,28 @@ func TestPaymentURLBuilderIncludesRecurring(t *testing.T) {
 	}
 }
 
+func TestNormalizePreviousInvoiceID(t *testing.T) {
+	zero := int64(0)
+	minus := int64(-5)
+	valid := int64(42)
+
+	if got := normalizePreviousInvoiceID(false, &valid); got != nil {
+		t.Fatal("expected nil for non-recurring payment")
+	}
+	if got := normalizePreviousInvoiceID(true, nil); got != nil {
+		t.Fatal("expected nil for nil previous invoice")
+	}
+	if got := normalizePreviousInvoiceID(true, &zero); got != nil {
+		t.Fatal("expected nil for zero previous invoice")
+	}
+	if got := normalizePreviousInvoiceID(true, &minus); got != nil {
+		t.Fatal("expected nil for negative previous invoice")
+	}
+	if got := normalizePreviousInvoiceID(true, &valid); got == nil || *got != valid {
+		t.Fatal("expected valid previous invoice for recurring payment")
+	}
+}
+
 func TestCreatePaymentAndFailPayment(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
 	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})

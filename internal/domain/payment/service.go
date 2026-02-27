@@ -164,6 +164,7 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 			subscriptionID = &sid
 		}
 	}
+	previousInvoiceID = normalizePreviousInvoiceID(recurring, previousInvoiceID)
 
 	invID := generateInvoiceID()
 	shp := map[string]string{"user_id": strconv.FormatInt(userID, 10), "booking_id": strconv.FormatInt(bookingID, 10)}
@@ -217,6 +218,16 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	}
 
 	return &InitPaymentResponse{InvID: invID, PaymentURL: paymentURL, Signature: sig, Status: "created"}, nil
+}
+
+func normalizePreviousInvoiceID(recurring bool, previousInvoiceID *int64) *int64 {
+	if !recurring || previousInvoiceID == nil {
+		return nil
+	}
+	if *previousInvoiceID <= 0 {
+		return nil
+	}
+	return previousInvoiceID
 }
 
 func (s *Service) CreateSubscription(ctx context.Context, userID int64, amount string) (*InitPaymentResponse, error) {
