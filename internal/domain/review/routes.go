@@ -5,7 +5,9 @@ import "github.com/gin-gonic/gin"
 func (h *Handler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	// Public routes (no auth required)
 	if public != nil {
-		public.GET("/studios/:id/reviews", h.GetByStudio)
+		public.GET("/reviews", h.GetByTarget)
+		// Legacy alias for graceful compatibility
+		public.GET("/studios/:id/reviews", h.GetByStudioLegacy)
 	}
 
 	// Protected routes (auth required)
@@ -14,4 +16,3 @@ func (h *Handler) RegisterRoutes(public, protected *gin.RouterGroup) {
 		protected.POST("/reviews/:id/response", h.AddOwnerResponse)
 	}
 }
-

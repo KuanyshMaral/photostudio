@@ -284,10 +284,11 @@ func main() {
 		client := clients[rand.Intn(len(clients))]
 
 		review := review.Review{
-			StudioID: studio.ID,
-			UserID:   client.ID,
-			Rating:   3 + rand.Intn(3),
-			Comment:  fmt.Sprintf("Отличная студия! Рекомендую %d", i+1),
+			AuthorID:   client.ID,
+			TargetType: review.TargetTypeStudio,
+			TargetID:   studio.ID,
+			Rating:     3 + rand.Intn(3),
+			Comment:    fmt.Sprintf("Отличная студия! Рекомендую %d", i+1),
 		}
 		if err := db.Create(&review).Error; err != nil {
 			log.Println("Failed to create review:", err)

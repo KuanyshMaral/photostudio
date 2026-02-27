@@ -2,9 +2,11 @@ package review
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"gorm.io/gorm"
 	"photostudio/internal/domain/catalog"
+
+	"gorm.io/gorm"
 )
 
 type BookingGate interface {
@@ -26,37 +28,47 @@ func NewService(reviews *ReviewRepository, bookings BookingGate, studios StudioG
 }
 
 func (s *Service) Create(ctx context.Context, userID int64, req CreateReviewRequest) (*Review, error) {
-	// 1. Проверяем completed booking
-	hasCompleted, err := s.bookings.HasCompletedBookingForStudio(ctx, userID, req.StudioID)
-	if err != nil {
-		return nil, err
-	}
-	if !hasCompleted {
-		return nil, errors.New("you must have a completed booking to leave a review")
+	targetType := TargetType(req.TargetType)
+
+	if targetType == TargetTypeStudio {
+		hasCompleted, err := s.bookings.HasCompletedBookingForStudio(ctx, userID, req.TargetID)
+		if err != nil {
+			return nil, err
+		}
+		if !hasCompleted {
+			return nil, errors.New("you must have a completed booking to leave a review for a studio")
+		}
 	}
 
-	// 2. Проверяем что отзыв ещё не оставлен
-	exists, err := s.reviews.ExistsByUserAndStudio(ctx, userID, req.StudioID)
+	exists, err := s.reviews.HasReviewed(ctx, userID, targetType, req.TargetID, req.ContextType, req.ContextID)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("you have already reviewed this studio")
+		return nil, errors.New("you have already reviewed this entity in this context")
 	}
 
-	// 3. Валидация рейтинга
 	if req.Rating < 1 || req.Rating > 5 {
 		return nil, errors.New("rating must be between 1 and 5")
 	}
 
-	// 4. Создаём отзыв
+	var criteriaBytes []byte = []byte("{}")
+	if len(req.Criteria) > 0 {
+		if b, err := json.Marshal(req.Criteria); err == nil {
+			criteriaBytes = b
+		}
+	}
+
 	review := &Review{
-		UserID:    userID,
-		StudioID:  req.StudioID,
-		Rating:    req.Rating,
-		Comment:   req.Comment,
-		Photos:    req.Photos,
-		BookingID: req.BookingID,
+		AuthorID:    userID,
+		TargetType:  targetType,
+		TargetID:    req.TargetID,
+		ContextType: req.ContextType,
+		ContextID:   req.ContextID,
+		Rating:      req.Rating,
+		Comment:     req.Comment,
+		Photos:      req.Photos,
+		Criteria:    criteriaBytes,
 	}
 
 	if err := s.reviews.Create(ctx, review); err != nil {
@@ -66,11 +78,11 @@ func (s *Service) Create(ctx context.Context, userID int64, req CreateReviewRequ
 	return review, nil
 }
 
-func (s *Service) GetByStudio(ctx context.Context, studioID int64, limit, offset int) ([]Review, error) {
-	if studioID <= 0 {
+func (s *Service) GetByTarget(ctx context.Context, targetType string, targetID int64, limit, offset int) ([]Review, error) {
+	if targetID <= 0 || targetType == "" {
 		return nil, ErrInvalidRequest
 	}
-	return s.reviews.GetByStudio(ctx, studioID, limit, offset)
+	return s.reviews.GetByTarget(ctx, TargetType(targetType), targetID, limit, offset)
 }
 
 func (s *Service) AddOwnerResponse(ctx context.Context, reviewID, userID int64, response string) (*Review, error) {
@@ -86,16 +98,20 @@ func (s *Service) AddOwnerResponse(ctx context.Context, reviewID, userID int64, 
 		return nil, err
 	}
 
-	st, err := s.studios.GetByID(ctx, rv.StudioID)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrNotFound
+	if rv.TargetType == TargetTypeStudio {
+		st, err := s.studios.GetByID(ctx, rv.TargetID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, ErrNotFound
+			}
+			return nil, err
 		}
-		return nil, err
-	}
 
-	if st.OwnerID != userID {
-		return nil, ErrForbidden
+		if st.OwnerID != userID {
+			return nil, ErrForbidden
+		}
+	} else {
+		return nil, errors.New("cannot add owner response for this target type currently")
 	}
 
 	updated, err := s.reviews.SetOwnerResponse(ctx, reviewID, response)
@@ -106,23 +122,4 @@ func (s *Service) AddOwnerResponse(ctx context.Context, reviewID, userID int64, 
 		return nil, err
 	}
 	return updated, nil
-}
-
-func isUniqueViolation(err error) bool {
-	s := err.Error()
-	return contains(s, "duplicate key value violates unique constraint") ||
-		contains(s, "SQLSTATE 23505") ||
-		contains(s, "23505")
-}
-
-func contains(s, sub string) bool {
-	if len(sub) == 0 {
-		return true
-	}
-	for i := 0; i+len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
-	}
-	return false
 }
