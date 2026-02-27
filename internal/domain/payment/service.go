@@ -164,6 +164,13 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 			subscriptionID = &sid
 		}
 	}
+
+	// Robokassa error 29 happens when non-recurring invoices contain recurring-only fields.
+	// Keep strict branch separation: for recurring=false we must not send Recurring,
+	// PreviousInvoiceID or subscription_id in Shp params.
+	if !recurring {
+		subscriptionID = nil
+	}
 	previousInvoiceID = normalizePreviousInvoiceID(recurring, previousInvoiceID)
 
 	invID := generateInvoiceID()
@@ -174,9 +181,12 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 		}
 		shp[k] = v
 	}
-	if subscriptionID != nil {
+	if recurring && subscriptionID != nil {
 		shp["subscription_id"] = *subscriptionID
 	}
+	// Robokassa error 34 is usually caused by signature mismatches: parameter order,
+	// amount formatting, or missing/extra Shp_* values. Signature must be built from
+	// MerchantLogin:OutSum:InvId:Password1 plus alphabetically sorted Shp_* params.
 	sig := s.generateSignatureForInit(normalizedAmount, invID, shp)
 
 	u := url.Values{}
@@ -198,12 +208,7 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	if s.failURL != "" {
 		u.Set("FailURL", s.failURL)
 	}
-	if recurring {
-		u.Set("Recurring", "true")
-	}
-	if previousInvoiceID != nil {
-		u.Set("PreviousInvoiceID", strconv.FormatInt(*previousInvoiceID, 10))
-	}
+	addRecurringInitParams(u, recurring, previousInvoiceID)
 	for k, v := range shp {
 		u.Set("Shp_"+k, v)
 	}
@@ -498,6 +503,16 @@ func (s *Service) generateSignatureForInit(outSum string, invID int64, shpParams
 	parts := []string{s.merchantLogin, outSum, strconv.FormatInt(invID, 10), s.password1}
 	parts = append(parts, flattenShpParams(shpParams)...)
 	return s.hashHex(strings.Join(parts, ":"))
+}
+
+func addRecurringInitParams(values url.Values, recurring bool, previousInvoiceID *int64) {
+	if !recurring {
+		return
+	}
+	values.Set("Recurring", "true")
+	if previousInvoiceID != nil {
+		values.Set("PreviousInvoiceID", strconv.FormatInt(*previousInvoiceID, 10))
+	}
 }
 func (s *Service) generateSignatureForResult(outSum string, invID int64, shpParams map[string]string) string {
 	parts := []string{outSum, strconv.FormatInt(invID, 10), s.password2}

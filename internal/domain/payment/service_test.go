@@ -343,6 +343,48 @@ func TestCreatePaymentURLIncludesPassedShpParams(t *testing.T) {
 	}
 }
 
+func TestCreatePayment_NonRecurringOmitsRecurringOnlyParams(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:payment_nonrecurring?mode=memory&cache=private"), &gorm.Config{})
+	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
+	_ = db.Create(&auth.User{ID: 40, Email: "nonrec@u.kz"}).Error
+	_ = db.Create(&booking.Booking{ID: 41, UserID: 40, TotalPrice: 100, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
+	bRepo := booking.NewBookingRepository(db)
+	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
+	svc.merchantLogin = "merchant"
+	svc.password1 = "p1"
+
+	prev := int64(99)
+	subID := "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+	resp, err := svc.CreatePayment(context.Background(), 40, 41, "100", "x", nil, false, &prev, &subID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(resp.PaymentURL, "Recurring=true") || strings.Contains(resp.PaymentURL, "PreviousInvoiceID=") || strings.Contains(resp.PaymentURL, "Shp_subscription_id=") {
+		t.Fatalf("non-recurring payment must omit recurring-only params: %s", resp.PaymentURL)
+	}
+}
+
+func TestCreatePayment_RecurringIncludesRecurringOnlyParams(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:payment_recurring?mode=memory&cache=private"), &gorm.Config{})
+	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
+	_ = db.Create(&auth.User{ID: 42, Email: "rec@u.kz"}).Error
+	_ = db.Create(&booking.Booking{ID: 43, UserID: 42, TotalPrice: 100, RoomID: 1, StudioID: 1, StartTime: time.Now(), EndTime: time.Now().Add(time.Hour)}).Error
+	bRepo := booking.NewBookingRepository(db)
+	svc := NewService(NewRobokassaPaymentRepository(db), bRepo, bRepo, nil, NewRepository(db))
+	svc.merchantLogin = "merchant"
+	svc.password1 = "p1"
+
+	prev := int64(88)
+	subID := "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+	resp, err := svc.CreatePayment(context.Background(), 42, 43, "100", "x", nil, true, &prev, &subID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(resp.PaymentURL, "Recurring=true") || !strings.Contains(resp.PaymentURL, "PreviousInvoiceID=88") || !strings.Contains(resp.PaymentURL, "Shp_subscription_id=") {
+		t.Fatalf("recurring payment must include recurring-only params: %s", resp.PaymentURL)
+	}
+}
+
 func TestHandleResultCallbackFailsOnMissingPassword2(t *testing.T) {
 	svc := &Service{password2: ""}
 	_, err := svc.HandleResultCallback(context.Background(), "100.00", 1, "sig", nil, "")
