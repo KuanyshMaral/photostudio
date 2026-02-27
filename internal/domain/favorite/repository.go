@@ -2,61 +2,50 @@ package favorite
 
 import (
 	"errors"
+
 	"gorm.io/gorm"
 )
 
-// FavoriteRepository определяет методы для работы с избранным
 type FavoriteRepository interface {
-	Add(userID, studioID int64) (*Favorite, error)
-	Remove(userID, studioID int64) error
-	GetByUserID(userID int64, limit, offset int) ([]Favorite, int64, error)
-	Exists(userID, studioID int64) (bool, error)
+	Add(userID int64, entityType string, entityID int64) (*Favorite, error)
+	Remove(userID int64, entityType string, entityID int64) error
+	GetByUserID(userID int64, entityType *string, limit, offset int) ([]Favorite, int64, error)
+	Exists(userID int64, entityType string, entityID int64) (bool, error)
 	Count(userID int64) (int64, error)
 }
 
-// favoriteRepository реализует FavoriteRepository
 type favoriteRepository struct {
 	db *gorm.DB
 }
 
-// NewFavoriteRepository создаёт новый экземпляр репозитория
 func NewFavoriteRepository(db *gorm.DB) FavoriteRepository {
 	return &favoriteRepository{db: db}
 }
 
-// Add добавляет студию в избранное пользователя.
-// Возвращает ошибку если студия уже в избранном (duplicate key).
-func (r *favoriteRepository) Add(userID, studioID int64) (*Favorite, error) {
-	// Проверяем, не добавлена ли уже
-	exists, err := r.Exists(userID, studioID)
+func (r *favoriteRepository) Add(userID int64, entityType string, entityID int64) (*Favorite, error) {
+	exists, err := r.Exists(userID, entityType, entityID)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("studio already in favorites")
+		return nil, errors.New("entity already in favorites")
 	}
 
 	favorite := &Favorite{
-		UserID:   userID,
-		StudioID: studioID,
+		UserID:     userID,
+		EntityType: entityType,
+		EntityID:   entityID,
 	}
 
 	if err := r.db.Create(favorite).Error; err != nil {
 		return nil, err
 	}
 
-	// Загружаем связанную студию для ответа
-	if err := r.db.Preload("Studio").First(favorite, favorite.ID).Error; err != nil {
-		return nil, err
-	}
-
 	return favorite, nil
 }
 
-// Remove удаляет студию из избранного пользователя.
-// Возвращает ошибку если студия не была в избранном.
-func (r *favoriteRepository) Remove(userID, studioID int64) error {
-	result := r.db.Where("user_id = ? AND studio_id = ?", userID, studioID).
+func (r *favoriteRepository) Remove(userID int64, entityType string, entityID int64) error {
+	result := r.db.Where("user_id = ? AND entity_type = ? AND entity_id = ?", userID, entityType, entityID).
 		Delete(&Favorite{})
 
 	if result.Error != nil {
@@ -70,41 +59,41 @@ func (r *favoriteRepository) Remove(userID, studioID int64) error {
 	return nil
 }
 
-// GetByUserID возвращает все избранные студии пользователя с пагинацией.
-// Также возвращает общее количество для построения пагинации на фронте.
-func (r *favoriteRepository) GetByUserID(userID int64, limit, offset int) ([]Favorite, int64, error) {
+func (r *favoriteRepository) GetByUserID(userID int64, entityType *string, limit, offset int) ([]Favorite, int64, error) {
 	var favorites []Favorite
 	var total int64
 
-	// Сначала считаем общее количество
-	if err := r.db.Model(&Favorite{}).
-		Where("user_id = ?", userID).
-		Count(&total).Error; err != nil {
+	query := r.db.Model(&Favorite{}).Where("user_id = ?", userID)
+	if entityType != nil && *entityType != "" {
+		query = query.Where("entity_type = ?", *entityType)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Затем выбираем с пагинацией и preload студий
-	query := r.db.Where("user_id = ?", userID).
-		Preload("Studio").
-		Order("created_at DESC") // Новые сверху
-
-	if limit > 0 {
-		query = query.Limit(limit).Offset(offset)
+	dataQuery := r.db.Where("user_id = ?", userID)
+	if entityType != nil && *entityType != "" {
+		dataQuery = dataQuery.Where("entity_type = ?", *entityType)
 	}
 
-	if err := query.Find(&favorites).Error; err != nil {
+	dataQuery = dataQuery.Order("created_at DESC")
+
+	if limit > 0 {
+		dataQuery = dataQuery.Limit(limit).Offset(offset)
+	}
+
+	if err := dataQuery.Find(&favorites).Error; err != nil {
 		return nil, 0, err
 	}
 
 	return favorites, total, nil
 }
 
-// Exists проверяет, есть ли студия в избранном у пользователя.
-// Используется для отображения состояния кнопки ❤️ на фронте.
-func (r *favoriteRepository) Exists(userID, studioID int64) (bool, error) {
+func (r *favoriteRepository) Exists(userID int64, entityType string, entityID int64) (bool, error) {
 	var count int64
 	err := r.db.Model(&Favorite{}).
-		Where("user_id = ? AND studio_id = ?", userID, studioID).
+		Where("user_id = ? AND entity_type = ? AND entity_id = ?", userID, entityType, entityID).
 		Count(&count).Error
 
 	if err != nil {
@@ -114,8 +103,6 @@ func (r *favoriteRepository) Exists(userID, studioID int64) (bool, error) {
 	return count > 0, nil
 }
 
-// Count возвращает количество избранных студий у пользователя.
-// Можно использовать для ограничения (например, max 50 студий в избранном).
 func (r *favoriteRepository) Count(userID int64) (int64, error) {
 	var count int64
 	err := r.db.Model(&Favorite{}).

@@ -525,6 +525,16 @@ definitions:
         description: optional
         type: string
     type: object
+  favorite.AddFavoriteRequest:
+    properties:
+      entity_id:
+        type: integer
+      entity_type:
+        type: string
+    required:
+    - entity_id
+    - entity_type
+    type: object
   favorite.CheckFavoriteResponse:
     properties:
       is_favorite:
@@ -554,29 +564,12 @@ definitions:
     properties:
       created_at:
         type: string
-      id:
+      entity_id:
         type: integer
-      studio:
-        $ref: '#/definitions/favorite.StudioBrief'
-      studio_id:
-        type: integer
-    type: object
-  favorite.StudioBrief:
-    properties:
-      address:
-        type: string
-      district:
+      entity_type:
         type: string
       id:
         type: integer
-      name:
-        type: string
-      photos:
-        items:
-          type: string
-        type: array
-      rating:
-        type: number
     type: object
   lead.AssignLeadRequest:
     properties:
@@ -1055,26 +1048,33 @@ definitions:
     required:
     - pin
     type: object
-  payment.ErrorResponse:
+  payment.CreatePaymentRequest:
     properties:
-      error:
+      amount:
         type: string
-    type: object
-  payment.InitPaymentRequest:
-    properties:
       booking_id:
         type: integer
       description:
         type: string
       out_sum:
         type: string
+      previous_invoice_id:
+        type: integer
+      recurring:
+        type: boolean
       shp_params:
         additionalProperties:
           type: string
         type: object
+      subscription_id:
+        type: string
     required:
     - booking_id
-    - out_sum
+    type: object
+  payment.ErrorResponse:
+    properties:
+      error:
+        type: string
     type: object
   payment.InitPaymentResponse:
     properties:
@@ -1242,10 +1242,16 @@ definitions:
     type: object
   review.CreateReviewRequest:
     properties:
-      booking_id:
-        type: integer
       comment:
         type: string
+      context_id:
+        type: integer
+      context_type:
+        type: string
+      criteria:
+        additionalProperties:
+          type: integer
+        type: object
       photos:
         items:
           type: string
@@ -1254,11 +1260,14 @@ definitions:
         maximum: 5
         minimum: 1
         type: integer
-      studio_id:
+      target_id:
         type: integer
+      target_type:
+        type: string
     required:
     - rating
-    - studio_id
+    - target_id
+    - target_type
     type: object
   review.OwnerResponseRequest:
     properties:
@@ -1269,12 +1278,20 @@ definitions:
     type: object
   review.Review:
     properties:
-      booking_id:
+      author_id:
         type: integer
       comment:
         type: string
+      context_id:
+        type: integer
+      context_type:
+        type: string
       created_at:
         type: string
+      criteria:
+        items:
+          type: integer
+        type: array
       id:
         type: integer
       is_hidden:
@@ -1291,13 +1308,19 @@ definitions:
         type: integer
       responded_at:
         type: string
-      studio_id:
+      target_id:
         type: integer
+      target_type:
+        $ref: '#/definitions/review.TargetType'
       updated_at:
         type: string
-      user_id:
-        type: integer
     type: object
+  review.TargetType:
+    enum:
+    - studio
+    type: string
+    x-enum-varnames:
+    - TargetTypeStudio
   subscription.CancelRequest:
     properties:
       reason:
@@ -2919,493 +2942,6 @@ paths:
       summary: Добавить оборудование в комнату
       tags:
       - Catalog - Оборудование
-  /studios:
-    get:
-      consumes:
-      - application/json
-      description: Получает список всех студий с возможностью фильтрации по городу,
-        типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.
-      parameters:
-      - description: Фильтр по городу
-        example: '"Moscow"'
-        in: query
-        name: city
-        type: string
-      - description: Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)
-        example: '"Fashion"'
-        in: query
-        name: room_type
-        type: string
-      - description: Поиск по названию студии
-        example: '"My Studio"'
-        in: query
-        name: search
-        type: string
-      - description: Минимальная цена в час
-        example: 100
-        in: query
-        name: min_price
-        type: number
-      - description: Максимальная цена в час
-        example: 1000
-        in: query
-        name: max_price
-        type: number
-      - description: Поле для сортировки (rating, price, created_at)
-        example: '"rating"'
-        in: query
-        name: sort_by
-        type: string
-      - description: Порядок сортировки (asc, desc)
-        example: '"desc"'
-        in: query
-        name: sort_order
-        type: string
-      - description: Номер страницы
-        example: 1
-        in: query
-        name: page
-        type: integer
-      - description: Количество студий на странице (максимум 100)
-        example: 20
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ со списком студий и информацией о пагинации
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректные параметры запроса
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Получить список студий
-      tags:
-      - Catalog - Студии
-    post:
-      consumes:
-      - application/json
-      description: Создает новую студию в каталоге. Требует аутентификации и верификации
-        пользователя как владельца студии. Пользователь должен иметь роль студии-владельца
-        и пройти верификацию.
-      parameters:
-      - description: Данные для создания студии (название, описание, адрес, город,
-          цена и т.д.)
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.CreateStudioRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Студия успешно создана, возвращает объект созданной студии
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат запроса
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "403":
-          description: Пользователь не является верифицированным владельцем студии
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать новую студию
-      tags:
-      - Catalog - Студии
-  /studios/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Получает полную информацию о студии, включая все комнаты, оборудование
-        и фотографии по уникальному идентификатору.
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ с информацией о студии
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Студия не найдена
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Получить студию по ID
-      tags:
-      - Catalog - Студии
-    put:
-      consumes:
-      - application/json
-      description: Обновляет информацию о студии (названия, описание, адрес, город,
-        цена в час и другие параметры). Требует аутентификации. Только владелец студии
-        может её обновлять.
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Данные для обновления студии
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.UpdateStudioRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Студия успешно обновлена, возвращает обновленный объект
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат запроса
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "403":
-          description: Недостаточно прав для обновления этой студии
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Студия не найдена
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Обновить студию
-      tags:
-      - Catalog - Студии
-  /studios/{id}/photos:
-    post:
-      consumes:
-      - multipart/form-data
-      description: 'Загружает фотографии студии. Поддерживает загрузку до 10 файлов
-        одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла:
-        5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.'
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      - collectionFormat: multi
-        description: Файлы изображений для загрузки (до 10 файлов)
-        in: formData
-        items:
-          type: file
-        name: photos
-        required: true
-        type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Фотографии успешно загружены, возвращает список URL загруженных
-            файлов
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат запроса, файл слишком большой или недопустимый
-            формат
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Загрузить фотографии студии
-      tags:
-      - Catalog - Фотографии
-  /studios/{id}/rooms:
-    post:
-      consumes:
-      - application/json
-      description: 'Создает новую комнату в студии. Требует аутентификации. Только
-        владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion,
-        Portrait, Creative, Commercial.'
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Данные для создания комнаты (названия, тип, описание и т.д.)
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/catalog.CreateRoomRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Комната успешно создана, возвращает объект созданной комнаты
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат запроса или тип комнаты
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "403":
-          description: Недостаточно прав для добавления комнат в эту студию
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Студия не найдена
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Создать новую комнату
-      tags:
-      - Catalog - Комнаты
-  /studios/{id}/working-hours:
-    get:
-      consumes:
-      - application/json
-      deprecated: true
-      description: Получает информацию о часах работы студии и её текущем статусе
-        (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ с часами работы и статусом
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Студия не найдена
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Получить часы работы студии (v1)
-      tags:
-      - Catalog - Часы работы
-    put:
-      consumes:
-      - application/json
-      description: Обновляет расписание работы студии. Требует аутентификации. Только
-        владелец студии может обновлять её часы работы. Принимает массив объектов
-        с информацией о рабочих днях и часах.
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      - description: Массив объектов WorkingHours с расписанием работы по дням недели
-        in: body
-        name: body
-        required: true
-        schema:
-          type: array
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешное обновление часов работы
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат запроса
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "403":
-          description: Недостаточно прав для обновления этой студии
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Обновить часы работы студии
-      tags:
-      - Catalog - Часы работы
-  /studios/{id}/working-hours/v2:
-    get:
-      consumes:
-      - application/json
-      description: Получает информацию о часах работы студии в новом формате с подробной
-        информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия
-        и полном расписании по дням недели.
-      parameters:
-      - description: Уникальный идентификатор студии
-        example: 1
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ с информацией о часах работы и текущем статусе
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Некорректный формат ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Студия не найдена
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Получить часы работы студии (v2)
-      tags:
-      - Catalog - Часы работы
-  /studios/my:
-    get:
-      consumes:
-      - application/json
-      description: Получает список всех студий, принадлежащих текущему авторизованному
-        владельцу студии. Требует валидного JWT токена в заголовке Authorization.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Успешный ответ со списком студий владельца
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Требуется аутентификация
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Внутренняя ошибка сервера
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Получить мои студии
-      tags:
-      - Catalog - Студии
   /auth/login:
     post:
       description: Авторизует пользователя (клиента или владельца студии) по email
@@ -4391,9 +3927,13 @@ paths:
     get:
       consumes:
       - application/json
-      description: Получает список студий, добавленных в избранное текущего пользователя,
-        с поддержкой пагинации
+      description: Получает список объектов (студий, профилей и т.д.), добавленных
+        в избранное
       parameters:
+      - description: Фильтр по типу сущности (например, studio)
+        in: query
+        name: entity_type
+        type: string
       - default: 1
         description: Номер страницы
         in: query
@@ -4408,7 +3948,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Список избранных студий
+          description: Список избранного
           schema:
             $ref: '#/definitions/favorite.FavoriteListResponse'
         "401":
@@ -4416,34 +3956,81 @@ paths:
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "500":
-          description: Ошибка при получении списка избранного
+          description: Ошибка при получении списка
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Получить список избранных студий
+      summary: Получить список избранного
+      tags:
+      - Favorite
+    post:
+      consumes:
+      - application/json
+      description: Добавляет объект в список избранного (студию, профиль и т.д.)
+      parameters:
+      - description: Данные (entity_type, entity_id)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/favorite.AddFavoriteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Сущность успешно добавлена в избранное
+          schema:
+            $ref: '#/definitions/favorite.FavoriteResponse'
+        "400":
+          description: Сущность уже находится в избранном или некорректные данные
+          schema:
+            $ref: '#/definitions/favorite.ErrorResponse'
+        "401":
+          description: Пользователь не авторизован
+          schema:
+            $ref: '#/definitions/favorite.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/favorite.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить в избранное
       tags:
       - Favorite
   /favorites/{studioId}:
     delete:
+      responses: {}
+    post:
+      responses: {}
+  /favorites/{studioId}/check:
+    get:
+      responses: {}
+  /favorites/{type}/{id}:
+    delete:
       consumes:
       - application/json
-      description: Удаляет студию из списка избранного. Возвращает ошибку, если студия
-        не было в избранном
+      description: Удаляет объект из списка избранного
       parameters:
-      - description: ID студии
+      - description: Тип сущности
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: ID сущности
         format: int64
         in: path
-        name: studioId
+        name: id
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "204":
-          description: Студия успешно удалена из избранного
+          description: Успешно удалено из избранного
         "400":
-          description: Некорректный ID студии
+          description: Некорректный ID или тип
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "401":
@@ -4451,79 +4038,44 @@ paths:
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "404":
-          description: Студия отсутствует в избранном
+          description: Отсутствует в избранном
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "500":
-          description: Ошибка при удалении из избранного
+          description: Ошибка сервера
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Удалить студию из избранного
+      summary: Удалить из избранного
       tags:
       - Favorite
-    post:
-      consumes:
-      - application/json
-      description: Добавляет студию в список избранного. Возвращает ошибку, если студия
-        уже в избранном или не существует
-      parameters:
-      - description: ID студии
-        format: int64
-        in: path
-        name: studioId
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Студия успешно добавлена в избранное
-          schema:
-            $ref: '#/definitions/favorite.FavoriteResponse'
-        "400":
-          description: Студия уже находится в избранном или некорректный ID студии
-          schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
-        "401":
-          description: Пользователь не авторизован
-          schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
-        "404":
-          description: Студия не найдена
-          schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
-        "500":
-          description: Ошибка при добавлении в избранное
-          schema:
-            $ref: '#/definitions/favorite.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Добавить студию в избранное
-      tags:
-      - Favorite
-  /favorites/{studioId}/check:
+  /favorites/{type}/{id}/check:
     get:
       consumes:
       - application/json
-      description: Проверяет наличие студии в списке избранного текущего пользователя
+      description: Проверяет наличие объекта в избранном текущего пользователя
       parameters:
-      - description: ID студии
+      - description: Тип сущности
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: ID сущности
         format: int64
         in: path
-        name: studioId
+        name: id
         required: true
         type: integer
       produces:
       - application/json
       responses:
         "200":
-          description: Результат проверки наличия студии в избранном
+          description: Результат проверки
           schema:
             $ref: '#/definitions/favorite.CheckFavoriteResponse'
         "400":
-          description: Некорректный ID студии
+          description: Некорректный ID или тип
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "401":
@@ -4531,12 +4083,12 @@ paths:
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
         "500":
-          description: Ошибка при проверке избранного
+          description: Ошибка сервера
           schema:
             $ref: '#/definitions/favorite.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Проверить находится ли студия в избранном
+      summary: Проверить наличие в избранном
       tags:
       - Favorite
   /internal/mwork/users/sync:
@@ -5819,7 +5371,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/payment.InitPaymentRequest'
+          $ref: '#/definitions/payment.CreatePaymentRequest'
       produces:
       - application/json
       responses:
@@ -6115,11 +5667,52 @@ paths:
       tags:
       - Relationships
   /reviews:
-    post:
-      description: Пользователь может написать отзыв о студии только после завершённого
-        бронирования. Может написать только один отзыв от пользователя на студию.
+    get:
+      description: Возвращает постраничный список отзывов о сущности.
       parameters:
-      - description: Данные отзыва (studio_id, rating, text)
+      - description: Тип сущности (например, studio)
+        in: query
+        name: target_type
+        required: true
+        type: string
+      - description: ID сущности
+        in: query
+        name: target_id
+        required: true
+        type: integer
+      - description: 'Максимум количество отзывов (дефолт: 20)'
+        in: query
+        name: limit
+        type: integer
+      - description: Офсет с какого рекорда начинать
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: Список отзывов
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: 'Ошибка: неверный ID или тип'
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить отзывы сущности
+      tags:
+      - Отзывы
+    post:
+      description: Пользователь может написать отзыв о сущности (студия, профиль).
+        Для студий требуется завершенное бронирование.
+      parameters:
+      - description: Данные отзыва (target_type, target_id, rating, context_type,
+          context_id)
         in: body
         name: request
         required: true
@@ -6142,7 +5735,7 @@ paths:
             additionalProperties: true
             type: object
         "403":
-          description: 'Запрещено: не можно написать отзыв до завершения бронирования'
+          description: Запрещено писать отзыв
           schema:
             additionalProperties: true
             type: object
@@ -6163,8 +5756,7 @@ paths:
       - Отзывы
   /reviews/:id/response:
     post:
-      description: Владелец студии может добавить ответ на отзыв клиента. Ответ вы
-        ботается рядом с отзывом.
+      description: Владелец сущности может добавить ответ на отзыв.
       parameters:
       - description: ID отзыва
         in: path
@@ -6194,7 +5786,7 @@ paths:
             additionalProperties: true
             type: object
         "403":
-          description: 'Запрещено: вы не овнер студии'
+          description: 'Запрещено: вы не овнер сущности'
           schema:
             additionalProperties: true
             type: object
@@ -6285,43 +5877,226 @@ paths:
       summary: Получить занятые временные слоты
       tags:
       - Бронирования
-  /studios/:id/reviews:
+  /studios:
     get:
-      description: Возвращает постраничный список отзывов о студии. Отзывы отображаются
-        только если они не скрыты администратором.
+      consumes:
+      - application/json
+      description: Получает список всех студий с возможностью фильтрации по городу,
+        типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.
       parameters:
-      - description: ID студии
-        in: path
-        name: id
-        required: true
+      - description: Фильтр по городу
+        example: '"Moscow"'
+        in: query
+        name: city
+        type: string
+      - description: Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)
+        example: '"Fashion"'
+        in: query
+        name: room_type
+        type: string
+      - description: Поиск по названию студии
+        example: '"My Studio"'
+        in: query
+        name: search
+        type: string
+      - description: Минимальная цена в час
+        example: 100
+        in: query
+        name: min_price
+        type: number
+      - description: Максимальная цена в час
+        example: 1000
+        in: query
+        name: max_price
+        type: number
+      - description: Поле для сортировки (rating, price, created_at)
+        example: '"rating"'
+        in: query
+        name: sort_by
+        type: string
+      - description: Порядок сортировки (asc, desc)
+        example: '"desc"'
+        in: query
+        name: sort_order
+        type: string
+      - description: Номер страницы
+        example: 1
+        in: query
+        name: page
         type: integer
-      - description: 'Максимум количество отзывов (дефолт: 10)'
+      - description: Количество студий на странице (максимум 100)
+        example: 20
         in: query
         name: limit
         type: integer
-      - description: Офсет с какого рекорда начинать
-        in: query
-        name: offset
-        type: integer
+      produces:
+      - application/json
       responses:
         "200":
-          description: Список отзывов
+          description: Успешный ответ со списком студий и информацией о пагинации
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: 'Ошибка: неверный ID студии'
+          description: Некорректные параметры запроса
           schema:
             additionalProperties: true
             type: object
         "500":
-          description: Ошибка сервера при получении отзывов
+          description: Внутренняя ошибка сервера
           schema:
             additionalProperties: true
             type: object
-      summary: Получить отзывы студии
+      summary: Получить список студий
       tags:
-      - Отзывы
+      - Catalog - Студии
+    post:
+      consumes:
+      - application/json
+      description: Создает новую студию в каталоге. Требует аутентификации и верификации
+        пользователя как владельца студии. Пользователь должен иметь роль студии-владельца
+        и пройти верификацию.
+      parameters:
+      - description: Данные для создания студии (название, описание, адрес, город,
+          цена и т.д.)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.CreateStudioRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Студия успешно создана, возвращает объект созданной студии
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Пользователь не является верифицированным владельцем студии
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новую студию
+      tags:
+      - Catalog - Студии
+  /studios/:id/reviews:
+    get:
+      responses: {}
+      summary: Получить отзывы студии (Legacy)
+  /studios/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получает полную информацию о студии, включая все комнаты, оборудование
+        и фотографии по уникальному идентификатору.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с информацией о студии
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить студию по ID
+      tags:
+      - Catalog - Студии
+    put:
+      consumes:
+      - application/json
+      description: Обновляет информацию о студии (названия, описание, адрес, город,
+        цена в час и другие параметры). Требует аутентификации. Только владелец студии
+        может её обновлять.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления студии
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.UpdateStudioRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Студия успешно обновлена, возвращает обновленный объект
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для обновления этой студии
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить студию
+      tags:
+      - Catalog - Студии
   /studios/{id}/bookings:
     get:
       description: Возвращает полный список всех бронирований, связанных с указанной
@@ -6353,6 +6128,277 @@ paths:
       summary: Получить бронирования студии
       tags:
       - Бронирования
+  /studios/{id}/photos:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 'Загружает фотографии студии. Поддерживает загрузку до 10 файлов
+        одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла:
+        5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.'
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - collectionFormat: multi
+        description: Файлы изображений для загрузки (до 10 файлов)
+        in: formData
+        items:
+          type: file
+        name: photos
+        required: true
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Фотографии успешно загружены, возвращает список URL загруженных
+            файлов
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса, файл слишком большой или недопустимый
+            формат
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить фотографии студии
+      tags:
+      - Catalog - Фотографии
+  /studios/{id}/rooms:
+    post:
+      consumes:
+      - application/json
+      description: 'Создает новую комнату в студии. Требует аутентификации. Только
+        владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion,
+        Portrait, Creative, Commercial.'
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для создания комнаты (названия, тип, описание и т.д.)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/catalog.CreateRoomRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Комната успешно создана, возвращает объект созданной комнаты
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса или тип комнаты
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для добавления комнат в эту студию
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать новую комнату
+      tags:
+      - Catalog - Комнаты
+  /studios/{id}/working-hours:
+    get:
+      consumes:
+      - application/json
+      deprecated: true
+      description: Получает информацию о часах работы студии и её текущем статусе
+        (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с часами работы и статусом
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить часы работы студии (v1)
+      tags:
+      - Catalog - Часы работы
+    put:
+      consumes:
+      - application/json
+      description: Обновляет расписание работы студии. Требует аутентификации. Только
+        владелец студии может обновлять её часы работы. Принимает массив объектов
+        с информацией о рабочих днях и часах.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Массив объектов WorkingHours с расписанием работы по дням недели
+        in: body
+        name: body
+        required: true
+        schema:
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное обновление часов работы
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат запроса
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Недостаточно прав для обновления этой студии
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить часы работы студии
+      tags:
+      - Catalog - Часы работы
+  /studios/{id}/working-hours/v2:
+    get:
+      consumes:
+      - application/json
+      description: Получает информацию о часах работы студии в новом формате с подробной
+        информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия
+        и полном расписании по дням недели.
+      parameters:
+      - description: Уникальный идентификатор студии
+        example: 1
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ с информацией о часах работы и текущем статусе
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Некорректный формат ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Студия не найдена
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Получить часы работы студии (v2)
+      tags:
+      - Catalog - Часы работы
+  /studios/my:
+    get:
+      consumes:
+      - application/json
+      description: Получает список всех студий, принадлежащих текущему авторизованному
+        владельцу студии. Требует валидного JWT токена в заголовке Authorization.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный ответ со списком студий владельца
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется аутентификация
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Получить мои студии
+      tags:
+      - Catalog - Студии
   /subscriptions/plans:
     get:
       description: Returns all available plans. Public endpoint — no auth required.

@@ -2272,693 +2272,6 @@
                 }
             }
         },
-        "/studios": {
-            "get": {
-                "description": "Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Получить список студий",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "\"Moscow\"",
-                        "description": "Фильтр по городу",
-                        "name": "city",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"Fashion\"",
-                        "description": "Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)",
-                        "name": "room_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"My Studio\"",
-                        "description": "Поиск по названию студии",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "example": 100,
-                        "description": "Минимальная цена в час",
-                        "name": "min_price",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "example": 1000,
-                        "description": "Максимальная цена в час",
-                        "name": "max_price",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"rating\"",
-                        "description": "Поле для сортировки (rating, price, created_at)",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"desc\"",
-                        "description": "Порядок сортировки (asc, desc)",
-                        "name": "sort_order",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Номер страницы",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 20,
-                        "description": "Количество студий на странице (максимум 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ со списком студий и информацией о пагинации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректные параметры запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Создает новую студию в каталоге. Требует аутентификации и верификации пользователя как владельца студии. Пользователь должен иметь роль студии-владельца и пройти верификацию.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Создать новую студию",
-                "parameters": [
-                    {
-                        "description": "Данные для создания студии (название, описание, адрес, город, цена и т.д.)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateStudioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Студия успешно создана, возвращает объект созданной студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Пользователь не является верифицированным владельцем студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/my": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Получает список всех студий, принадлежащих текущему авторизованному владельцу студии. Требует валидного JWT токена в заголовке Authorization.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Получить мои студии",
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ со списком студий владельца",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}": {
-            "get": {
-                "description": "Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Получить студию по ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с информацией о студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет информацию о студии (названия, описание, адрес, город, цена в час и другие параметры). Требует аутентификации. Только владелец студии может её обновлять.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Обновить студию",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для обновления студии",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Студия успешно обновлена, возвращает обновленный объект",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для обновления этой студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/photos": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Загружает фотографии студии. Поддерживает загрузку до 10 файлов одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла: 5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Фотографии"
-                ],
-                "summary": "Загрузить фотографии студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "file"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Файлы изображений для загрузки (до 10 файлов)",
-                        "name": "photos",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Фотографии успешно загружены, возвращает список URL загруженных файлов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса, файл слишком большой или недопустимый формат",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/rooms": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Создает новую комнату в студии. Требует аутентификации. Только владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion, Portrait, Creative, Commercial.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Создать новую комнату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для создания комнаты (названия, тип, описание и т.д.)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateRoomRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Комната успешно создана, возвращает объект созданной комнаты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса или тип комнаты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для добавления комнат в эту студию",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/working-hours": {
-            "get": {
-                "description": "Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Получить часы работы студии (v1)",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с часами работы и статусом",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет расписание работы студии. Требует аутентификации. Только владелец студии может обновлять её часы работы. Принимает массив объектов с информацией о рабочих днях и часах.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Обновить часы работы студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Массив объектов WorkingHours с расписанием работы по дням недели",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешное обновление часов работы",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для обновления этой студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/working-hours/v2": {
-            "get": {
-                "description": "Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Получить часы работы студии (v2)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с информацией о часах работы и текущем статусе",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/auth/login": {
             "post": {
                 "description": "Авторизует пользователя (клиента или владельца студии) по email и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.",
@@ -4410,7 +3723,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает список студий, добавленных в избранное текущего пользователя, с поддержкой пагинации",
+                "description": "Получает список объектов (студий, профилей и т.д.), добавленных в избранное",
                 "consumes": [
                     "application/json"
                 ],
@@ -4420,8 +3733,14 @@
                 "tags": [
                     "Favorite"
                 ],
-                "summary": "Получить список избранных студий",
+                "summary": "Получить список избранного",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Фильтр по типу сущности (например, studio)",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "default": 1,
@@ -4439,7 +3758,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список избранных студий",
+                        "description": "Список избранного",
                         "schema": {
                             "$ref": "#/definitions/favorite.FavoriteListResponse"
                         }
@@ -4451,7 +3770,62 @@
                         }
                     },
                     "500": {
-                        "description": "Ошибка при получении списка избранного",
+                        "description": "Ошибка при получении списка",
+                        "schema": {
+                            "$ref": "#/definitions/favorite.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет объект в список избранного (студию, профиль и т.д.)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Favorite"
+                ],
+                "summary": "Добавить в избранное",
+                "parameters": [
+                    {
+                        "description": "Данные (entity_type, entity_id)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/favorite.AddFavoriteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Сущность успешно добавлена в избранное",
+                        "schema": {
+                            "$ref": "#/definitions/favorite.FavoriteResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Сущность уже находится в избранном или некорректные данные",
+                        "schema": {
+                            "$ref": "#/definitions/favorite.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Пользователь не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/favorite.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
@@ -4461,72 +3835,25 @@
         },
         "/favorites/{studioId}": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Добавляет студию в список избранного. Возвращает ошибку, если студия уже в избранном или не существует",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Favorite"
-                ],
-                "summary": "Добавить студию в избранное",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID студии",
-                        "name": "studioId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Студия успешно добавлена в избранное",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.FavoriteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Студия уже находится в избранном или некорректный ID студии",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка при добавлении в избранное",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    }
-                }
+                "responses": {}
             },
+            "delete": {
+                "responses": {}
+            }
+        },
+        "/favorites/{studioId}/check": {
+            "get": {
+                "responses": {}
+            }
+        },
+        "/favorites/{type}/{id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет студию из списка избранного. Возвращает ошибку, если студия не было в избранном",
+                "description": "Удаляет объект из списка избранного",
                 "consumes": [
                     "application/json"
                 ],
@@ -4536,23 +3863,30 @@
                 "tags": [
                     "Favorite"
                 ],
-                "summary": "Удалить студию из избранного",
+                "summary": "Удалить из избранного",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип сущности",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "ID студии",
-                        "name": "studioId",
+                        "description": "ID сущности",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "204": {
-                        "description": "Студия успешно удалена из избранного"
+                        "description": "Успешно удалено из избранного"
                     },
                     "400": {
-                        "description": "Некорректный ID студии",
+                        "description": "Некорректный ID или тип",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
@@ -4564,13 +3898,13 @@
                         }
                     },
                     "404": {
-                        "description": "Студия отсутствует в избранном",
+                        "description": "Отсутствует в избранном",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка при удалении из избранного",
+                        "description": "Ошибка сервера",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
@@ -4578,14 +3912,14 @@
                 }
             }
         },
-        "/favorites/{studioId}/check": {
+        "/favorites/{type}/{id}/check": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Проверяет наличие студии в списке избранного текущего пользователя",
+                "description": "Проверяет наличие объекта в избранном текущего пользователя",
                 "consumes": [
                     "application/json"
                 ],
@@ -4595,26 +3929,33 @@
                 "tags": [
                     "Favorite"
                 ],
-                "summary": "Проверить находится ли студия в избранном",
+                "summary": "Проверить наличие в избранном",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип сущности",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
                     {
                         "type": "integer",
                         "format": "int64",
-                        "description": "ID студии",
-                        "name": "studioId",
+                        "description": "ID сущности",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Результат проверки наличия студии в избранном",
+                        "description": "Результат проверки",
                         "schema": {
                             "$ref": "#/definitions/favorite.CheckFavoriteResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный ID студии",
+                        "description": "Некорректный ID или тип",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
@@ -4626,7 +3967,7 @@
                         }
                     },
                     "500": {
-                        "description": "Ошибка при проверке избранного",
+                        "description": "Ошибка сервера",
                         "schema": {
                             "$ref": "#/definitions/favorite.ErrorResponse"
                         }
@@ -6556,7 +5897,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payment.InitPaymentRequest"
+                            "$ref": "#/definitions/payment.CreatePaymentRequest"
                         }
                     }
                 ],
@@ -7044,20 +6385,78 @@
             }
         },
         "/reviews": {
+            "get": {
+                "description": "Возвращает постраничный список отзывов о сущности.",
+                "tags": [
+                    "Отзывы"
+                ],
+                "summary": "Получить отзывы сущности",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип сущности (например, studio)",
+                        "name": "target_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID сущности",
+                        "name": "target_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Максимум количество отзывов (дефолт: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Офсет с какого рекорда начинать",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список отзывов",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: неверный ID или тип",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Пользователь может написать отзыв о студии только после завершённого бронирования. Может написать только один отзыв от пользователя на студию.",
+                "description": "Пользователь может написать отзыв о сущности (студия, профиль). Для студий требуется завершенное бронирование.",
                 "tags": [
                     "Отзывы"
                 ],
                 "summary": "Написать отзыв",
                 "parameters": [
                     {
-                        "description": "Данные отзыва (studio_id, rating, text)",
+                        "description": "Данные отзыва (target_type, target_id, rating, context_type, context_id)",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -7089,7 +6488,7 @@
                         }
                     },
                     "403": {
-                        "description": "Запрещено: не можно написать отзыв до завершения бронирования",
+                        "description": "Запрещено писать отзыв",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7119,7 +6518,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Владелец студии может добавить ответ на отзыв клиента. Ответ вы ботается рядом с отзывом.",
+                "description": "Владелец сущности может добавить ответ на отзыв.",
                 "tags": [
                     "Отзывы"
                 ],
@@ -7165,7 +6564,7 @@
                         }
                     },
                     "403": {
-                        "description": "Запрещено: вы не овнер студии",
+                        "description": "Запрещено: вы не овнер сущности",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7283,51 +6682,352 @@
                 }
             }
         },
-        "/studios/:id/reviews": {
+        "/studios": {
             "get": {
-                "description": "Возвращает постраничный список отзывов о студии. Отзывы отображаются только если они не скрыты администратором.",
-                "tags": [
-                    "Отзывы"
+                "description": "Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Получить отзывы студии",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Студии"
+                ],
+                "summary": "Получить список студий",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
+                        "type": "string",
+                        "example": "\"Moscow\"",
+                        "description": "Фильтр по городу",
+                        "name": "city",
+                        "in": "query"
                     },
                     {
-                        "type": "integer",
-                        "description": "Максимум количество отзывов (дефолт: 10)",
-                        "name": "limit",
+                        "type": "string",
+                        "example": "\"Fashion\"",
+                        "description": "Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)",
+                        "name": "room_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"My Studio\"",
+                        "description": "Поиск по названию студии",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "example": 100,
+                        "description": "Минимальная цена в час",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "example": 1000,
+                        "description": "Максимальная цена в час",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"rating\"",
+                        "description": "Поле для сортировки (rating, price, created_at)",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "\"desc\"",
+                        "description": "Порядок сортировки (asc, desc)",
+                        "name": "sort_order",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Офсет с какого рекорда начинать",
-                        "name": "offset",
+                        "example": 1,
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "example": 20,
+                        "description": "Количество студий на странице (максимум 100)",
+                        "name": "limit",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список отзывов",
+                        "description": "Успешный ответ со списком студий и информацией о пагинации",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверный ID студии",
+                        "description": "Некорректные параметры запроса",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при получении отзывов",
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает новую студию в каталоге. Требует аутентификации и верификации пользователя как владельца студии. Пользователь должен иметь роль студии-владельца и пройти верификацию.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Студии"
+                ],
+                "summary": "Создать новую студию",
+                "parameters": [
+                    {
+                        "description": "Данные для создания студии (название, описание, адрес, город, цена и т.д.)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Студия успешно создана, возвращает объект созданной студии",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь не является верифицированным владельцем студии",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/:id/reviews": {
+            "get": {
+                "summary": "Получить отзывы студии (Legacy)",
+                "responses": {}
+            }
+        },
+        "/studios/my": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Получает список всех студий, принадлежащих текущему авторизованному владельцу студии. Требует валидного JWT токена в заголовке Authorization.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Студии"
+                ],
+                "summary": "Получить мои студии",
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ со списком студий владельца",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}": {
+            "get": {
+                "description": "Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Студии"
+                ],
+                "summary": "Получить студию по ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с информацией о студии",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Студия не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет информацию о студии (названия, описание, адрес, город, цена в час и другие параметры). Требует аутентификации. Только владелец студии может её обновлять.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Студии"
+                ],
+                "summary": "Обновить студию",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для обновления студии",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Студия успешно обновлена, возвращает обновленный объект",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав для обновления этой студии",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Студия не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7369,6 +7069,345 @@
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера при получении бронирований",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/photos": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Загружает фотографии студии. Поддерживает загрузку до 10 файлов одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла: 5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Фотографии"
+                ],
+                "summary": "Загрузить фотографии студии",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "file"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Файлы изображений для загрузки (до 10 файлов)",
+                        "name": "photos",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Фотографии успешно загружены, возвращает список URL загруженных файлов",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат запроса, файл слишком большой или недопустимый формат",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/rooms": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает новую комнату в студии. Требует аутентификации. Только владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion, Portrait, Creative, Commercial.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Комнаты"
+                ],
+                "summary": "Создать новую комнату",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для создания комнаты (названия, тип, описание и т.д.)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateRoomRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Комната успешно создана, возвращает объект созданной комнаты",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат запроса или тип комнаты",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав для добавления комнат в эту студию",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Студия не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/working-hours": {
+            "get": {
+                "description": "Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Часы работы"
+                ],
+                "summary": "Получить часы работы студии (v1)",
+                "deprecated": true,
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с часами работы и статусом",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Студия не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет расписание работы студии. Требует аутентификации. Только владелец студии может обновлять её часы работы. Принимает массив объектов с информацией о рабочих днях и часах.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Часы работы"
+                ],
+                "summary": "Обновить часы работы студии",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Массив объектов WorkingHours с расписанием работы по дням недели",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное обновление часов работы",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат запроса",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав для обновления этой студии",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/working-hours/v2": {
+            "get": {
+                "description": "Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog - Часы работы"
+                ],
+                "summary": "Получить часы работы студии (v2)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Уникальный идентификатор студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный ответ с информацией о часах работы и текущем статусе",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный формат ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Студия не найдена",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -8587,6 +8626,21 @@
                 }
             }
         },
+        "favorite.AddFavoriteRequest": {
+            "type": "object",
+            "required": [
+                "entity_id",
+                "entity_type"
+            ],
+            "properties": {
+                "entity_id": {
+                    "type": "integer"
+                },
+                "entity_type": {
+                    "type": "string"
+                }
+            }
+        },
         "favorite.CheckFavoriteResponse": {
             "type": "object",
             "properties": {
@@ -8632,40 +8686,14 @@
                 "created_at": {
                     "type": "string"
                 },
-                "id": {
+                "entity_id": {
                     "type": "integer"
                 },
-                "studio": {
-                    "$ref": "#/definitions/favorite.StudioBrief"
-                },
-                "studio_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "favorite.StudioBrief": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "type": "string"
-                },
-                "district": {
+                "entity_type": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "photos": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rating": {
-                    "type": "number"
                 }
             }
         },
@@ -9377,21 +9405,15 @@
                 }
             }
         },
-        "payment.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string"
-                }
-            }
-        },
-        "payment.InitPaymentRequest": {
+        "payment.CreatePaymentRequest": {
             "type": "object",
             "required": [
-                "booking_id",
-                "out_sum"
+                "booking_id"
             ],
             "properties": {
+                "amount": {
+                    "type": "string"
+                },
                 "booking_id": {
                     "type": "integer"
                 },
@@ -9401,11 +9423,28 @@
                 "out_sum": {
                     "type": "string"
                 },
+                "previous_invoice_id": {
+                    "type": "integer"
+                },
+                "recurring": {
+                    "type": "boolean"
+                },
                 "shp_params": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "subscription_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "payment.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
                 }
             }
         },
@@ -9660,14 +9699,24 @@
             "type": "object",
             "required": [
                 "rating",
-                "studio_id"
+                "target_id",
+                "target_type"
             ],
             "properties": {
-                "booking_id": {
-                    "type": "integer"
-                },
                 "comment": {
                     "type": "string"
+                },
+                "context_id": {
+                    "type": "integer"
+                },
+                "context_type": {
+                    "type": "string"
+                },
+                "criteria": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
                 },
                 "photos": {
                     "type": "array",
@@ -9680,8 +9729,11 @@
                     "maximum": 5,
                     "minimum": 1
                 },
-                "studio_id": {
+                "target_id": {
                     "type": "integer"
+                },
+                "target_type": {
+                    "type": "string"
                 }
             }
         },
@@ -9699,14 +9751,26 @@
         "review.Review": {
             "type": "object",
             "properties": {
-                "booking_id": {
+                "author_id": {
                     "type": "integer"
                 },
                 "comment": {
                     "type": "string"
                 },
+                "context_id": {
+                    "type": "integer"
+                },
+                "context_type": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
+                },
+                "criteria": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "id": {
                     "type": "integer"
@@ -9732,16 +9796,25 @@
                 "responded_at": {
                     "type": "string"
                 },
-                "studio_id": {
+                "target_id": {
                     "type": "integer"
+                },
+                "target_type": {
+                    "$ref": "#/definitions/review.TargetType"
                 },
                 "updated_at": {
                     "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
+        },
+        "review.TargetType": {
+            "type": "string",
+            "enum": [
+                "studio"
+            ],
+            "x-enum-varnames": [
+                "TargetTypeStudio"
+            ]
         },
         "subscription.CancelRequest": {
             "type": "object",

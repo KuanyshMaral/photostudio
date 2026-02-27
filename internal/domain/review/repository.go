@@ -2,8 +2,9 @@ package review
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ReviewRepository struct {
@@ -16,12 +17,15 @@ func NewReviewRepository(db *gorm.DB) *ReviewRepository {
 
 type reviewModel struct {
 	ID            int64      `gorm:"column:id;primaryKey"`
-	StudioID      int64      `gorm:"column:studio_id"`
-	UserID        int64      `gorm:"column:user_id"`
-	BookingID     *int64     `gorm:"column:booking_id"`
+	AuthorID      int64      `gorm:"column:author_id"`
+	TargetType    TargetType `gorm:"column:target_type"`
+	TargetID      int64      `gorm:"column:target_id"`
+	ContextType   *string    `gorm:"column:context_type"`
+	ContextID     *int64     `gorm:"column:context_id"`
 	Rating        int        `gorm:"column:rating"`
 	Comment       *string    `gorm:"column:comment"`
 	Photos        []string   `gorm:"column:photos;type:text[]"`
+	Criteria      []byte     `gorm:"column:criteria;type:jsonb;default:'{}'"`
 	OwnerResponse *string    `gorm:"column:owner_response"`
 	RespondedAt   *time.Time `gorm:"column:responded_at"`
 	IsVerified    bool       `gorm:"column:is_verified"`
@@ -39,12 +43,15 @@ func toDomainReview(m reviewModel) Review {
 	}
 	return Review{
 		ID:            m.ID,
-		StudioID:      m.StudioID,
-		UserID:        m.UserID,
-		BookingID:     m.BookingID,
+		AuthorID:      m.AuthorID,
+		TargetType:    m.TargetType,
+		TargetID:      m.TargetID,
+		ContextType:   m.ContextType,
+		ContextID:     m.ContextID,
 		Rating:        m.Rating,
 		Comment:       comment,
 		Photos:        m.Photos,
+		Criteria:      m.Criteria,
 		OwnerResponse: m.OwnerResponse,
 		RespondedAt:   m.RespondedAt,
 		IsVerified:    m.IsVerified,
@@ -62,12 +69,15 @@ func toReviewModel(r *Review) reviewModel {
 	}
 	return reviewModel{
 		ID:            r.ID,
-		StudioID:      r.StudioID,
-		UserID:        r.UserID,
-		BookingID:     r.BookingID,
+		AuthorID:      r.AuthorID,
+		TargetType:    r.TargetType,
+		TargetID:      r.TargetID,
+		ContextType:   r.ContextType,
+		ContextID:     r.ContextID,
 		Rating:        r.Rating,
 		Comment:       comment,
 		Photos:        r.Photos,
+		Criteria:      r.Criteria,
 		OwnerResponse: r.OwnerResponse,
 		RespondedAt:   r.RespondedAt,
 		IsVerified:    r.IsVerified,
@@ -79,6 +89,9 @@ func toReviewModel(r *Review) reviewModel {
 
 func (r *ReviewRepository) Create(ctx context.Context, rv *Review) error {
 	m := toReviewModel(rv)
+	if len(m.Criteria) == 0 {
+		m.Criteria = []byte("{}")
+	}
 	tx := r.db.WithContext(ctx).Create(&m)
 	if tx.Error != nil {
 		return tx.Error
@@ -97,7 +110,7 @@ func (r *ReviewRepository) GetByID(ctx context.Context, id int64) (*Review, erro
 	return &d, nil
 }
 
-func (r *ReviewRepository) GetByStudio(ctx context.Context, studioID int64, limit, offset int) ([]Review, error) {
+func (r *ReviewRepository) GetByTarget(ctx context.Context, targetType TargetType, targetID int64, limit, offset int) ([]Review, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -107,7 +120,7 @@ func (r *ReviewRepository) GetByStudio(ctx context.Context, studioID int64, limi
 
 	var rows []reviewModel
 	tx := r.db.WithContext(ctx).
-		Where("studio_id = ? AND is_hidden = false", studioID).
+		Where("target_type = ? AND target_id = ? AND is_hidden = false", targetType, targetID).
 		Order("created_at DESC").
 		Limit(limit).
 		Offset(offset).
@@ -141,10 +154,6 @@ func (r *ReviewRepository) SetOwnerResponse(ctx context.Context, reviewID int64,
 	return r.GetByID(ctx, reviewID)
 }
 
-func (r *ReviewRepository) DB() *gorm.DB {
-	return r.db
-}
-
 func (r *ReviewRepository) Update(ctx context.Context, rv *Review) error {
 	m := toReviewModel(rv)
 	tx := r.db.WithContext(ctx).
@@ -154,11 +163,22 @@ func (r *ReviewRepository) Update(ctx context.Context, rv *Review) error {
 	return tx.Error
 }
 
-func (r *ReviewRepository) ExistsByUserAndStudio(ctx context.Context, userID, studioID int64) (bool, error) {
+func (r *ReviewRepository) HasReviewed(ctx context.Context, authorID int64, targetType TargetType, targetID int64, contextType *string, contextID *int64) (bool, error) {
 	var count int64
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Model(&reviewModel{}).
-		Where("user_id = ? AND studio_id = ?", userID, studioID).
-		Count(&count).Error
+		Where("author_id = ? AND target_type = ? AND target_id = ?", authorID, targetType, targetID)
+
+	if contextType != nil && contextID != nil {
+		query = query.Where("context_type = ? AND context_id = ?", contextType, contextID)
+	} else {
+		query = query.Where("context_type IS NULL AND context_id IS NULL")
+	}
+
+	err := query.Count(&count).Error
 	return count > 0, err
+}
+
+func (r *ReviewRepository) DB() *gorm.DB {
+	return r.db
 }
