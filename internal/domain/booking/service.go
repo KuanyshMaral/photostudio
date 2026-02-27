@@ -3,6 +3,7 @@ package booking
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
@@ -62,6 +63,30 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 		return nil, ErrValidation
 	}
 
+	wh, err := s.GetWorkingHoursForDate(ctx, req.StudioID, req.StartTime)
+	if err != nil {
+		return nil, err
+	}
+	if wh.IsClosed {
+		return nil, errors.New("studio is closed on this date")
+	}
+
+	openT, err := time.Parse("15:04", wh.OpenTime)
+	if err != nil {
+		return nil, err
+	}
+	closeT, err := time.Parse("15:04", wh.CloseTime)
+	if err != nil {
+		return nil, err
+	}
+
+	openBound := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), openT.Hour(), openT.Minute(), 0, 0, req.StartTime.Location())
+	closeBound := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), closeT.Hour(), closeT.Minute(), 0, 0, req.StartTime.Location())
+
+	if req.StartTime.Before(openBound) || req.EndTime.After(closeBound) {
+		return nil, errors.New("booking outside of working hours")
+	}
+
 	ok, err := s.bookings.CheckAvailability(ctx, req.RoomID, req.StartTime, req.EndTime)
 	if err != nil {
 		return nil, err
@@ -70,10 +95,14 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 		return nil, ErrNotAvailable
 	}
 
-	pricePerHour, err := s.rooms.GetPriceByID(ctx, req.RoomID)
+	room, err := s.rooms.GetByID(ctx, req.RoomID)
 	if err != nil {
 		return nil, err
 	}
+	if room.StudioID != req.StudioID {
+		return nil, ErrValidation
+	}
+	pricePerHour := room.PricePerHourMin
 
 	durationHours := req.EndTime.Sub(req.StartTime).Hours()
 	total := durationHours * pricePerHour

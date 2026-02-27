@@ -1,29 +1,38 @@
 package catalog
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
 	"os"
 	"path/filepath"
+	"photostudio/internal/domain/attachment"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type Handler struct {
-	service  *Service
-	userRepo *auth.UserRepository
+	service       *Service
+	userRepo      *auth.UserRepository
+	attachmentSvc *attachment.Service
 }
 
-func NewHandler(service *Service, userRepo *auth.UserRepository) *Handler {
+func NewHandler(
+	service *Service,
+	userRepo *auth.UserRepository,
+	attachmentSvc *attachment.Service,
+) *Handler {
 	return &Handler{
-		service:  service,
-		userRepo: userRepo,
+		service:       service,
+		userRepo:      userRepo,
+		attachmentSvc: attachmentSvc,
 	}
 }
 
@@ -92,6 +101,10 @@ func (h *Handler) GetStudios(c *gin.Context) {
 		return
 	}
 
+	for i := range studios {
+		h.enrichStudioWithAttachments(c.Request.Context(), &studios[i])
+	}
+
 	totalPages := (int(total) + f.Limit - 1) / f.Limit
 	currentPage := (f.Offset / f.Limit) + 1
 
@@ -149,6 +162,8 @@ func (h *Handler) GetStudioByID(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
+
+	h.enrichStudioWithAttachments(c.Request.Context(), studio)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -299,6 +314,10 @@ func (h *Handler) GetMyStudios(c *gin.Context) {
 	if err != nil {
 		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get studios")
 		return
+	}
+
+	for i := range studios {
+		h.enrichStudioWithAttachments(c.Request.Context(), &studios[i])
 	}
 
 	response.Success(c, http.StatusOK, gin.H{"studios": studios})
@@ -511,6 +530,8 @@ func (h *Handler) UpdateRoom(c *gin.Context) {
 		return
 	}
 
+	h.enrichRoomWithAttachments(c.Request.Context(), room)
+
 	response.Success(c, http.StatusOK, gin.H{"room": room})
 }
 
@@ -683,6 +704,10 @@ func (h *Handler) GetRooms(c *gin.Context) {
 		return
 	}
 
+	for i := range rooms {
+		h.enrichRoomWithAttachments(c.Request.Context(), &rooms[i])
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
@@ -731,6 +756,8 @@ func (h *Handler) GetRoomByID(c *gin.Context) {
 		handleError(c, err)
 		return
 	}
+
+	h.enrichRoomWithAttachments(c.Request.Context(), room)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -997,5 +1024,47 @@ func handleError(c *gin.Context, err error) {
 				"details": err.Error(),
 			},
 		})
+	}
+}
+
+// -- Enrichment Helpers --
+
+func (h *Handler) enrichStudioWithAttachments(ctx context.Context, studio *Studio) {
+	if h.attachmentSvc == nil {
+		return
+	}
+	attachments, err := h.attachmentSvc.ListByTarget(ctx, attachment.TargetStudioGallery, studio.ID)
+	if err == nil {
+		studio.Attachments = make([]AttachmentURL, len(attachments))
+		for i, a := range attachments {
+			studio.Attachments[i] = AttachmentURL{
+				ID:           a.ID,
+				URL:          a.URL,
+				OriginalName: a.OriginalName,
+				MimeType:     a.MimeType,
+				SortOrder:    a.SortOrder,
+				Caption:      a.Metadata.Caption,
+			}
+		}
+	}
+}
+
+func (h *Handler) enrichRoomWithAttachments(ctx context.Context, room *Room) {
+	if h.attachmentSvc == nil {
+		return
+	}
+	attachments, err := h.attachmentSvc.ListByTarget(ctx, attachment.TargetRoomGallery, room.ID)
+	if err == nil {
+		room.Attachments = make([]AttachmentURL, len(attachments))
+		for i, a := range attachments {
+			room.Attachments[i] = AttachmentURL{
+				ID:           a.ID,
+				URL:          a.URL,
+				OriginalName: a.OriginalName,
+				MimeType:     a.MimeType,
+				SortOrder:    a.SortOrder,
+				Caption:      a.Metadata.Caption,
+			}
+		}
 	}
 }

@@ -45,20 +45,21 @@ func ParseRoomType(s string) (RoomType, error) {
 }
 
 type Room struct {
-	ID              int64          `json:"id"`
-	StudioID        int64          `json:"studio_id"`
-	Name            string         `json:"name" validate:"required"`
-	Description     string         `json:"description,omitempty"`
-	AreaSqm         int            `json:"area_sqm" validate:"required,gt=0"`
-	Capacity        int            `json:"capacity" validate:"required,gt=0"`
-	RoomType        RoomType       `json:"room_type" validate:"required"`
-	PricePerHourMin float64        `json:"price_per_hour_min" validate:"required,gte=0"`
-	PricePerHourMax *float64       `json:"price_per_hour_max,omitempty"`
-	Amenities       pq.StringArray `gorm:"type:text[]" json:"amenities,omitempty" swaggertype:"array,string"`
-	Photos          pq.StringArray `gorm:"type:text[]" json:"photos,omitempty" swaggertype:"array,string"`
-	IsActive        bool           `json:"is_active"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID              int64           `json:"id"`
+	StudioID        int64           `json:"studio_id"`
+	Name            string          `json:"name" validate:"required"`
+	Description     string          `json:"description,omitempty"`
+	AreaSqm         int             `json:"area_sqm" validate:"required,gt=0"`
+	Capacity        int             `json:"capacity" validate:"required,gt=0"`
+	RoomType        RoomType        `json:"room_type" validate:"required"`
+	PricePerHourMin float64         `json:"price_per_hour_min" validate:"required,gte=0"`
+	PricePerHourMax *float64        `json:"price_per_hour_max,omitempty"`
+	Amenities       pq.StringArray  `gorm:"type:text[]" json:"amenities,omitempty" swaggertype:"array,string"`
+	Photos          []string        `json:"photos,omitempty" gorm:"-"`      // DEPRECATED: use Attachments
+	Attachments     []AttachmentURL `json:"attachments,omitempty" gorm:"-"` // Gallery loaded via attachment service
+	IsActive        bool            `json:"is_active"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 
 	// Relations
 	Equipment []Equipment `json:"equipment,omitempty"`

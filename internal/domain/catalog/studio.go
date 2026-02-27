@@ -52,7 +52,8 @@ type Studio struct {
 	OwnerID      int64           `json:"owner_id"`
 	Name         string          `json:"name" validate:"required"`
 	Description  string          `json:"description,omitempty"`
-	Photos       []string        `json:"photos" gorm:"serializer:json;type:jsonb;default:'[]'"`
+	Photos       []string        `json:"photos,omitempty" gorm:"-"`      // DEPRECATED: populated from attachments.target_type=studio_gallery
+	Attachments  []AttachmentURL `json:"attachments,omitempty" gorm:"-"` // Gallery loaded via attachment service
 	Address      string          `json:"address" validate:"required"`
 	District     string          `json:"district,omitempty"`
 	City         string          `json:"city" validate:"required"`

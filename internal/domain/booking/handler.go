@@ -165,6 +165,8 @@ func parseBookingDateTimeAt(raw string, now time.Time) (time.Time, error) {
 		time.RFC3339,
 		"2006-01-02T15:04",
 		"2006-01-02 15:04",
+		"January 2, 2006 3:04 PM",
+		"Jan 2, 2006 15:04",
 	}
 
 	for _, format := range formats {
