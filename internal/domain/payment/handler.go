@@ -57,7 +57,7 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 		h.loggerf("level=error msg=robokassa create failed request=%+v err=%v", req, err)
 		status := http.StatusInternalServerError
 		switch err {
-		case ErrAmountMismatch, ErrInvalidAmount:
+		case ErrAmountMismatch, ErrInvalidAmount, ErrInvalidSubscriptionID:
 			status = http.StatusBadRequest
 		}
 		c.JSON(status, gin.H{"error": err.Error()})

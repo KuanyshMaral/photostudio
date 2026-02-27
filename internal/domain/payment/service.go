@@ -23,12 +23,13 @@ import (
 )
 
 var (
-	ErrInvalidSignature = errors.New("invalid signature")
-	ErrAmountMismatch   = errors.New("amount mismatch")
-	ErrReplayDetected   = errors.New("replay detected")
-	ErrPaymentNotFound  = errors.New("payment not found")
-	ErrMisconfigured    = errors.New("robokassa is misconfigured")
-	ErrInvalidAmount    = errors.New("invalid amount")
+	ErrInvalidSignature      = errors.New("invalid signature")
+	ErrAmountMismatch        = errors.New("amount mismatch")
+	ErrReplayDetected        = errors.New("replay detected")
+	ErrPaymentNotFound       = errors.New("payment not found")
+	ErrMisconfigured         = errors.New("robokassa is misconfigured")
+	ErrInvalidAmount         = errors.New("invalid amount")
+	ErrInvalidSubscriptionID = errors.New("invalid subscription_id: must be UUID")
 )
 
 var invSeq uint32
@@ -77,7 +78,7 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		baseURL:   baseURL,
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
-		isTest:   isTest,
+		isTest: isTest,
 	}
 }
 
@@ -151,6 +152,17 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 	}
 	if !amountEqual(normalizedAmount, fmt.Sprintf("%.2f", bk.TotalPrice)) {
 		return nil, ErrAmountMismatch
+	}
+	if subscriptionID != nil {
+		sid := strings.TrimSpace(*subscriptionID)
+		if sid == "" {
+			subscriptionID = nil
+		} else {
+			if _, err := uuid.Parse(sid); err != nil {
+				return nil, ErrInvalidSubscriptionID
+			}
+			subscriptionID = &sid
+		}
 	}
 
 	invID := generateInvoiceID()
