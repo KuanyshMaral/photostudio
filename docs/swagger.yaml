@@ -112,6 +112,32 @@ definitions:
       admin_notes:
         type: string
     type: object
+  attachment.attachRequest:
+    properties:
+      caption:
+        type: string
+      target_id:
+        type: integer
+      target_type:
+        type: string
+      upload_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - target_id
+    - target_type
+    - upload_ids
+    type: object
+  attachment.reorderRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - ids
+    type: object
   auth.ErrorDetailsSwagger:
     properties:
       code:
@@ -1278,6 +1304,11 @@ definitions:
     type: object
   review.Review:
     properties:
+      attachments:
+        description: Populated from attachment service (URLs)
+        items:
+          type: string
+        type: array
       author_id:
         type: integer
       comment:
@@ -1301,6 +1332,8 @@ definitions:
       owner_response:
         type: string
       photos:
+        description: 'DEPRECATED: use attachments WHERE target_type=''review_photos''
+          AND target_id=id'
         items:
           type: string
         type: array
@@ -2942,6 +2975,164 @@ paths:
       summary: Добавить оборудование в комнату
       tags:
       - Catalog - Оборудование
+  /attachments:
+    get:
+      parameters:
+      - description: Target type (studio_gallery, room_gallery, review_photos, chat_message)
+        in: query
+        name: target_type
+        required: true
+        type: string
+      - description: Target entity ID
+        in: query
+        name: target_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List attachments for an entity
+      tags:
+      - Attachments
+    post:
+      consumes:
+      - application/json
+      description: Links one or more existing upload IDs to a business entity (studio
+        gallery, room gallery, chat message, etc.)
+      parameters:
+      - description: Attach request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/attachment.attachRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Attach uploads to an entity
+      tags:
+      - Attachments
+  /attachments/{id}:
+    delete:
+      description: Removes the link but does NOT delete the underlying file. Use DELETE
+        /uploads/{id} for that.
+      parameters:
+      - description: Attachment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete an attachment (unlink upload from entity)
+      tags:
+      - Attachments
+  /attachments/reorder:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Ordered list of attachment IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/attachment.reorderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Reorder attachments for an entity
+      tags:
+      - Attachments
   /auth/login:
     post:
       description: Авторизует пользователя (клиента или владельца студии) по email

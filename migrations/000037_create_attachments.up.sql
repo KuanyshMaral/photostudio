@@ -5,7 +5,7 @@
 
 CREATE TABLE attachments (
     id          BIGSERIAL PRIMARY KEY,
-    upload_id   VARCHAR(36) NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+    upload_id   UUID NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
 
     -- Polymorphic target: which entity owns this file?
     target_id   BIGINT      NOT NULL,
