@@ -9,6 +9,7 @@ import (
 	"photostudio/internal/config"
 	"photostudio/internal/database"
 	"photostudio/internal/domain/admin"
+	"photostudio/internal/domain/attachment"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/booking"
 	"photostudio/internal/domain/catalog"
@@ -54,6 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("invalid auth runtime config: %v", err)
 	}
+	uploadCfg := config.LoadUploadConfig()
 
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
@@ -144,6 +146,16 @@ func main() {
 	// Module services & handlers
 	profileService := profile.NewService(clientProfileRepo, ownerProfileRepo, adminProfileRepo)
 
+	// --- CORE SHARED SERVICES ---
+	uploadRepo := upload.NewRepository(db)
+	uploadService := upload.NewService(uploadRepo, uploadCfg.LocalPath, uploadCfg.PublicURL)
+	uploadHandler := upload.NewHandler(uploadService)
+
+	attachmentRepo := attachment.NewRepository(db)
+	attachmentService := attachment.NewService(attachmentRepo, uploadService)
+	attachmentHandler := attachment.NewHandler(attachmentService)
+	// ----------------------------
+
 	authMailer := auth.NewDevConsoleMailer(authConfig.AppEnv == "dev" || authConfig.AppEnv == "development")
 	authService := auth.NewService(userRepo, ownerProfileRepo, profileService, jwtService, authMailer, authConfig.VerificationCodePepper, authConfig.VerifyCodeTTL, authConfig.VerifyResendCooldown, authConfig.RefreshTokenPepper, authConfig.RefreshTTL)
 	authHandler := auth.NewHandler(authService, profileService, bookingRepo, authConfig.CookieSecure, authConfig.CookieSameSite, authConfig.CookiePath)
@@ -154,7 +166,7 @@ func main() {
 	// Ensure admin profile for initial admin if needed (optional, or rely on manual creation/db seed)
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
-	catalogHandler := catalog.NewHandler(catalogService, userRepo)
+	catalogHandler := catalog.NewHandler(catalogService, userRepo, attachmentService)
 
 	// Notification repositories (new architecture)
 	notifRepo := notification.NewRepository(db)
@@ -242,11 +254,6 @@ func main() {
 	subscriptionService := subscription.NewService(subscriptionRepo, roomRepo)
 	subscriptionHandler := subscription.NewHandler(subscriptionService)
 
-	// Upload service — simple local file storage, available to all authenticated users
-	uploadRepo := upload.NewRepository(db)
-	uploadService := upload.NewService(uploadRepo, "./uploads", "/static/uploads")
-	uploadHandler := upload.NewHandler(uploadService)
-
 	// CORS Setup
 	r := gin.Default()
 	r.Use(middleware.CORS())
@@ -295,6 +302,10 @@ func main() {
 
 		// Upload routes — any authenticated user can upload files
 		upload.RegisterRoutes(protected, uploadHandler)
+
+		// Attachment routes — link/unlink uploads from entities
+		attachmentGroup := protected.Group("/attachments")
+		attachment.RegisterRoutes(attachmentGroup, attachmentHandler)
 
 		// Chat routes — rooms, messages, WebSocket
 		chat.RegisterRoutes(protected, chatHandler)
@@ -358,8 +369,8 @@ func main() {
 		}
 	}
 
-	// Static files for uploads
-	r.Static("/static/uploads", "./uploads")
+	// Static files for uploads (path from config)
+	r.Static("/static/uploads", uploadCfg.LocalPath)
 
 	// Start server
 	port := os.Getenv("PORT")

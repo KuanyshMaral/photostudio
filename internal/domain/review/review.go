@@ -17,7 +17,8 @@ type Review struct {
 	ContextID     *int64     `json:"context_id,omitempty"`
 	Rating        int        `json:"rating"`
 	Comment       string     `json:"comment,omitempty"`
-	Photos        []string   `json:"photos,omitempty" gorm:"type:json"`
+	Photos        []string   `json:"photos,omitempty" gorm:"-"`      // DEPRECATED: use attachments WHERE target_type='review_photos' AND target_id=id
+	Attachments   []string   `json:"attachments,omitempty" gorm:"-"` // Populated from attachment service (URLs)
 	Criteria      []byte     `json:"criteria,omitempty"`
 	OwnerResponse *string    `json:"owner_response,omitempty"`
 	RespondedAt   *time.Time `json:"responded_at,omitempty"`

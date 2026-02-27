@@ -51,11 +51,13 @@ type Message struct {
 	RoomID    string         `gorm:"column:room_id" json:"room_id"`
 	SenderID  int64          `gorm:"column:sender_id" json:"sender_id"`
 	Content   string         `gorm:"column:content" json:"content"`
-	UploadID  sql.NullString `gorm:"column:upload_id" json:"upload_id,omitempty"` // FK -> uploads.id
+	UploadID  sql.NullString `gorm:"column:upload_id_deprecated" json:"upload_id,omitempty"` // DEPRECATED: use attachments WHERE target_type='chat_message'
 	IsRead    bool           `gorm:"column:is_read" json:"is_read"`
 	CreatedAt time.Time      `gorm:"column:created_at" json:"created_at"`
 
-	// Joined from uploads table (populated by repo)
+	// Resolved from attachment service (not stored in this table)
+	Attachments []string `gorm:"-" json:"attachments,omitempty"` // File URLs for this message
+	// Legacy 1:1 fields kept for backwards compat during transition
 	AttachmentURL  string `gorm:"-" json:"attachment_url,omitempty"`
 	AttachmentName string `gorm:"-" json:"attachment_name,omitempty"`
 	AttachmentMime string `gorm:"-" json:"attachment_mime,omitempty"`
