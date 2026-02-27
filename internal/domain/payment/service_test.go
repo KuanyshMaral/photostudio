@@ -390,7 +390,7 @@ func TestCreatePayment_NonRecurringOmitsRecurringOnlyParams(t *testing.T) {
 	}
 }
 
-func TestCreatePayment_RecurringIncludesRecurringOnlyParams(t *testing.T) {
+func TestCreatePayment_RecurringFlagIsIgnoredForCreatePayment(t *testing.T) {
 	db, _ := gorm.Open(sqlite.Open("file:payment_recurring?mode=memory&cache=private"), &gorm.Config{})
 	_ = db.AutoMigrate(&auth.User{}, &booking.Booking{}, &Payment{}, &RecurringSubscription{}, &RobokassaPayment{})
 	_ = db.Create(&auth.User{ID: 42, Email: "rec@u.kz"}).Error
@@ -406,8 +406,8 @@ func TestCreatePayment_RecurringIncludesRecurringOnlyParams(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(resp.PaymentURL, "Recurring=true") || !strings.Contains(resp.PaymentURL, "PreviousInvoiceID=88") || !strings.Contains(resp.PaymentURL, "Shp_subscription_id=") {
-		t.Fatalf("recurring payment must include recurring-only params: %s", resp.PaymentURL)
+	if strings.Contains(resp.PaymentURL, "Recurring=true") || strings.Contains(resp.PaymentURL, "PreviousInvoiceID=88") || strings.Contains(resp.PaymentURL, "Shp_subscription_id=") {
+		t.Fatalf("create payment must omit recurring-only params while recurring is disabled: %s", resp.PaymentURL)
 	}
 }
 

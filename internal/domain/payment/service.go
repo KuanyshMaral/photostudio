@@ -178,13 +178,12 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 		}
 	}
 
-	// Robokassa error 29 happens when non-recurring invoices contain recurring-only fields.
-	// Keep strict branch separation: for recurring=false we must not send Recurring,
-	// PreviousInvoiceID or subscription_id in Shp params.
-	if !recurring {
-		subscriptionID = nil
-	}
-	previousInvoiceID = normalizePreviousInvoiceID(recurring, previousInvoiceID)
+	// Recurring payments are temporarily disabled until they are enabled on Robokassa side
+	// (merchant error 34/71: recurring service is not allowed for the store).
+	// Keep create-payment flow strictly one-time even if client sends recurring params.
+	recurring = false
+	subscriptionID = nil
+	previousInvoiceID = nil
 
 	invID := generateInvoiceID()
 	shp := map[string]string{"user_id": strconv.FormatInt(userID, 10), "booking_id": strconv.FormatInt(bookingID, 10)}
@@ -192,16 +191,13 @@ func (s *Service) CreatePayment(ctx context.Context, userID, bookingID int64, am
 		if _, protected := shp[k]; protected {
 			continue
 		}
-		// For one-time payments do not let client-provided Shp params re-introduce
-		// recurring-only values (error 29 on Robokassa).
-		if !recurring && strings.EqualFold(k, "subscription_id") {
+		// Do not let client-provided Shp params re-introduce recurring-only values.
+		if strings.EqualFold(k, "subscription_id") {
 			continue
 		}
 		shp[k] = v
 	}
-	if recurring && subscriptionID != nil {
-		shp["subscription_id"] = *subscriptionID
-	}
+
 	// Robokassa error 34 is usually caused by signature mismatches: parameter order,
 	// amount formatting, or missing/extra Shp_* values. Signature must be built from
 	// MerchantLogin:OutSum:InvId:Password1 plus alphabetically sorted Shp_* params.
