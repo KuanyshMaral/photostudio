@@ -84,26 +84,43 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 
 func selectRobokassaPasswords(isTest string) (string, string) {
 	if isTest == "1" {
-		p1 := strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_1"))
-		if p1 == "" {
-			p1 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD1"))
-		}
-		p2 := strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD_2"))
-		if p2 == "" {
-			p2 = strings.TrimSpace(os.Getenv("ROBOKASSA_TEST_PASSWORD2"))
-		}
+		p1 := firstEnv(
+			"ROBOKASSA_TEST_PASSWORD_1",
+			"ROBOKASSA_TEST_PASSWORD1",
+			"ROBOKASSA_PASSWORD_1",
+			"ROBOKASSA_PASSWORD1",
+		)
+		p2 := firstEnv(
+			"ROBOKASSA_TEST_PASSWORD_2",
+			"ROBOKASSA_TEST_PASSWORD2",
+			"ROBOKASSA_PASSWORD_2",
+			"ROBOKASSA_PASSWORD2",
+		)
 		return p1, p2
 	}
 
-	p1 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_1"))
-	if p1 == "" {
-		p1 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD1"))
-	}
-	p2 := strings.TrimSpace(os.Getenv("ROBOKASSA_PROD_PASSWORD_2"))
-	if p2 == "" {
-		p2 = strings.TrimSpace(os.Getenv("ROBOKASSA_PASSWORD2"))
-	}
+	p1 := firstEnv(
+		"ROBOKASSA_PROD_PASSWORD_1",
+		"ROBOKASSA_PROD_PASSWORD1",
+		"ROBOKASSA_PASSWORD_1",
+		"ROBOKASSA_PASSWORD1",
+	)
+	p2 := firstEnv(
+		"ROBOKASSA_PROD_PASSWORD_2",
+		"ROBOKASSA_PROD_PASSWORD2",
+		"ROBOKASSA_PASSWORD_2",
+		"ROBOKASSA_PASSWORD2",
+	)
 	return p1, p2
+}
+
+func firstEnv(names ...string) string {
+	for _, name := range names {
+		if v := strings.TrimSpace(os.Getenv(name)); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func robokassaBaseURL(merchantLogin string) string {
