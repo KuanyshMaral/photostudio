@@ -129,6 +129,15 @@ func (h *Handler) CreateBooking(c *gin.Context) {
 				},
 			})
 			return
+		case errors.Is(err, ErrStudioClosed), errors.Is(err, ErrOutsideWorkingHours):
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "VALIDATION_ERROR",
+					"message": err.Error(),
+				},
+			})
+			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"success": false,

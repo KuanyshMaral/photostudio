@@ -3,7 +3,6 @@ package booking
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"math"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
@@ -68,7 +67,8 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 		return nil, err
 	}
 	if wh.IsClosed {
-		return nil, errors.New("studio is closed on this date")
+
+		return nil, ErrStudioClosed
 	}
 
 	openT, err := time.Parse("15:04", wh.OpenTime)
@@ -84,7 +84,7 @@ func (s *Service) CreateBooking(ctx context.Context, req CreateBookingRequest) (
 	closeBound := time.Date(req.StartTime.Year(), req.StartTime.Month(), req.StartTime.Day(), closeT.Hour(), closeT.Minute(), 0, 0, req.StartTime.Location())
 
 	if req.StartTime.Before(openBound) || req.EndTime.After(closeBound) {
-		return nil, errors.New("booking outside of working hours")
+		return nil, ErrOutsideWorkingHours
 	}
 
 	ok, err := s.bookings.CheckAvailability(ctx, req.RoomID, req.StartTime, req.EndTime)
