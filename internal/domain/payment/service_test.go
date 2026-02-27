@@ -290,6 +290,20 @@ func TestSelectRobokassaPasswordsByMode(t *testing.T) {
 	}
 }
 
+func TestSelectRobokassaPasswordsSupportsUnderscoredLegacyNames(t *testing.T) {
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_1", "")
+	t.Setenv("ROBOKASSA_PROD_PASSWORD_2", "")
+	t.Setenv("ROBOKASSA_PASSWORD1", "")
+	t.Setenv("ROBOKASSA_PASSWORD2", "")
+	t.Setenv("ROBOKASSA_PASSWORD_1", "legacy1")
+	t.Setenv("ROBOKASSA_PASSWORD_2", "legacy2")
+
+	p1, p2 := selectRobokassaPasswords("0")
+	if p1 != "legacy1" || p2 != "legacy2" {
+		t.Fatalf("expected legacy underscored credentials, got %s/%s", p1, p2)
+	}
+}
+
 func TestNormalizeRobokassaIsTestSupportsBooleanFlags(t *testing.T) {
 	for _, value := range []string{"1", "true", "yes", "on", " TRUE "} {
 		if got := normalizeRobokassaIsTest(value); got != "1" {
