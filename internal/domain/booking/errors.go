@@ -6,6 +6,8 @@ var (
 	ErrValidation              = errors.New("validation error")
 	ErrNotAvailable            = errors.New("booking not available")
 	ErrOverbooking             = errors.New("overbooking constraint violation")
+	ErrStudioClosed            = errors.New("studio is closed on this date")
+	ErrOutsideWorkingHours     = errors.New("booking outside of working hours")
 	ErrForbidden               = errors.New("forbidden")
 	ErrInvalidStatusTransition = errors.New("invalid_status_transition")
 	ErrNotFound                = errors.New("not_found")
