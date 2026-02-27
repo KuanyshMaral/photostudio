@@ -87,14 +87,10 @@ func selectRobokassaPasswords(isTest string) (string, string) {
 		p1 := firstEnv(
 			"ROBOKASSA_TEST_PASSWORD_1",
 			"ROBOKASSA_TEST_PASSWORD1",
-			"ROBOKASSA_PASSWORD_1",
-			"ROBOKASSA_PASSWORD1",
 		)
 		p2 := firstEnv(
 			"ROBOKASSA_TEST_PASSWORD_2",
 			"ROBOKASSA_TEST_PASSWORD2",
-			"ROBOKASSA_PASSWORD_2",
-			"ROBOKASSA_PASSWORD2",
 		)
 		return p1, p2
 	}
