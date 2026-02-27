@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -51,6 +53,7 @@ type Service struct {
 	frontSuccess  string
 	frontFail     string
 	isTest        string
+	hashAlgo      string
 }
 
 func NewService(payments paymentRepo, bookings bookingReader, bookingWriter bookingPaymentWriter, loggerf func(format string, args ...interface{}), repo ...*Repository) *Service {
@@ -62,6 +65,7 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		r = repo[0]
 	}
 	isTest := normalizeRobokassaIsTest(envOrDefault("ROBOKASSA_IS_TEST", "0"))
+	hashAlgo := normalizeRobokassaHashAlgo(envOrDefault("ROBOKASSA_HASH_ALGO", "sha256"))
 	password1, password2 := selectRobokassaPasswords(isTest)
 	merchantLogin := strings.TrimSpace(os.Getenv("ROBOKASSA_MERCHANT_LOGIN"))
 	baseURL := robokassaBaseURL(merchantLogin)
@@ -78,7 +82,19 @@ func NewService(payments paymentRepo, bookings bookingReader, bookingWriter book
 		baseURL:   baseURL,
 		resultURL: os.Getenv("ROBOKASSA_RESULT_URL"), successURL: os.Getenv("ROBOKASSA_SUCCESS_URL"), failURL: os.Getenv("ROBOKASSA_FAIL_URL"),
 		frontSuccess: os.Getenv("ROBOKASSA_FRONTEND_SUCCESS_URL"), frontFail: os.Getenv("ROBOKASSA_FRONTEND_FAIL_URL"),
-		isTest: isTest,
+		isTest:   isTest,
+		hashAlgo: hashAlgo,
+	}
+}
+
+func normalizeRobokassaHashAlgo(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "sha256":
+		return "sha256"
+	case "sha512":
+		return "sha512"
+	default:
+		return "md5"
 	}
 }
 
@@ -563,8 +579,17 @@ func amountEqual(a, b string) bool {
 	return ar.Cmp(br) == 0
 }
 func (s *Service) hashHex(input string) string {
-	h := md5.Sum([]byte(input))
-	return hex.EncodeToString(h[:])
+	switch s.hashAlgo {
+	case "sha256":
+		h := sha256.Sum256([]byte(input))
+		return hex.EncodeToString(h[:])
+	case "sha512":
+		h := sha512.Sum512([]byte(input))
+		return hex.EncodeToString(h[:])
+	default:
+		h := md5.Sum([]byte(input))
+		return hex.EncodeToString(h[:])
+	}
 }
 
 func sanitizeShpParams(shp map[string]string) map[string]string {

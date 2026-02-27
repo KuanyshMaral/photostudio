@@ -85,6 +85,9 @@ func TestDefaultIsTestIsProductionMode(t *testing.T) {
 	if s.password1 != "prod1" || s.password2 != "prod2" {
 		t.Fatalf("expected prod passwords to be selected by default")
 	}
+	if s.hashAlgo != "sha256" {
+		t.Fatalf("expected default hash algo sha256, got %s", s.hashAlgo)
+	}
 }
 
 func TestSignatureSelectionByMode(t *testing.T) {
@@ -324,6 +327,37 @@ func TestNormalizeRobokassaIsTestSupportsBooleanFlags(t *testing.T) {
 	}
 	if got := normalizeRobokassaIsTest("0"); got != "0" {
 		t.Fatalf("expected IsTest=0 for value 0, got %s", got)
+	}
+}
+
+func TestNormalizeRobokassaHashAlgo(t *testing.T) {
+	if got := normalizeRobokassaHashAlgo("sha256"); got != "sha256" {
+		t.Fatalf("expected sha256, got %s", got)
+	}
+	if got := normalizeRobokassaHashAlgo(" SHA512 "); got != "sha512" {
+		t.Fatalf("expected sha512, got %s", got)
+	}
+	if got := normalizeRobokassaHashAlgo("unknown"); got != "md5" {
+		t.Fatalf("expected md5 fallback, got %s", got)
+	}
+}
+
+func TestInitSignatureUsesConfiguredHashAlgo(t *testing.T) {
+	base := "merchant:100.00:10:pass1:Shp_k=v"
+
+	md5Svc := &Service{hashAlgo: "md5"}
+	if got := md5Svc.hashHex(base); got != "beea1c1a7213810e9c9ef5237751290c" {
+		t.Fatalf("unexpected md5 signature %s", got)
+	}
+
+	sha256Svc := &Service{hashAlgo: "sha256"}
+	if got := sha256Svc.hashHex(base); got != "f701e90855d8b64d6473464c34ed71f69eb70c4c0b7ebfd1ff56a489cedd0e13" {
+		t.Fatalf("unexpected sha256 signature %s", got)
+	}
+
+	sha512Svc := &Service{hashAlgo: "sha512"}
+	if got := sha512Svc.hashHex(base); got != "e233bef1d87303093cbcf633ad2568f28b9005d863edf3503c127213424d178872aea191f0c35d61086b62e7474515edf9283fd523bb657708f01a48da32603f" {
+		t.Fatalf("unexpected sha512 signature %s", got)
 	}
 }
 
