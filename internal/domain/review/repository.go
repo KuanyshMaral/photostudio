@@ -24,7 +24,7 @@ type reviewModel struct {
 	ContextID     *int64     `gorm:"column:context_id"`
 	Rating        int        `gorm:"column:rating"`
 	Comment       *string    `gorm:"column:comment"`
-	Photos        []string   `gorm:"column:photos;type:text[]"`
+	Photos        []string   `gorm:"column:photos_deprecated;type:text[]"`
 	Criteria      []byte     `gorm:"column:criteria;type:jsonb;default:'{}'"`
 	OwnerResponse *string    `gorm:"column:owner_response"`
 	RespondedAt   *time.Time `gorm:"column:responded_at"`
