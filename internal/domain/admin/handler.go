@@ -542,12 +542,25 @@ func (h *Handler) ShowReview(c *gin.Context) {
 // -------------------- helpers --------------------
 
 func isAdmin(c *gin.Context) bool {
+	if adminID := c.GetString("admin_id"); adminID != "" {
+		return true
+	}
+
 	role, ok := c.Get("role")
 	if !ok {
 		return false
 	}
 	rs, ok := role.(string)
-	return ok && rs == "admin"
+	if !ok {
+		return false
+	}
+
+	switch rs {
+	case "admin", "super_admin", "support", "moderator":
+		return true
+	default:
+		return false
+	}
 }
 
 func parseIDParam(c *gin.Context, name string) (int64, error) {

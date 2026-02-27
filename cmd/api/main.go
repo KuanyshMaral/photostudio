@@ -201,7 +201,6 @@ func main() {
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
 	reviewHandler := review.NewHandler(reviewService)
-	_ = reviewHandler
 	// Admin domain
 	adminRepo := admin.NewAdminRepository(db)
 	adminService := admin.NewService(
@@ -277,6 +276,7 @@ func main() {
 	lead.RegisterPublicRoutes(v1, leadHandler)                 // Changed from RegisterRoutes
 	adminHandler.RegisterPublicRoutes(v1)                      // New Admin Login (Public)
 	subscription.RegisterPublicRoutes(v1, subscriptionHandler) // Public plan listing
+	reviewHandler.RegisterRoutes(v1, nil)
 
 	// Public webhooks
 	paymentHandler.RegisterPublicWebhookRoutes(r)
@@ -326,6 +326,9 @@ func main() {
 
 		// Payment routes
 		paymentHandler.RegisterProtectedRoutes(protected)
+
+		// Review routes
+		reviewHandler.RegisterRoutes(nil, protected)
 
 		// Owner CRM routes (require studio_owner role)
 		ownerCRMGroup := protected.Group("")
