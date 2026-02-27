@@ -52,7 +52,13 @@ func (h *Handler) CreatePayment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "amount or out_sum is required"})
 		return
 	}
-	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.ShpParams, req.Recurring, req.PreviousInvoiceID, req.SubscriptionID)
+
+	subscriptionID := req.SubscriptionID
+	if subscriptionID != nil && strings.EqualFold(strings.TrimSpace(*subscriptionID), "string") {
+		subscriptionID = nil
+	}
+
+	resp, err := h.service.CreatePayment(c.Request.Context(), c.GetInt64("user_id"), req.BookingID, amount, req.Description, req.ShpParams, req.Recurring, req.PreviousInvoiceID, subscriptionID)
 	if err != nil {
 		h.loggerf("level=error msg=robokassa create failed request=%+v err=%v", req, err)
 		status := http.StatusInternalServerError

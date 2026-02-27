@@ -135,7 +135,7 @@ func TestCreatePaymentInvalidAmountReturnsBadRequest(t *testing.T) {
 	}
 }
 
-func TestCreatePaymentInvalidSubscriptionIDReturnsBadRequest(t *testing.T) {
+func TestCreatePaymentSwaggerPlaceholderSubscriptionIDIsIgnored(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -145,6 +145,23 @@ func TestCreatePaymentInvalidSubscriptionIDReturnsBadRequest(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"amount":"100.00","subscription_id":"string"}`))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 got %d body=%s", w.Code, w.Body.String())
+	}
+}
+
+func TestCreatePaymentInvalidSubscriptionIDReturnsBadRequest(t *testing.T) {
+	_, h, _ := setupPaymentTest(t)
+	gin.SetMode(gin.TestMode)
+	r := gin.New()
+	g := r.Group("/")
+	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
+	h.RegisterProtectedRoutes(g)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"amount":"100.00","subscription_id":"not-a-uuid"}`))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
