@@ -304,6 +304,18 @@ func TestSelectRobokassaPasswordsSupportsUnderscoredLegacyNames(t *testing.T) {
 	}
 }
 
+func TestSelectRobokassaPasswords_TestModeDoesNotUseProductionFallback(t *testing.T) {
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_1", "")
+	t.Setenv("ROBOKASSA_TEST_PASSWORD_2", "")
+	t.Setenv("ROBOKASSA_PASSWORD_1", "legacy-prod-1")
+	t.Setenv("ROBOKASSA_PASSWORD_2", "legacy-prod-2")
+
+	p1, p2 := selectRobokassaPasswords("1")
+	if p1 != "" || p2 != "" {
+		t.Fatalf("expected empty test credentials without explicit test passwords, got %s/%s", p1, p2)
+	}
+}
+
 func TestNormalizeRobokassaIsTestSupportsBooleanFlags(t *testing.T) {
 	for _, value := range []string{"1", "true", "yes", "on", " TRUE "} {
 		if got := normalizeRobokassaIsTest(value); got != "1" {
