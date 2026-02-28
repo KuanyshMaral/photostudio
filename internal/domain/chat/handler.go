@@ -249,16 +249,27 @@ func (h *Handler) GetMembers(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /chats/{id}/members [post]
 func (h *Handler) AddMember(c *gin.Context) {
-	userID := mustUserID(c)
-	if userID == 0 {
-		return
-	}
 	roomID := c.Param("id")
 	var req addMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
+
+	if isAdminToken, _ := c.Get("is_admin_token"); isAdminToken == true {
+		if err := h.service.AddMemberByPlatformAdmin(c.Request.Context(), roomID, req.UserID); err != nil {
+			handleRoomError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "member added"})
+		return
+	}
+
+	userID := mustUserID(c)
+	if userID == 0 {
+		return
+	}
+
 	if err := h.service.AddMember(c.Request.Context(), userID, roomID, req.UserID); err != nil {
 		handleRoomError(c, err)
 		return
