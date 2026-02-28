@@ -2,12 +2,24 @@ package response
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 )
 
-var debugMode = false
+// isDevMode returns true when the process is NOT running in production.
+// Controlled by APP_ENV env var. Default: dev (details visible).
+func isDevMode() bool {
+	env := os.Getenv("APP_ENV")
+	return env != "production" && env != "prod" && env != "release"
+}
+
+// ──────────────────────────────────────────────────
+// Types
+// ──────────────────────────────────────────────────
 
 // Response is a generic response structure for Swagger documentation
 type Response struct {
@@ -18,15 +30,18 @@ type Response struct {
 
 // ErrorData represents error details in the response
 type ErrorData struct {
-	Code    string      `json:"code"`
-	Message string      `json:"message"`
-	Details interface{} `json:"details,omitempty"`
+	Code       string      `json:"code"`
+	Message    string      `json:"message"`
+	Details    interface{} `json:"details,omitempty"`
+	ErrorTrace string      `json:"error_trace,omitempty"` // Full error + stack trace (non-prod only)
 }
 
-// SetDebug enables or disables detailed error responses
-func SetDebug(debug bool) {
-	debugMode = debug
-}
+// SetDebug is kept for backward compatibility. Use APP_ENV instead.
+func SetDebug(_ bool) {}
+
+// ──────────────────────────────────────────────────
+// Success helpers
+// ──────────────────────────────────────────────────
 
 func Success(c *gin.Context, statusCode int, data interface{}) {
 	c.JSON(statusCode, gin.H{
@@ -35,52 +50,37 @@ func Success(c *gin.Context, statusCode int, data interface{}) {
 	})
 }
 
+// ──────────────────────────────────────────────────
+// Error helpers
+// ──────────────────────────────────────────────────
+
+// Error — static string message error (no trace)
 func Error(c *gin.Context, statusCode int, code string, message string) {
-	resp := gin.H{
+	c.JSON(statusCode, gin.H{
 		"success": false,
 		"error": gin.H{
 			"code":    code,
 			"message": message,
 		},
-	}
-	c.JSON(statusCode, resp)
+	})
 }
 
+// ErrorWithDetails — static message with extra context map
 func ErrorWithDetails(c *gin.Context, statusCode int, code string, message string, details any) {
-	resp := gin.H{
+	c.JSON(statusCode, gin.H{
 		"success": false,
 		"error": gin.H{
 			"code":    code,
 			"message": message,
-			"details": details,
-		},
-	}
-	c.JSON(statusCode, resp)
-}
-
-// ServerError sends a 500 error with details if debug mode is on
-func ServerError(c *gin.Context, err error) {
-	_ = c.Error(err) // Ensure it's logged by middleware
-
-	msg := "Internal Server Error"
-	details := ""
-
-	if debugMode {
-		msg = err.Error()
-		details = fmt.Sprintf("%+v", err)
-	}
-
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"success": false,
-		"error": gin.H{
-			"code":    "INTERNAL_ERROR",
-			"message": msg,
 			"details": details,
 		},
 	})
 }
 
-// CustomError sends an error response with details derived from the error object or string
+// CustomError — the main workhorse.
+// Accepts error or string as errOrMsg.
+// In non-production: logs to terminal and includes full error_trace in the JSON response.
+// In production: message still shows, but error_trace is omitted.
 func CustomError(c *gin.Context, statusCode int, code string, errOrMsg any) {
 	var err error
 	var msg string
@@ -97,19 +97,80 @@ func CustomError(c *gin.Context, statusCode int, code string, errOrMsg any) {
 		msg = fmt.Sprintf("%v", v)
 	}
 
-	_ = c.Error(err) // Ensure it's logged by middleware
+	_ = c.Error(err) // attach to Gin context (picked up by logger middleware)
 
-	details := ""
-	if debugMode {
-		details = fmt.Sprintf("%+v", err)
+	errTrace := ""
+	if isDevMode() && err != nil {
+		errTrace = fmt.Sprintf("Error: %v\n\nStack Trace:\n%s", err.Error(), string(debug.Stack()))
+		log.Printf("[ERROR] %s %s → %s: %s\n%s",
+			c.Request.Method, c.Request.URL.Path, code, msg, errTrace)
+	}
+
+	body := gin.H{
+		"code":    code,
+		"message": msg,
+	}
+	if errTrace != "" {
+		body["error_trace"] = errTrace
 	}
 
 	c.JSON(statusCode, gin.H{
 		"success": false,
-		"error": gin.H{
-			"code":    code,
-			"message": msg,
-			"details": details,
-		},
+		"error":   body,
 	})
+}
+
+// ServerError — convenience wrapper for 500 errors arising from unexpected Go errors.
+func ServerError(c *gin.Context, err error) {
+	_ = c.Error(err)
+
+	errTrace := ""
+	if isDevMode() && err != nil {
+		errTrace = fmt.Sprintf("Error: %v\n\nStack Trace:\n%s", err.Error(), string(debug.Stack()))
+		log.Printf("[ERROR] 500 %s %s → INTERNAL_ERROR: %v\n%s",
+			c.Request.Method, c.Request.URL.Path, err, errTrace)
+	}
+
+	msg := "Internal Server Error"
+	if isDevMode() && err != nil {
+		msg = err.Error()
+	}
+
+	body := gin.H{
+		"code":    "INTERNAL_ERROR",
+		"message": msg,
+	}
+	if errTrace != "" {
+		body["error_trace"] = errTrace
+	}
+
+	c.JSON(http.StatusInternalServerError, gin.H{
+		"success": false,
+		"error":   body,
+	})
+}
+
+// NotFound — 404 shorthand
+func NotFound(c *gin.Context, message string) {
+	Error(c, http.StatusNotFound, "NOT_FOUND", message)
+}
+
+// Unauthorized — 401 shorthand
+func Unauthorized(c *gin.Context, message string) {
+	Error(c, http.StatusUnauthorized, "UNAUTHORIZED", message)
+}
+
+// Forbidden — 403 shorthand
+func Forbidden(c *gin.Context, message string) {
+	Error(c, http.StatusForbidden, "FORBIDDEN", message)
+}
+
+// BadRequest — 400 shorthand
+func BadRequest(c *gin.Context, message string) {
+	Error(c, http.StatusBadRequest, "BAD_REQUEST", message)
+}
+
+// Conflict — 409 shorthand
+func Conflict(c *gin.Context, message string) {
+	Error(c, http.StatusConflict, "CONFLICT", message)
 }
