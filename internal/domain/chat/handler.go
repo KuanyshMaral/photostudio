@@ -286,14 +286,24 @@ func (h *Handler) AddMember(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /chats/{id}/members/{user_id} [delete]
 func (h *Handler) RemoveMember(c *gin.Context) {
-	userID := mustUserID(c)
-	if userID == 0 {
-		return
-	}
 	roomID := c.Param("id")
 	targetID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid user_id"})
+		return
+	}
+
+	if isAdminToken, _ := c.Get("is_admin_token"); isAdminToken == true {
+		if err := h.service.RemoveMemberByPlatformAdmin(c.Request.Context(), roomID, targetID); err != nil {
+			handleRoomError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "member removed"})
+		return
+	}
+
+	userID := mustUserID(c)
+	if userID == 0 {
 		return
 	}
 	if err := h.service.RemoveMember(c.Request.Context(), userID, roomID, targetID); err != nil {
