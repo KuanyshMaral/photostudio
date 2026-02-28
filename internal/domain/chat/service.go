@@ -148,6 +148,27 @@ func (s *Service) AddMember(ctx context.Context, requesterID int64, roomID strin
 	})
 }
 
+// AddMemberByPlatformAdmin adds a user to a room bypassing room membership checks.
+// Intended only for trusted platform admin tokens accepted by auth middleware.
+func (s *Service) AddMemberByPlatformAdmin(ctx context.Context, roomID string, newMemberID int64) error {
+	_, err := s.repo.GetRoomByID(ctx, roomID)
+	if err != nil {
+		return err
+	}
+
+	alreadyMember, _ := s.repo.IsMember(ctx, roomID, newMemberID)
+	if alreadyMember {
+		return ErrAlreadyMember
+	}
+
+	return s.repo.AddMember(ctx, &RoomMember{
+		RoomID:   roomID,
+		UserID:   newMemberID,
+		Role:     MemberRoleMember,
+		JoinedAt: time.Now(),
+	})
+}
+
 // RemoveMember removes a user from a room. Admin can remove others; anyone can leave.
 func (s *Service) RemoveMember(ctx context.Context, requesterID int64, roomID string, targetID int64) error {
 	room, err := s.repo.GetRoomByID(ctx, roomID)
