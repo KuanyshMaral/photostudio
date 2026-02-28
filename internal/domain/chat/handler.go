@@ -355,7 +355,7 @@ func (h *Handler) WebSocket(c *gin.Context) {
 	if !websocket.IsWebSocketUpgrade(c.Request) {
 		c.JSON(http.StatusUpgradeRequired, gin.H{
 			"success": false,
-			"error":   "websocket upgrade required; connect using ws:// or wss:// client",
+			"error":   "websocket upgrade required; use ws:// or wss:// client (Swagger 'Execute' and plain HTTP GET are not supported for this endpoint)",
 		})
 		return
 	}
