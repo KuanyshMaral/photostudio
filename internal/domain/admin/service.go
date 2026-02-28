@@ -710,13 +710,55 @@ func (s *Service) CreateAd(ctx context.Context, ad *Ad) error {
 }
 
 func (s *Service) UpdateAd(ctx context.Context, adID int64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "created_at")
+	allowedFields := map[string]struct{}{
+		"title":      {},
+		"image_url":  {},
+		"target_url": {},
+		"placement":  {},
+		"is_active":  {},
+		"start_date": {},
+		"end_date":   {},
+		"updated_at": {},
+	}
 
-	return s.bookingRepo.DB().WithContext(ctx).
+	sanitized := make(map[string]interface{}, len(updates)+1)
+	for key, value := range updates {
+		normalizedKey := strings.ToLower(strings.TrimSpace(key))
+		if normalizedKey == "active" {
+			normalizedKey = "is_active"
+		}
+		if normalizedKey == "url" {
+			normalizedKey = "target_url"
+		}
+
+		if _, ok := allowedFields[normalizedKey]; ok {
+			sanitized[normalizedKey] = value
+		}
+	}
+
+	delete(sanitized, "id")
+	delete(sanitized, "created_at")
+	delete(sanitized, "impressions")
+	delete(sanitized, "clicks")
+
+	if len(sanitized) == 0 {
+		return errors.New("no valid fields to update")
+	}
+
+	sanitized["updated_at"] = time.Now()
+
+	result := s.bookingRepo.DB().WithContext(ctx).
 		Model(&Ad{}).
 		Where("id = ?", adID).
-		Updates(updates).Error
+		Updates(sanitized)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return errors.New("ad not found")
+	}
+
+	return nil
 }
 
 func (s *Service) DeleteAd(ctx context.Context, adID int64) error {
