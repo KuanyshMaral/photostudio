@@ -761,7 +761,11 @@ func (h *Handler) CreateAd(c *gin.Context) {
 // @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении объявления"
 // @Router		/admin/ads/:id [PATCH]
 func (h *Handler) UpdateAd(c *gin.Context) {
-	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	adID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || adID <= 0 {
+		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "invalid ad id")
+		return
+	}
 
 	var updates map[string]interface{}
 	if err := c.ShouldBindJSON(&updates); err != nil {
@@ -770,6 +774,14 @@ func (h *Handler) UpdateAd(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateAd(c.Request.Context(), adID, updates); err != nil {
+		if err.Error() == "ad not found" {
+			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", err)
+			return
+		}
+		if err.Error() == "no valid fields to update" {
+			response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+			return
+		}
 		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}

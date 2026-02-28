@@ -164,6 +164,7 @@ func testDB(t *testing.T) *gorm.DB {
 		&booking.Booking{},
 		&review.Review{},
 		&review.Review{},
+		&Ad{},
 	)
 
 	return db
@@ -295,4 +296,58 @@ func TestGetStatistics_Success(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, stats)
+}
+
+func TestUpdateAd_SuccessWithAliasFields(t *testing.T) {
+	ctx := context.Background()
+	db := testDB(t)
+
+	ad := Ad{Title: "Old", Placement: "home", IsActive: false, TargetURL: "https://old.example"}
+	requireErr := db.Create(&ad).Error
+	assert.NoError(t, requireErr)
+
+	service := NewService(
+		&MockUserRepository{},
+		&MockStudioRepository{},
+		&MockBookingRepository{db: db},
+		&MockReviewRepository{},
+		&mockOwnerProfileRepo{},
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	err := service.UpdateAd(ctx, ad.ID, map[string]interface{}{
+		"title":  "New",
+		"active": true,
+		"url":    "https://new.example",
+	})
+	assert.NoError(t, err)
+
+	var updated Ad
+	assert.NoError(t, db.First(&updated, ad.ID).Error)
+	assert.Equal(t, "New", updated.Title)
+	assert.True(t, updated.IsActive)
+	assert.Equal(t, "https://new.example", updated.TargetURL)
+}
+
+func TestUpdateAd_NotFound(t *testing.T) {
+	ctx := context.Background()
+	db := testDB(t)
+
+	service := NewService(
+		&MockUserRepository{},
+		&MockStudioRepository{},
+		&MockBookingRepository{db: db},
+		&MockReviewRepository{},
+		&mockOwnerProfileRepo{},
+		nil,
+		nil,
+		nil,
+		nil,
+	)
+
+	err := service.UpdateAd(ctx, 99999, map[string]interface{}{"title": "x"})
+	assert.EqualError(t, err, "ad not found")
 }
