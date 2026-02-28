@@ -3,8 +3,10 @@ package chat
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
 
 // Handler handles HTTP requests for the chat domain
@@ -339,6 +341,10 @@ func (h *Handler) LeaveRoom(c *gin.Context) {
 // @Summary Connect to WebSocket for real-time chat
 // @Tags Chat
 // @Security BearerAuth
+// @Param token query string false "JWT access token for browser WebSocket clients (alternative to Authorization header)"
+// @Success 101 {string} string "Switching Protocols"
+// @Failure 400 {object} map[string]interface{} "Invalid WebSocket handshake"
+// @Failure 426 {object} map[string]interface{} "Upgrade Required"
 // @Router /chats/ws [get]
 func (h *Handler) WebSocket(c *gin.Context) {
 	userID := mustUserID(c)
@@ -346,10 +352,26 @@ func (h *Handler) WebSocket(c *gin.Context) {
 		return
 	}
 
+	if !websocket.IsWebSocketUpgrade(c.Request) {
+		c.JSON(http.StatusUpgradeRequired, gin.H{
+			"success": false,
+			"error":   "websocket upgrade required; connect using ws:// or wss:// client",
+		})
+		return
+	}
+
+	if strings.TrimSpace(c.GetHeader("Sec-WebSocket-Key")) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "invalid websocket handshake: missing Sec-WebSocket-Key",
+		})
+		return
+	}
+
 	// Upgrade HTTP connection
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		// handle error
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "failed to upgrade connection"})
 		return
 	}
 
