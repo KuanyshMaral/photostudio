@@ -996,34 +996,13 @@ func handleError(c *gin.Context, err error) {
 		return
 	}
 
-	// Check for specific error types
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "NOT_FOUND",
-				"message": "Resource not found",
-			},
-		})
+		response.NotFound(c, "Resource not found")
 	case errors.Is(err, ErrForbidden):
-		c.JSON(http.StatusForbidden, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "FORBIDDEN",
-				"message": "You don't have permission to perform this action",
-			},
-		})
+		response.Forbidden(c, "You don't have permission to perform this action")
 	default:
-		// Generic server error
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "INTERNAL_ERROR",
-				"message": "An internal error occurred",
-				"details": err.Error(),
-			},
-		})
+		response.ServerError(c, err) // emits error_trace + terminal log on non-prod
 	}
 }
 
