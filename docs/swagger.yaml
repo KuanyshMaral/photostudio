@@ -1077,12 +1077,16 @@ definitions:
   payment.CreatePaymentRequest:
     properties:
       amount:
+        example: "25000"
         type: string
       booking_id:
+        example: 2
         type: integer
       description:
+        example: Booking payment
         type: string
       out_sum:
+        example: "25000"
         type: string
       previous_invoice_id:
         type: integer
@@ -1093,6 +1097,8 @@ definitions:
           type: string
         type: object
       subscription_id:
+        example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        format: uuid
         type: string
     required:
     - booking_id
@@ -1255,6 +1261,9 @@ definitions:
       code:
         type: string
       details: {}
+      error_trace:
+        description: Full error + stack trace (non-prod only)
+        type: string
       message:
         type: string
     type: object
@@ -1626,7 +1635,7 @@ paths:
       summary: Создать объявление
       tags:
       - Admin - Объявления и реклама
-  /admin/ads/:id:
+  /admin/ads/{id}:
     delete:
       description: Удаляет и удаляет из БД баннер/объявление с платформы. После удаления
         объявление больше не будет отображаться.
