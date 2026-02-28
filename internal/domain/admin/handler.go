@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"photostudio/internal/pkg/response"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -759,9 +760,10 @@ func (h *Handler) CreateAd(c *gin.Context) {
 // @Failure		400	{object}		map[string]interface{} "Ошибка: неверный запрос"
 // @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
 // @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении объявления"
-// @Router		/admin/ads/:id [PATCH]
+// @Router		/admin/ads/{id} [PATCH]
 func (h *Handler) UpdateAd(c *gin.Context) {
-	adID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	rawID := strings.TrimPrefix(strings.TrimSpace(c.Param("id")), ":")
+	adID, err := strconv.ParseInt(rawID, 10, 64)
 	if err != nil || adID <= 0 {
 		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "invalid ad id")
 		return
@@ -798,9 +800,10 @@ func (h *Handler) UpdateAd(c *gin.Context) {
 // @Success		200	{object}		map[string]interface{} "Объявление успешно удалено"
 // @Failure		403	{object}		map[string]interface{} "Доступ запрещён (требуются права администратора)"
 // @Failure		500	{object}		map[string]interface{} "Ошибка сервера при удалении объявления"
-// @Router		/admin/ads/:id [DELETE]
+// @Router		/admin/ads/{id} [DELETE]
 func (h *Handler) DeleteAd(c *gin.Context) {
-	adID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+	rawID := strings.TrimPrefix(strings.TrimSpace(c.Param("id")), ":")
+	adID, _ := strconv.ParseInt(rawID, 10, 64)
 
 	if err := h.service.DeleteAd(c.Request.Context(), adID); err != nil {
 		response.CustomError(c, http.StatusInternalServerError, "DELETE_FAILED", err)

@@ -265,7 +265,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/ads/:id": {
+        "/admin/ads/{id}": {
             "delete": {
                 "security": [
                     {
@@ -9695,16 +9695,20 @@ const docTemplate = `{
             ],
             "properties": {
                 "amount": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "25000"
                 },
                 "booking_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 2
                 },
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Booking payment"
                 },
                 "out_sum": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "25000"
                 },
                 "previous_invoice_id": {
                     "type": "integer"
@@ -9719,7 +9723,9 @@ const docTemplate = `{
                     }
                 },
                 "subscription_id": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "uuid",
+                    "example": "3fa85f64-5717-4562-b3fc-2c963f66afa6"
                 }
             }
         },
@@ -9961,6 +9967,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "details": {},
+                "error_trace": {
+                    "description": "Full error + stack trace (non-prod only)",
+                    "type": "string"
+                },
                 "message": {
                     "type": "string"
                 }
