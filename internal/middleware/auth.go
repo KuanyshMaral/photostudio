@@ -135,10 +135,11 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 			upgrade := strings.EqualFold(c.GetHeader("Upgrade"), "websocket")
 			connUpgrade := strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade")
 			isNotificationsWS := strings.HasSuffix(c.Request.URL.Path, "/notifications/ws")
+			isChatsWS := strings.HasSuffix(c.Request.URL.Path, "/chats/ws")
 
 			// Browser WebSocket clients cannot set custom Authorization headers,
-			// allow token in query for notifications websocket endpoint only.
-			if upgrade && connUpgrade && isNotificationsWS {
+			// allow token in query for websocket endpoints used by browser clients.
+			if upgrade && connUpgrade && (isNotificationsWS || isChatsWS) {
 				qToken := c.Query("token")
 				if len(qToken) > maxWebSocketTokenLength {
 					response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is too long")
