@@ -14,9 +14,10 @@ import (
 )
 
 type addMemberTestRepo struct {
-	room       *Room
-	members    map[int64]bool
-	addedUsers []int64
+	room         *Room
+	members      map[int64]bool
+	addedUsers   []int64
+	removedUsers []int64
 }
 
 func (r *addMemberTestRepo) CreateRoom(ctx context.Context, room *Room) error { return nil }
@@ -38,6 +39,8 @@ func (r *addMemberTestRepo) AddMember(ctx context.Context, m *RoomMember) error 
 	return nil
 }
 func (r *addMemberTestRepo) RemoveMember(ctx context.Context, roomID string, userID int64) error {
+	delete(r.members, userID)
+	r.removedUsers = append(r.removedUsers, userID)
 	return nil
 }
 func (r *addMemberTestRepo) GetMember(ctx context.Context, roomID string, userID int64) (*RoomMember, error) {
@@ -92,4 +95,30 @@ func TestAddMember_WithAdminTokenWithoutUserID_Succeeds(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, []int64{9}, repo.addedUsers)
 	assert.Contains(t, w.Body.String(), "member added")
+}
+
+func TestRemoveMember_WithAdminTokenWithoutUserID_Succeeds(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	repo := &addMemberTestRepo{
+		room:    &Room{ID: "7ae6034b-f7c7-4505-9c13-f457a7f47561", Type: RoomTypeGroup, CreatedAt: time.Now()},
+		members: map[int64]bool{9: true},
+	}
+	h := NewHandler(NewService(repo, nil), nil)
+
+	r := gin.New()
+	r.Use(func(c *gin.Context) {
+		c.Set("is_admin_token", true)
+		c.Next()
+	})
+	r.DELETE("/chats/:id/members/:user_id", h.RemoveMember)
+
+	req := httptest.NewRequest(http.MethodDelete, "/chats/7ae6034b-f7c7-4505-9c13-f457a7f47561/members/9", nil)
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, []int64{9}, repo.removedUsers)
+	assert.Contains(t, w.Body.String(), "member removed")
 }
