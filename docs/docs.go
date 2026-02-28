@@ -3370,7 +3370,36 @@ const docTemplate = `{
                     "Chat"
                 ],
                 "summary": "Connect to WebSocket for real-time chat",
-                "responses": {}
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "JWT access token for browser WebSocket clients (alternative to Authorization header)",
+                        "name": "token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid WebSocket handshake",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "426": {
+                        "description": "Upgrade Required",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
             }
         },
         "/chats/{id}/leave": {

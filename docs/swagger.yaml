@@ -3892,7 +3892,27 @@ paths:
       - Chat
   /chats/ws:
     get:
-      responses: {}
+      parameters:
+      - description: JWT access token for browser WebSocket clients (alternative to
+          Authorization header)
+        in: query
+        name: token
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+        "400":
+          description: Invalid WebSocket handshake
+          schema:
+            additionalProperties: true
+            type: object
+        "426":
+          description: Upgrade Required
+          schema:
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
       summary: Connect to WebSocket for real-time chat
