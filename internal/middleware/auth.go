@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"photostudio/internal/domain/catalog"
 	"photostudio/internal/pkg/jwt"
 	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 const maxWebSocketTokenLength = 8192
@@ -173,6 +174,20 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 			return
 		}
 
+		if claims.TokenType == "access_admin" {
+			if !isAdminTokenAllowedOnEndpoint(c) {
+				response.CustomError(c, http.StatusForbidden, "FORBIDDEN", "Admin token is not allowed for this endpoint")
+				c.Abort()
+				return
+			}
+
+			c.Set("admin_id", claims.AdminID)
+			c.Set("role", claims.Role)
+			c.Set("is_admin_token", true)
+			c.Next()
+			return
+		}
+
 		if claims.UserID <= 0 {
 			response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token subject is invalid")
 			c.Abort()
@@ -187,4 +202,17 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 
 		c.Next()
 	}
+}
+
+func isAdminTokenAllowedOnEndpoint(c *gin.Context) bool {
+	if c.Request.Method != http.MethodPost {
+		return false
+	}
+
+	if c.FullPath() == "/api/v1/chats/:id/members" {
+		return true
+	}
+
+	path := c.Request.URL.Path
+	return strings.HasPrefix(path, "/api/v1/chats/") && strings.HasSuffix(path, "/members")
 }
