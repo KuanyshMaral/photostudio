@@ -1,13 +1,14 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"photostudio/internal/pkg/jwt"
 	"testing"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJWTAuth_ValidToken(t *testing.T) {
@@ -157,4 +158,53 @@ func TestJWTAuth_QueryTokenRejectedForOtherWSPath(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Contains(t, w.Body.String(), "AUTH_HEADER_MISSING")
+}
+
+func TestJWTAuth_AdminTokenRejectedOnRegularUserEndpoint(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	adminToken, _ := jwtService.GenerateAdminToken("a729c521-9b39-402b-95c5-0414e00a456c", "admin")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.GET("/api/v1/chats", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/chats", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Contains(t, w.Body.String(), "Admin token is not allowed")
+}
+
+func TestJWTAuth_AdminTokenAllowedForAddChatMember(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	adminToken, _ := jwtService.GenerateAdminToken("a729c521-9b39-402b-95c5-0414e00a456c", "admin")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.POST("/api/v1/chats/:id/members", func(c *gin.Context) {
+		_, hasAdminID := c.Get("admin_id")
+		_, hasUserID := c.Get("user_id")
+		isAdminToken, _ := c.Get("is_admin_token")
+		c.JSON(http.StatusOK, gin.H{
+			"has_admin_id":   hasAdminID,
+			"has_user_id":    hasUserID,
+			"is_admin_token": isAdminToken,
+		})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("POST", "/api/v1/chats/7ae6034b-f7c7-4505-9c13-f457a7f47561/members", nil)
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "\"has_admin_id\":true")
+	assert.Contains(t, w.Body.String(), "\"has_user_id\":false")
+	assert.Contains(t, w.Body.String(), "\"is_admin_token\":true")
 }
