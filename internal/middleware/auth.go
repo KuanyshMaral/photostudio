@@ -205,14 +205,22 @@ func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
 }
 
 func isAdminTokenAllowedOnEndpoint(c *gin.Context) bool {
-	if c.Request.Method != http.MethodPost {
-		return false
+	if c.FullPath() == "/api/v1/chats/:id/members" && c.Request.Method == http.MethodPost {
+		return true
 	}
 
-	if c.FullPath() == "/api/v1/chats/:id/members" {
+	if c.FullPath() == "/api/v1/chats/:id/members/:user_id" && c.Request.Method == http.MethodDelete {
 		return true
 	}
 
 	path := c.Request.URL.Path
-	return strings.HasPrefix(path, "/api/v1/chats/") && strings.HasSuffix(path, "/members")
+	if c.Request.Method == http.MethodPost {
+		return strings.HasPrefix(path, "/api/v1/chats/") && strings.HasSuffix(path, "/members")
+	}
+
+	if c.Request.Method == http.MethodDelete {
+		return strings.HasPrefix(path, "/api/v1/chats/") && strings.Contains(path, "/members/")
+	}
+
+	return false
 }
