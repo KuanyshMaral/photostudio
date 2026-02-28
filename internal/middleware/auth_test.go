@@ -139,6 +139,26 @@ func TestJWTAuth_QueryTokenAllowedForNotificationsWSUpgrade(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
+func TestJWTAuth_QueryTokenAllowedForChatsWSUpgrade(t *testing.T) {
+	secret := "test-secret-123"
+	jwtService := jwt.New(secret, 1*time.Hour)
+	validToken, _ := jwtService.GenerateToken(42, "client")
+
+	router := gin.New()
+	router.Use(JWTAuth(jwtService))
+	router.GET("/api/v1/chats/ws", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/chats/ws?token="+validToken, nil)
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Connection", "Upgrade")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
 func TestJWTAuth_QueryTokenRejectedForOtherWSPath(t *testing.T) {
 	secret := "test-secret-123"
 	jwtService := jwt.New(secret, 1*time.Hour)
