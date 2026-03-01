@@ -12,6 +12,7 @@ import (
 
 	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
+	"photostudio/internal/pkg/utils"
 )
 
 // Handler manages all HTTP interactions for authentication
@@ -116,10 +117,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP := r.RemoteAddr
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		clientIP = strings.Split(xff, ",")[0]
-	}
+	clientIP := utils.GetClientIP(r)
 
 	result, err := h.service.RefreshSession(r.Context(), cookie.Value, r.UserAgent(), clientIP)
 	if err != nil {
@@ -218,10 +216,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP := r.RemoteAddr
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		clientIP = strings.Split(xff, ",")[0]
-	}
+	clientIP := utils.GetClientIP(r)
 
 	loginResult, err := h.service.Login(r.Context(), req, r.UserAgent(), clientIP)
 	if err != nil {

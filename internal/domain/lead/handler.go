@@ -9,6 +9,7 @@ import (
 
 	"photostudio/internal/domain/profile"
 	"photostudio/internal/pkg/response"
+	"photostudio/internal/pkg/utils"
 	"photostudio/internal/pkg/validator"
 )
 
@@ -78,10 +79,7 @@ func (h *Handler) SubmitLead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := r.RemoteAddr
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		ip = xff
-	}
+	ip := utils.GetClientIP(r)
 	userAgent := r.UserAgent()
 
 	lead, err := h.service.SubmitLead(r.Context(), &req, ip, userAgent)
