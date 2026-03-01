@@ -66,7 +66,6 @@ func main() {
 		Email:         "admin@photostudio.kz",
 		PasswordHash:  string(adminHash),
 		Role:          auth.RoleAdmin,
-		Name:          "Администратор",
 		EmailVerified: true,
 	}
 	if err := db.Create(&admin).Error; err != nil {
@@ -77,14 +76,12 @@ func main() {
 	// Clients (3 users)
 	clients := []auth.User{}
 	clientEmails := []string{"asel@mail.kz", "bekzat@gmail.com", "dina@yandex.kz"}
-	for i, email := range clientEmails {
+	for _, email := range clientEmails {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("client123"), bcrypt.DefaultCost)
 		client := auth.User{
 			Email:         email,
 			PasswordHash:  string(hash),
 			Role:          auth.RoleClient,
-			Name:          fmt.Sprintf("Клиент %d", i+1),
-			Phone:         fmt.Sprintf("+7 777 123 45%02d", i+67),
 			EmailVerified: true,
 		}
 		if err := db.Create(&client).Error; err != nil {
@@ -102,7 +99,6 @@ func main() {
 			Email:         email,
 			PasswordHash:  string(hash),
 			Role:          auth.RoleStudioOwner,
-			Name:          fmt.Sprintf("Владелец %d", i+1),
 			StudioStatus:  "verified",
 			EmailVerified: true,
 		}
@@ -256,7 +252,6 @@ func main() {
 	demoUser := auth.User{
 		Email:         "demo@studiobooking.kz",
 		PasswordHash:  string(demoHash),
-		Name:          "Алексей Петров",
 		Role:          auth.RoleClient,
 		EmailVerified: true,
 	}

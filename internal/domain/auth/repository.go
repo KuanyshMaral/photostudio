@@ -21,9 +21,6 @@ type userModel struct {
 	Email               string     `gorm:"column:email"`
 	PasswordHash        string     `gorm:"column:password_hash"`
 	Role                string     `gorm:"column:role"`
-	Name                string     `gorm:"column:name"`
-	Phone               *string    `gorm:"column:phone"`
-	AvatarURL           *string    `gorm:"column:avatar_url"`
 	EmailVerified       bool       `gorm:"column:email_verified"`
 	EmailVerifiedAt     *time.Time `gorm:"column:email_verified_at"`
 	IsBanned            bool       `gorm:"column:is_banned"`
@@ -41,13 +38,7 @@ type userModel struct {
 func (userModel) TableName() string { return "users" }
 
 func toDomainUser(m userModel) *User {
-	var phone, avatar, status, mworkUserID, mworkRole, banReason string
-	if m.Phone != nil {
-		phone = *m.Phone
-	}
-	if m.AvatarURL != nil {
-		avatar = *m.AvatarURL
-	}
+	var status, mworkUserID, mworkRole, banReason string
 	if m.StudioStatus != nil {
 		status = *m.StudioStatus
 	}
@@ -66,9 +57,6 @@ func toDomainUser(m userModel) *User {
 		Email:               m.Email,
 		PasswordHash:        m.PasswordHash,
 		Role:                UserRole(m.Role),
-		Name:                m.Name,
-		Phone:               phone,
-		AvatarURL:           avatar,
 		EmailVerified:       m.EmailVerified,
 		EmailVerifiedAt:     m.EmailVerifiedAt,
 		IsBanned:            m.IsBanned,
@@ -87,15 +75,7 @@ func toDomainUser(m userModel) *User {
 func toUserModel(u *User) userModel {
 	email := strings.TrimSpace(strings.ToLower(u.Email))
 
-	var phone, avatar, status, mworkUserID, mworkRole, banReason *string
-	if u.Phone != "" {
-		v := u.Phone
-		phone = &v
-	}
-	if u.AvatarURL != "" {
-		v := u.AvatarURL
-		avatar = &v
-	}
+	var status, mworkUserID, mworkRole, banReason *string
 	if u.BanReason != "" {
 		v := u.BanReason
 		banReason = &v
@@ -118,9 +98,6 @@ func toUserModel(u *User) userModel {
 		Email:               email,
 		PasswordHash:        u.PasswordHash,
 		Role:                string(u.Role),
-		Name:                u.Name,
-		Phone:               phone,
-		AvatarURL:           avatar,
 		EmailVerified:       u.EmailVerified,
 		EmailVerifiedAt:     u.EmailVerifiedAt,
 		IsBanned:            u.IsBanned,

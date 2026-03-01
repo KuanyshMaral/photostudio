@@ -116,8 +116,6 @@ func (s *Service) RegisterClient(ctx context.Context, req RegisterClientRequest)
 	user := &User{
 		Email:         strings.ToLower(strings.TrimSpace(req.Email)),
 		PasswordHash:  hashedPassword,
-		Name:          req.Name,
-		Phone:         req.Phone,
 		Role:          RoleClient,
 		EmailVerified: false,
 	}
@@ -224,6 +222,20 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ip str
 	}
 
 	user.PasswordHash = ""
+
+	// Lazy profile generation: ensure the user has a profile row immediately on login.
+	// This guarantees the profile exists before the frontend makes any profile API calls or opens sockets.
+	if s.profileService != nil {
+		switch user.Role {
+		case RoleClient:
+			_, _ = s.profileService.EnsureClientProfile(ctx, user.ID)
+		case RoleStudioOwner:
+			_, _ = s.profileService.EnsureOwnerProfile(ctx, user.ID, &profile.CreateOwnerProfileRequest{
+				CompanyName: "", // Skeleton — owner fills this in their profile settings
+			})
+		}
+	}
+
 	return &LoginResult{User: user, AccessToken: accessToken, RefreshToken: refreshTokenRaw}, nil
 }
 
@@ -338,46 +350,9 @@ func (s *Service) GetCurrentUser(ctx context.Context, userID int64) (*User, erro
 	return user, nil
 }
 
-func (s *Service) UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*User, error) {
-	user, err := s.users.GetByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Name != "" {
-		user.Name = req.Name
-	}
-	if req.Phone != "" {
-		user.Phone = req.Phone
-	}
-
-	if err := s.users.Update(ctx, user); err != nil {
-		return nil, err
-	}
-
-	user.PasswordHash = ""
-	return user, nil
-}
-
-func (s *Service) AppendVerificationDocs(ctx context.Context, userID int64, urls []string) error {
-	if len(urls) == 0 {
-		return nil
-	}
-
-	p, err := s.ownerProfiles.GetByUserID(ctx, userID)
-	if err != nil {
-		return err
-	}
-	if p == nil {
-		// Just return error or ignore?
-		// If profile doesn't exist, we can't append docs.
-		return errors.New("owner profile not found")
-	}
-
-	p.VerificationDocs = append(p.VerificationDocs, urls...)
-
-	return s.ownerProfiles.Update(ctx, p)
-}
+// UpdateProfile has been removed - profile updates happen via the profile domain
+// (PUT /profiles/client, PUT /profiles/owner, etc.)
+// This function is intentionally left empty.
 
 func (s *Service) validateEmailUnique(ctx context.Context, email string) error {
 	exists, err := s.users.ExistsByEmail(ctx, email)

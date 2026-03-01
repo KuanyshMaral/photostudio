@@ -55,6 +55,50 @@ func (h *ClientHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, profile)
 }
 
+// GetMe returns the current user's profile based on their role (unified endpoint).
+//
+//	@Summary		Мой профиль
+//	@Description	Возвращает профиль текущего пользователя в зависимости от его роли.
+//	@Tags			Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	map[string]interface{}	"Профиль"
+//	@Failure		401	{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse	"Ошибка сервера"
+//	@Router			/profiles/me [get]
+func (h *ClientHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+
+	role := chicontext.RoleFromCtx(r.Context())
+
+	switch role {
+	case "client":
+		profile, err := h.service.EnsureClientProfile(r.Context(), userID)
+		if err != nil {
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+			return
+		}
+		response.Success(w, http.StatusOK, profile)
+	case "studio_owner":
+		profile, err := h.service.GetOwnerProfile(r.Context(), userID)
+		if err != nil {
+			if err == ErrProfileNotFound {
+				response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Owner profile not found")
+				return
+			}
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+			return
+		}
+		response.Success(w, http.StatusOK, profile)
+	default:
+		response.CustomError(w, r, http.StatusBadRequest, "UNSUPPORTED_ROLE", "Use role-specific profile endpoint")
+	}
+}
+
 // UpdateProfile редактирует профиль клиента.
 //
 //	@Summary		Обновить профиль

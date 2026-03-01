@@ -288,11 +288,10 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 
 	// Create admin user for testing
 	adminUser := &auth.User{
-		Email:         "admin@test.com",
-		PasswordHash:  "$2a$10$dummy", // Will be properly hashed
-		Role:          auth.RoleAdmin,
-		Name:          "Admin User",
-		Phone:         "+77001234560",
+		Email:        "admin@test.com",
+		PasswordHash: "$2a$10$dummy", // Will be properly hashed
+		Role:         auth.RoleAdmin,
+
 		EmailVerified: true,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
@@ -1316,19 +1315,19 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 
 	// Создаём owners напрямую в БД (для foreign key OwnerID)
 	owner1 := auth.User{
-		Email:         "filter_owner1@test.com",
-		PasswordHash:  "$2a$10$dummy",
-		Role:          auth.RoleStudioOwner,
-		Name:          "Owner1",
+		Email:        "filter_owner1@test.com",
+		PasswordHash: "$2a$10$dummy",
+		Role:         auth.RoleStudioOwner,
+
 		EmailVerified: true,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
 	owner2 := auth.User{
-		Email:         "filter_owner2@test.com",
-		PasswordHash:  "$2a$10$dummy",
-		Role:          auth.RoleStudioOwner,
-		Name:          "Owner2",
+		Email:        "filter_owner2@test.com",
+		PasswordHash: "$2a$10$dummy",
+		Role:         auth.RoleStudioOwner,
+
 		EmailVerified: true,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),

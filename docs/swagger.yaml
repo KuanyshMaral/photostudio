@@ -152,12 +152,12 @@ definitions:
     - email
     - password
     type: object
-  auth.RegisterClientDataSwagger:
+  auth.RefreshTokenRequest:
     properties:
-      user:
-        $ref: '#/definitions/auth.RegisterUserSwagger'
-      verification_sent:
-        type: boolean
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
     type: object
   auth.RegisterClientRequest:
     properties:
@@ -175,28 +175,6 @@ definitions:
     - name
     - password
     type: object
-  auth.RegisterClientResponseSwagger:
-    properties:
-      data:
-        $ref: '#/definitions/auth.RegisterClientDataSwagger'
-      success:
-        type: boolean
-    type: object
-  auth.RegisterUserSwagger:
-    properties:
-      email:
-        type: string
-      id:
-        type: integer
-      name:
-        type: string
-      phone:
-        type: string
-      role:
-        type: string
-      studio_status:
-        type: string
-    type: object
   auth.StudioStatus:
     enum:
     - pending
@@ -209,19 +187,8 @@ definitions:
     - StatusVerified
     - StatusRejected
     - StatusBlocked
-  auth.UpdateProfileRequest:
-    properties:
-      name:
-        minLength: 2
-        type: string
-      phone:
-        description: 'optional: use phone validation'
-        type: string
-    type: object
   auth.User:
     properties:
-      avatar_url:
-        type: string
       ban_reason:
         type: string
       banned_at:
@@ -241,10 +208,6 @@ definitions:
       is_banned:
         type: boolean
       locked_until:
-        type: string
-      name:
-        type: string
-      phone:
         type: string
       role:
         $ref: '#/definitions/auth.UserRole'
@@ -281,6 +244,78 @@ definitions:
         type: string
     required:
     - email
+    type: object
+  auth.swaggerLoginResponse:
+    properties:
+      data:
+        properties:
+          tokens:
+            properties:
+              access_token:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+          user:
+            properties:
+              email:
+                type: string
+              id:
+                type: integer
+              role:
+                type: string
+              studio_status:
+                type: string
+            type: object
+        type: object
+      success:
+        type: boolean
+    type: object
+  auth.swaggerRegisterClientResponse:
+    properties:
+      data:
+        properties:
+          user:
+            properties:
+              email:
+                type: string
+              id:
+                type: integer
+              role:
+                type: string
+              studio_status:
+                type: string
+            type: object
+          verification_sent:
+            type: boolean
+        type: object
+      success:
+        type: boolean
+    type: object
+  auth.swaggerTokensResponse:
+    properties:
+      data:
+        properties:
+          tokens:
+            properties:
+              access_token:
+                type: string
+              refresh_token:
+                type: string
+            type: object
+        type: object
+      success:
+        type: boolean
+    type: object
+  auth.swaggerVerifyResponse:
+    properties:
+      data:
+        properties:
+          status:
+            type: string
+        type: object
+      success:
+        type: boolean
     type: object
   booking.Booking:
     properties:
@@ -1596,6 +1631,11 @@ definitions:
   profile.OwnerProfile:
     properties:
       admin_notes:
+        type: string
+      avatar_upload_id:
+        type: string
+      avatar_url:
+        description: Avatar
         type: string
       bin:
         type: string
@@ -3581,32 +3621,80 @@ paths:
           $ref: '#/definitions/auth.LoginRequest'
       responses:
         "200":
-          description: OK
+          description: Успешный вход
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/auth.swaggerLoginResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Неверные учетные данные
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Доступ запрещен
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Войти в аккаунт
       tags:
       - Auth
   /auth/logout:
     post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token to revoke
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
       responses:
         "204":
           description: No Content
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Logout
       tags:
       - Auth
   /auth/refresh:
     post:
+      consumes:
+      - application/json
+      description: Обновляет access/refresh токены по валидному refresh token.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Токены обновлены
           schema:
-            additionalProperties: true
-            type: object
-      summary: Refresh token
+            $ref: '#/definitions/auth.swaggerTokensResponse'
+        "401":
+          description: Неавторизован или токен не валиден
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Доступ запрещен
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Обновление токенов
       tags:
       - Auth
   /auth/register/client:
@@ -3624,9 +3712,21 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Успешная регистрация
           schema:
-            $ref: '#/definitions/auth.RegisterClientResponseSwagger'
+            $ref: '#/definitions/auth.swaggerRegisterClientResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Email уже существует
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Register client
       tags:
       - Auth
@@ -3645,10 +3745,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Успешное подтверждение
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/auth.swaggerVerifyResponse'
+        "400":
+          description: Ошибка валидации или неверный код
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "429":
+          description: Слишком много запросов
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Confirm email verification
       tags:
       - Auth
@@ -3667,10 +3778,21 @@ paths:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Подтверждение отправки
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/auth.swaggerVerifyResponse'
+        "400":
+          description: Ошибка валидации
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "429":
+          description: Слишком много запросов
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
       summary: Request email verification
       tags:
       - Auth
@@ -6148,6 +6270,30 @@ paths:
       summary: Обновить профиль
       tags:
       - Profile
+  /profiles/me:
+    get:
+      description: Возвращает профиль текущего пользователя в зависимости от его роли.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Не авторизован
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Ошибка сервера
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Мой профиль
+      tags:
+      - Profile
   /relationships/block:
     post:
       consumes:
@@ -7270,59 +7416,6 @@ paths:
       summary: Получить метаданные файла
       tags:
       - Uploads
-  /users/me:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Получить профиль пользователя
-      tags:
-      - Auth
-    put:
-      parameters:
-      - description: Данные для обновления
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/auth.UpdateProfileRequest'
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Обновить профиль пользователя
-      tags:
-      - Auth
-  /users/verification/documents:
-    post:
-      consumes:
-      - multipart/form-data
-      parameters:
-      - description: Файлы документов
-        in: formData
-        name: documents
-        required: true
-        type: file
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Загрузить документы верификации
-      tags:
-      - Auth
 securityDefinitions:
   BearerAuth:
     in: header

@@ -24,9 +24,6 @@ type User struct {
 	Email               string       `json:"email" validate:"required,email"`
 	PasswordHash        string       `json:"-"`
 	Role                UserRole     `json:"role"`
-	Name                string       `json:"name"`
-	Phone               string       `json:"phone,omitempty"`
-	AvatarURL           string       `json:"avatar_url,omitempty"`
 	EmailVerified       bool         `json:"email_verified"`
 	EmailVerifiedAt     *time.Time   `json:"email_verified_at,omitempty"`
 	IsBanned            bool         `json:"is_banned"`
