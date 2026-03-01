@@ -20,7 +20,7 @@ func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
 		r.Post("/init", h.InitPayment)
 	})
 	r.Route("/subscriptions", func(r chi.Router) {
-		r.Post("", h.CreateSubscription)
+		r.Post("/", h.CreateSubscription)
 		r.Get("/me", h.MySubscription)
 		r.Post("/cancel", h.CancelSubscription)
 	})

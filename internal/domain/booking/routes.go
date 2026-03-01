@@ -37,6 +37,6 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 func (h *Handler) RegisterStudioRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
 	r.Route("/studios/{id}/bookings", func(r chi.Router) {
 		r.Use(ownershipChecker.CheckStudioOwnership())
-		r.Get("", h.GetStudioBookings)
+		r.Get("/", h.GetStudioBookings)
 	})
 }

@@ -16,7 +16,7 @@ type OwnershipMiddleware interface {
 func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Public studio routes
 	r.Route("/studios", func(r chi.Router) {
-		r.Get("", h.GetStudios)
+		r.Get("/", h.GetStudios)
 		r.Get("/{id}", h.GetStudioByID)
 		r.Get("/{id}/working-hours", h.GetStudioWorkingHours)
 		r.Get("/{id}/working-hours/v2", h.GetStudioWorkingHoursV2)
@@ -31,7 +31,7 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 func (h *Handler) RegisterProtectedRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
 	// Studio management (Owner only)
 	r.Route("/studios", func(r chi.Router) {
-		r.Post("", h.CreateStudio)
+		r.Post("/", h.CreateStudio)
 
 		r.Group(func(r chi.Router) {
 			r.Use(ownershipChecker.CheckStudioOwnership())
