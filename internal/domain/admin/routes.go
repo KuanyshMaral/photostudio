@@ -6,14 +6,17 @@ import (
 	jwtsvc "photostudio/internal/pkg/jwt"
 )
 
+// RegisterPublicRoutes registers public admin routes directly on the given router.
+// The caller (main.go) is expected to provide the /admin prefix via r.Route("/admin", ...).
 func (h *Handler) RegisterPublicRoutes(r chi.Router) {
-	r.Route("/admin", func(r chi.Router) {
-		r.Post("/auth/login", h.authHandler.Login)
-	})
+	r.Post("/auth/login", h.authHandler.Login)
 }
 
+// RegisterProtectedRoutes registers all protected /admin/* sub-routes.
+// Routes are registered directly on r; No "/admin" wrapping here to avoid duplicate Mount panics.
+// The caller MUST wrap this in `r.Route("/admin", func(r chi.Router) { ... })` and apply AdminJWTAuth there.
 func (h *Handler) RegisterProtectedRoutes(r chi.Router, jwtService *jwtsvc.Service) {
-	r.Route("/admin", func(r chi.Router) {
+	r.Group(func(r chi.Router) {
 		r.Use(ChiAdminJWTAuth(jwtService))
 
 		// studios moderation
