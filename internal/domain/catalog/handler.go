@@ -382,17 +382,37 @@ func (h *Handler) CreateStudio(c *gin.Context) {
 	studio, err := h.service.CreateStudio(c.Request.Context(), userObj, req)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "FORBIDDEN",
-					"message": "Only verified studio owners can create studios",
-				},
-			})
+			response.Forbidden(c, "Only verified studio owners can create studios")
 			return
 		}
 		handleError(c, err)
 		return
+	}
+
+	// Attach any uploaded files to the new studio gallery
+	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
+		if attached, attachErr := h.attachmentSvc.Attach(
+			c.Request.Context(),
+			req.UploadIDs,
+			userID,
+			attachment.TargetStudioGallery,
+			studio.ID,
+			attachment.Metadata{},
+		); attachErr != nil {
+			// Non-fatal: studio was created, just log + skip gallery
+			_ = c.Error(attachErr)
+		} else {
+			studio.Attachments = make([]AttachmentURL, len(attached))
+			for i, a := range attached {
+				studio.Attachments[i] = AttachmentURL{
+					ID: a.ID, URL: a.URL,
+					OriginalName: a.OriginalName, MimeType: a.MimeType,
+					SortOrder: a.SortOrder,
+				}
+			}
+		}
+	} else {
+		h.enrichStudioWithAttachments(c.Request.Context(), studio)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -461,27 +481,40 @@ func (h *Handler) UpdateStudio(c *gin.Context) {
 	studio, err := h.service.UpdateStudio(c.Request.Context(), userID, studioID, req)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "FORBIDDEN",
-					"message": "You don't have permission to update this studio",
-				},
-			})
+			response.Forbidden(c, "You don't have permission to update this studio")
 			return
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Studio not found",
-				},
-			})
+			response.NotFound(c, "Studio not found")
 			return
 		}
 		handleError(c, err)
 		return
+	}
+
+	// Attach any new uploaded files (appends to existing gallery)
+	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
+		if attached, attachErr := h.attachmentSvc.Attach(
+			c.Request.Context(),
+			req.UploadIDs,
+			userID,
+			attachment.TargetStudioGallery,
+			studio.ID,
+			attachment.Metadata{},
+		); attachErr != nil {
+			_ = c.Error(attachErr)
+		} else {
+			studio.Attachments = make([]AttachmentURL, len(attached))
+			for i, a := range attached {
+				studio.Attachments[i] = AttachmentURL{
+					ID: a.ID, URL: a.URL,
+					OriginalName: a.OriginalName, MimeType: a.MimeType,
+					SortOrder: a.SortOrder,
+				}
+			}
+		}
+	} else {
+		h.enrichStudioWithAttachments(c.Request.Context(), studio)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -530,7 +563,31 @@ func (h *Handler) UpdateRoom(c *gin.Context) {
 		return
 	}
 
-	h.enrichRoomWithAttachments(c.Request.Context(), room)
+	// Attach any new uploaded files (appends to room gallery)
+	userID := c.GetInt64("user_id")
+	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil && userID != 0 {
+		if attached, attachErr := h.attachmentSvc.Attach(
+			c.Request.Context(),
+			req.UploadIDs,
+			userID,
+			attachment.TargetRoomGallery,
+			room.ID,
+			attachment.Metadata{},
+		); attachErr != nil {
+			_ = c.Error(attachErr)
+		} else {
+			room.Attachments = make([]AttachmentURL, len(attached))
+			for i, a := range attached {
+				room.Attachments[i] = AttachmentURL{
+					ID: a.ID, URL: a.URL,
+					OriginalName: a.OriginalName, MimeType: a.MimeType,
+					SortOrder: a.SortOrder,
+				}
+			}
+		}
+	} else {
+		h.enrichRoomWithAttachments(c.Request.Context(), room)
+	}
 
 	response.Success(c, http.StatusOK, gin.H{"room": room})
 }
@@ -857,6 +914,31 @@ func (h *Handler) CreateRoom(c *gin.Context) {
 		}
 		handleError(c, err)
 		return
+	}
+
+	// Attach any uploaded files to the new room gallery
+	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
+		if attached, attachErr := h.attachmentSvc.Attach(
+			c.Request.Context(),
+			req.UploadIDs,
+			userID,
+			attachment.TargetRoomGallery,
+			room.ID,
+			attachment.Metadata{},
+		); attachErr != nil {
+			_ = c.Error(attachErr)
+		} else {
+			room.Attachments = make([]AttachmentURL, len(attached))
+			for i, a := range attached {
+				room.Attachments[i] = AttachmentURL{
+					ID: a.ID, URL: a.URL,
+					OriginalName: a.OriginalName, MimeType: a.MimeType,
+					SortOrder: a.SortOrder,
+				}
+			}
+		}
+	} else {
+		h.enrichRoomWithAttachments(c.Request.Context(), room)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
