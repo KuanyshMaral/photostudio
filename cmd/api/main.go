@@ -256,66 +256,135 @@ func main() {
 	paymentHandler.RegisterPublicWebhookRoutes(chiRouter)
 
 	chiRouter.Route("/api/v1", func(r chi.Router) {
-		// ---- Public chi routes (no auth) ----
-		authHandler.RegisterPublicRoutes(r)
-		catalogHandler.RegisterRoutes(r) // GET /studios, /rooms, /room-types
 
-		// All /admin routes merged into one block to avoid Chi duplicate mount panic.
+		// ---------------------------------------------------------
+		// Namespaces without overlaps
+		// ---------------------------------------------------------
+
 		r.Route("/admin", func(r chi.Router) {
-			adminHandler.RegisterPublicRoutes(r)                // POST /admin/auth/login (no middleware)
-			adminHandler.RegisterProtectedRoutes(r, jwtService) // All protected /admin/* (AdminJWTAuth applied inside)
+			adminHandler.RegisterPublicRoutes(r)
+			adminHandler.RegisterProtectedRoutes(r, jwtService)
 		})
 
-		subscription.RegisterPublicRoutes(r, subscriptionHandler) // GET /subscriptions/plans
-		reviewer := reviewHandler
-		reviewer.RegisterRoutes(r, nil)           // GET /reviews
-		lead.RegisterPublicRoutes(r, leadHandler) // POST /leads/submit
+		r.Route("/auth", func(r chi.Router) {
+			authHandler.RegisterPublicRoutes(r)
+		})
 
-		// ---- Protected chi routes (JWT required) ----
+		r.Route("/leads", func(r chi.Router) {
+			lead.RegisterPublicRoutes(r, leadHandler)
+		})
+
+		reviewer := reviewHandler
+		r.Route("/reviews", func(r chi.Router) {
+			reviewer.RegisterRoutes(r, nil) // public
+			r.Group(func(r chi.Router) {    // protected
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				reviewer.RegisterRoutes(nil, r)
+			})
+		})
+
+		// ---------------------------------------------------------
+		// Namespaces WITH overlaps and heavy protected sections
+		// ---------------------------------------------------------
+
+		r.Route("/studios", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicStudioRoutes(r) })
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				catalogHandler.RegisterProtectedStudioRoutes(r, ownershipChecker)
+			})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				r.Route("/{id}/bookings", func(r chi.Router) {
+					bookingHandler.RegisterStudioRoutes(r, ownershipChecker)
+				})
+			})
+		})
+
+		r.Route("/rooms", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicRoomRoutes(r) })
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				catalogHandler.RegisterProtectedRoomRoutes(r, ownershipChecker)
+			})
+		})
+
+		r.Route("/room-types", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicRoomTypes(r) })
+		})
+
+		r.Route("/users", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			authHandler.RegisterProtectedRoutes(r)
+		})
+
+		r.Route("/bookings", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			bookingHandler.RegisterRoutes(r)
+		})
+
+		r.Route("/subscriptions", func(r chi.Router) {
+			r.Group(func(r chi.Router) { subscription.RegisterPublicRoutes(r, subscriptionHandler) })
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				r.Post("/", paymentHandler.CreateSubscription)
+				r.Get("/me", paymentHandler.MySubscription)
+				r.Post("/cancel", paymentHandler.CancelSubscription)
+			})
+		})
+
+		r.Route("/owner", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			r.Use(middleware.ChiRequireRole(string(auth.RoleStudioOwner)))
+			ownerHandler.RegisterRoutes(r)
+			r.Route("/subscription", func(r chi.Router) {
+				subscription.RegisterOwnerRoutes(r, subscriptionHandler)
+			})
+		})
+
+		r.Route("/company", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			r.Use(middleware.ChiRequireRole(string(auth.RoleStudioOwner)))
+			ownerHandler.RegisterCompanyRoutes(r)
+		})
+
+		r.Route("/manager", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			r.Use(middleware.ChiRequireRole(string(auth.RoleStudioOwner)))
+			managerHandler.RegisterRoutes(r)
+		})
+
+		r.Route("/payments/robokassa", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			r.Post("/create", paymentHandler.CreatePayment)
+			r.Post("/init", paymentHandler.InitPayment)
+		})
+
+		// ---------------------------------------------------------
+		// Other Protected Namespaces
+		// ---------------------------------------------------------
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.ChiJWTAuth(jwtService))
 
-			authHandler.RegisterProtectedRoutes(r)
-
-			profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
-
-			chat.RegisterRoutes(r, chatHandler)
-
-			notification.RegisterRoutes(r, notificationHandler, preferencesHandler, deviceTokensHandler)
-
-			favoriteHandler.RegisterRoutes(r)
-			upload.RegisterRoutes(r, uploadHandler)
-			relationship.RegisterRoutes(r, relationshipHandler)
-			reviewer.RegisterRoutes(nil, r)
-
-			r.Route("/attachments", func(r chi.Router) {
-				attachment.RegisterRoutes(r, attachmentHandler)
+			r.Route("/profile", func(r chi.Router) {
+				profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
 			})
-
-			paymentHandler.RegisterProtectedRoutes(r)
-
-			// Catalog protected (owner: create, update, upload)
-			catalogHandler.RegisterProtectedRoutes(r, ownershipChecker)
-
-			// Booking protected routes
-			bookingHandler.RegisterRoutes(r)
-			bookingHandler.RegisterStudioRoutes(r, ownershipChecker)
-
-			// Studio Owners only
-			r.Group(func(r chi.Router) {
-				r.Use(middleware.ChiRequireRole(string(auth.RoleStudioOwner)))
-				ownerHandler.RegisterRoutes(r)
-				ownerHandler.RegisterCompanyRoutes(r)
-				subscription.RegisterOwnerRoutes(r, subscriptionHandler)
-				managerHandler.RegisterRoutes(r)
+			r.Route("/chats", func(r chi.Router) { chat.RegisterRoutes(r, chatHandler) })
+			r.Route("/notifications", func(r chi.Router) {
+				notification.RegisterRoutes(r, notificationHandler, preferencesHandler, deviceTokensHandler)
 			})
+			r.Route("/favorites", func(r chi.Router) { favoriteHandler.RegisterRoutes(r) })
+			r.Route("/uploads", func(r chi.Router) { upload.RegisterRoutes(r, uploadHandler) })
+			r.Route("/relationships", func(r chi.Router) { relationship.RegisterRoutes(r, relationshipHandler) })
+			r.Route("/attachments", func(r chi.Router) { attachment.RegisterRoutes(r, attachmentHandler) })
 		})
 	})
 
 	// Internal chi routes (mwork sync)
 	chiRouter.Route("/internal", func(r chi.Router) {
 		r.Use(middleware.ChiInternalTokenAuth)
-		mworkHandler.RegisterRoutes(r)
+		r.Route("/mwork", func(r chi.Router) { mworkHandler.RegisterRoutes(r) })
 
 		// MWork-authenticated booking + catalog access
 		r.Group(func(r chi.Router) {

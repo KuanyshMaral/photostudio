@@ -9,14 +9,14 @@ func RegisterPublicRoutes(r chi.Router, handler *Handler) {
 
 // RegisterAdminRoutes registers admin lead routes
 func RegisterAdminRoutes(r chi.Router, handler *Handler) {
-	r.Route("/leads", func(r chi.Router) {
-		r.Get("/", handler.ListLeads)
-		r.Get("/stats", handler.GetStats)
-		r.Get("/{id}", handler.GetLead)
-		r.Patch("/{id}/status", handler.UpdateStatus)
-		r.Patch("/{id}/assign", handler.AssignLead)
-		r.Post("/{id}/reject", handler.RejectLead)
-		r.Post("/{id}/contacted", handler.MarkContacted)
-		r.Post("/{id}/convert", handler.ConvertLead)
-	})
+
+	r.Get("/", handler.ListLeads)
+	r.Get("/stats", handler.GetStats)
+	r.Get("/{id}", handler.GetLead)
+	r.Patch("/{id}/status", handler.UpdateStatus)
+	r.Patch("/{id}/assign", handler.AssignLead)
+	r.Post("/{id}/reject", handler.RejectLead)
+	r.Post("/{id}/contacted", handler.MarkContacted)
+	r.Post("/{id}/convert", handler.ConvertLead)
+
 }
