@@ -258,9 +258,14 @@ func main() {
 	chiRouter.Route("/api/v1", func(r chi.Router) {
 		// ---- Public chi routes (no auth) ----
 		authHandler.RegisterPublicRoutes(r)
-		catalogHandler.RegisterRoutes(r)                          // GET /studios, /rooms, /room-types
-		adminHandler.RegisterPublicRoutes(r)                      // POST /admin/auth/login
-		adminHandler.RegisterProtectedRoutes(r, jwtService)       // All protected /admin/* routes
+		catalogHandler.RegisterRoutes(r) // GET /studios, /rooms, /room-types
+
+		// All /admin routes merged into one block to avoid Chi duplicate mount panic.
+		r.Route("/admin", func(r chi.Router) {
+			adminHandler.RegisterPublicRoutes(r)                // POST /admin/auth/login (no middleware)
+			adminHandler.RegisterProtectedRoutes(r, jwtService) // All protected /admin/* (AdminJWTAuth applied inside)
+		})
+
 		subscription.RegisterPublicRoutes(r, subscriptionHandler) // GET /subscriptions/plans
 		reviewer := reviewHandler
 		reviewer.RegisterRoutes(r, nil)           // GET /reviews
