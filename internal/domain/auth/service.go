@@ -229,7 +229,6 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ip str
 	if s.profileService != nil {
 		switch user.Role {
 		case RoleClient:
-<<<<<<< HEAD
 			if _, err := s.profileService.EnsureClientProfile(ctx, user.ID); err != nil {
 				log.Warn().Err(err).Msgf("Failed lazy client profile generation on login for user %d", user.ID)
 			}
@@ -239,13 +238,6 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, userAgent, ip str
 			}); err != nil {
 				log.Warn().Err(err).Msgf("Failed lazy owner profile generation on login for user %d", user.ID)
 			}
-=======
-			_, _ = s.profileService.EnsureClientProfile(ctx, user.ID)
-		case RoleStudioOwner:
-			_, _ = s.profileService.EnsureOwnerProfile(ctx, user.ID, &profile.CreateOwnerProfileRequest{
-				CompanyName: "", // Skeleton — owner fills this in their profile settings
-			})
->>>>>>> 1a7b36e469ae664baa6b4c1c16ea70bb2755966c
 		}
 	}
 

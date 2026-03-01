@@ -180,11 +180,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 //
 //	@Accept		json
 //	@Produce	json
-<<<<<<< HEAD
 //	@Param		body	body		RegisterClientRequest			true	"payload (email, password)"
-=======
-//	@Param		body	body		RegisterClientRequest			true	"payload"
->>>>>>> 1a7b36e469ae664baa6b4c1c16ea70bb2755966c
 //	@Success	201		{object}	swaggerRegisterClientResponse	"Успешная регистрация"
 //	@Failure	400		{object}	response.ErrorResponse			"Ошибка валидации"
 //	@Failure	409		{object}	response.ErrorResponse			"Email уже существует"
