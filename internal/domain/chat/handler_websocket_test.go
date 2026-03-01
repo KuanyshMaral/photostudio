@@ -5,20 +5,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWebSocket_RequiresUpgradeHeaders(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	h := NewHandler(nil, NewHub())
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("user_id", int64(2))
-		c.Next()
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := chicontext.SetUserID(req.Context(), int64(2))
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
 	})
-	r.GET("/chats/ws", h.WebSocket)
+	r.Get("/chats/ws", h.WebSocket)
 
 	req := httptest.NewRequest(http.MethodGet, "/chats/ws", nil)
 	w := httptest.NewRecorder()
@@ -30,15 +32,15 @@ func TestWebSocket_RequiresUpgradeHeaders(t *testing.T) {
 }
 
 func TestWebSocket_RejectsHandshakeWithoutSecWebSocketKey(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	h := NewHandler(nil, NewHub())
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("user_id", int64(2))
-		c.Next()
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := chicontext.SetUserID(req.Context(), int64(2))
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
 	})
-	r.GET("/chats/ws", h.WebSocket)
+	r.Get("/chats/ws", h.WebSocket)
 
 	req := httptest.NewRequest(http.MethodGet, "/chats/ws", nil)
 	req.Header.Set("Connection", "Upgrade")

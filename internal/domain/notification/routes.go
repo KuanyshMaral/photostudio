@@ -1,33 +1,29 @@
 package notification
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
 // RegisterRoutes registers all notification-related routes
-func RegisterRoutes(protected *gin.RouterGroup, handler *Handler, prefsHandler *PreferencesHandler, devicesHandler *DeviceTokensHandler) {
-	// Notifications
-	notifGroup := protected.Group("/notifications")
-	{
-		notifGroup.GET("", handler.GetNotifications)
-		notifGroup.GET("/ws", handler.WebSocket)
-		notifGroup.GET("/unread-count", handler.GetUnreadCount)
-		notifGroup.PATCH("/:id/read", handler.MarkAsRead)
-		notifGroup.POST("/read-all", handler.MarkAllAsRead)
-		notifGroup.DELETE("/:id", handler.DeleteNotification)
+func RegisterRoutes(r chi.Router, handler *Handler, prefsHandler *PreferencesHandler, devicesHandler *DeviceTokensHandler) {
+	r.Route("/notifications", func(r chi.Router) {
+		r.Get("", handler.GetNotifications)
+		r.Get("/ws", handler.WebSocket)
+		r.Get("/unread-count", handler.GetUnreadCount)
+		r.Patch("/{id}/read", handler.MarkAsRead)
+		r.Post("/read-all", handler.MarkAllAsRead)
+		r.Delete("/{id}", handler.DeleteNotification)
 
 		// Preferences
-		prefsGroup := notifGroup.Group("/preferences")
-		{
-			prefsGroup.GET("", prefsHandler.GetPreferences)
-			prefsGroup.PATCH("", prefsHandler.UpdatePreferences)
-			prefsGroup.POST("/reset", prefsHandler.ResetPreferences)
-		}
+		r.Route("/preferences", func(r chi.Router) {
+			r.Get("", prefsHandler.GetPreferences)
+			r.Patch("", prefsHandler.UpdatePreferences)
+			r.Post("/reset", prefsHandler.ResetPreferences)
+		})
 
 		// Device Tokens
-		devicesGroup := notifGroup.Group("/device-tokens")
-		{
-			devicesGroup.POST("", devicesHandler.RegisterDeviceToken)
-			devicesGroup.GET("", devicesHandler.ListDeviceTokens)
-			devicesGroup.DELETE("/:id", devicesHandler.DeactivateDeviceToken)
-		}
-	}
+		r.Route("/device-tokens", func(r chi.Router) {
+			r.Post("", devicesHandler.RegisterDeviceToken)
+			r.Get("", devicesHandler.ListDeviceTokens)
+			r.Delete("/{id}", devicesHandler.DeactivateDeviceToken)
+		})
+	})
 }

@@ -9,16 +9,16 @@ import (
 
 // UserPreferences holds user notification preferences
 type UserPreferences struct {
-	ID              int64                      `gorm:"primaryKey;column:id" json:"id"`
-	UserID          int64                      `gorm:"column:user_id;uniqueIndex" json:"user_id"`
-	EmailEnabled    bool                       `gorm:"column:email_enabled;default:true" json:"email_enabled"`
-	PushEnabled     bool                       `gorm:"column:push_enabled;default:true" json:"push_enabled"`
-	InAppEnabled    bool                       `gorm:"column:in_app_enabled;default:true" json:"in_app_enabled"`
-	DigestEnabled   bool                       `gorm:"column:digest_enabled;default:false" json:"digest_enabled"`
-	DigestFrequency string                     `gorm:"column:digest_frequency;default:'weekly'" json:"digest_frequency"` // daily, weekly, monthly
-	PerTypeSettings PerTypeSettingsMap         `gorm:"column:per_type_settings;type:jsonb;serializer:json" json:"per_type_settings"`
-	CreatedAt       time.Time                  `gorm:"column:created_at;autoCreateTime" json:"created_at"`
-	UpdatedAt       time.Time                  `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
+	ID              int64              `gorm:"primaryKey;column:id" json:"id"`
+	UserID          int64              `gorm:"column:user_id;uniqueIndex" json:"user_id"`
+	EmailEnabled    bool               `gorm:"column:email_enabled;default:true" json:"email_enabled"`
+	PushEnabled     bool               `gorm:"column:push_enabled;default:true" json:"push_enabled"`
+	InAppEnabled    bool               `gorm:"column:in_app_enabled;default:true" json:"in_app_enabled"`
+	DigestEnabled   bool               `gorm:"column:digest_enabled;default:false" json:"digest_enabled"`
+	DigestFrequency string             `gorm:"column:digest_frequency;default:'weekly'" json:"digest_frequency"` // daily, weekly, monthly
+	PerTypeSettings PerTypeSettingsMap `gorm:"column:per_type_settings;type:jsonb;serializer:json" json:"per_type_settings"`
+	CreatedAt       time.Time          `gorm:"column:created_at;autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time          `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
 // TableName specifies table name for GORM

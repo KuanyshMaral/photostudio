@@ -1,10 +1,42 @@
 package upload
 
 import (
+	"io"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
+
+// swaggerUploadData is a wrapper strictly for generating Swagger documentation.
+type swaggerUploadData struct {
+	ID        string `json:"id"`
+	URL       string `json:"url"`
+	Name      string `json:"name"`
+	MimeType  string `json:"mime_type"`
+	Size      int64  `json:"size"`
+	CreatedAt string `json:"created_at"`
+}
+
+// swaggerUploadResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerUploadResponse struct {
+	Success bool              `json:"success"`
+	Data    swaggerUploadData `json:"data"`
+}
+
+// swaggerListUploadResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerListUploadResponse struct {
+	Success bool                `json:"success"`
+	Data    []swaggerUploadData `json:"data"`
+}
+
+// swaggerDeleteResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerDeleteResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
 
 // Handler handles HTTP requests for file uploads.
 // Any authenticated user can upload. Ownership is tracked by user_id.
@@ -16,47 +48,58 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Upload godoc
-// @Summary Upload a file
-// @Description Upload any file (image, video, PDF). Returns file ID and public URL.
-// @Tags Uploads
-// @Accept multipart/form-data
-// @Produce json
-// @Security BearerAuth
-// @Param file formData file true "File to upload"
-// @Success 201 {object} map[string]interface{}
-// @Failure 400,401,413,500 {object} map[string]interface{}
-// @Router /uploads [post]
-func (h *Handler) Upload(c *gin.Context) {
-	userID := mustUserID(c)
+// Upload загрузка одного файла.
+//
+//	@Summary		Загрузка файла
+//	@Description	Принимает multipart/form-data с полем "file". Возвращает метаданные загруженного файла.
+//	@Tags			Uploads
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			file			formData	file					true	"Файл для загрузки"
+//	@Success		201				{object}	swaggerUploadResponse	"Успешная загрузка"
+//	@Failure		400,401,413,422	{object}	response.ErrorResponse	"Ошибка запроса"
+//	@Failure		500				{object}	response.ErrorResponse	"Внутренняя ошибка сервера"
+//	@Router			/uploads [post]
+func (h *Handler) Upload(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 
-	fileHeader, err := c.FormFile("file")
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // 32 MB max memory
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_FORM", "failed to parse multipart form")
+		return
+	}
+
+	f, fh, err := r.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "no file provided"})
+		response.CustomError(w, r, http.StatusBadRequest, "NO_FILE", "no file provided")
 		return
 	}
+	defer f.Close()
 
-	upload, err := h.service.Upload(c.Request.Context(), userID, fileHeader)
+	// Reconstruct a multipart.FileHeader-compatible value via the service.
+	// The existing Service.Upload accepts *multipart.FileHeader directly.
+	upload, err := h.service.Upload(r.Context(), userID, fh)
 	if err != nil {
 		switch err {
 		case ErrEmptyFile:
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+			response.CustomError(w, r, http.StatusBadRequest, "EMPTY_FILE", err.Error())
 		case ErrFileTooLarge:
-			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"success": false, "error": err.Error()})
+			response.CustomError(w, r, http.StatusRequestEntityTooLarge, "FILE_TOO_LARGE", err.Error())
 		case ErrInvalidMimeType:
-			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_MIME", err.Error())
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "upload failed"})
+			response.CustomError(w, r, http.StatusInternalServerError, "UPLOAD_FAILED", "upload failed")
 		}
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.JSON(w, http.StatusCreated, response.H{
 		"success": true,
-		"data": gin.H{
+		"data": response.H{
 			"id":         upload.ID,
 			"url":        upload.FileURL,
 			"name":       upload.OriginalName,
@@ -67,85 +110,101 @@ func (h *Handler) Upload(c *gin.Context) {
 	})
 }
 
-// GetByID godoc
-// @Summary Get upload metadata by ID
-// @Tags Uploads
-// @Produce json
-// @Security BearerAuth
-// @Param id path string true "Upload ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 404 {object} map[string]interface{}
-// @Router /uploads/{id} [get]
-func (h *Handler) GetByID(c *gin.Context) {
-	id := c.Param("id")
-	upload, err := h.service.GetByID(c.Request.Context(), id)
+// GetByID получение информации о загруженном файле по ID.
+//
+//	@Summary		Получить метаданные файла
+//	@Description	Возвращает информацию о ранее загруженном файле по его идентификатору.
+//	@Tags			Uploads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string					true	"ID файла"
+//	@Success		200	{object}	swaggerUploadResponse	"Успех"
+//	@Failure		401	{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse	"Файл не найден"
+//	@Router			/uploads/{id} [get]
+func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	upload, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "upload not found"})
+		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "upload not found")
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{
-		"id":         upload.ID,
-		"url":        upload.FileURL,
-		"name":       upload.OriginalName,
-		"mime_type":  upload.MimeType,
-		"size":       upload.Size,
-		"created_at": upload.CreatedAt,
-	}})
+	response.JSON(w, http.StatusOK, response.H{
+		"success": true,
+		"data": response.H{
+			"id":         upload.ID,
+			"url":        upload.FileURL,
+			"name":       upload.OriginalName,
+			"mime_type":  upload.MimeType,
+			"size":       upload.Size,
+			"created_at": upload.CreatedAt,
+		},
+	})
 }
 
-// Delete godoc
-// @Summary Delete an upload (file + record)
-// @Tags Uploads
-// @Produce json
-// @Security BearerAuth
-// @Param id path string true "Upload ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 403,404,500 {object} map[string]interface{}
-// @Router /uploads/{id} [delete]
-func (h *Handler) Delete(c *gin.Context) {
-	userID := mustUserID(c)
+// Delete удаление загруженного файла.
+//
+//	@Summary		Удалить файл
+//	@Description	Удаляет файл и его метаданные. Доступно только владельцу файла.
+//	@Tags			Uploads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string					true	"ID файла"
+//	@Success		200		{object}	swaggerDeleteResponse	"Успешное удаление"
+//	@Failure		401,403	{object}	response.ErrorResponse	"Ошибка прав доступа"
+//	@Failure		404		{object}	response.ErrorResponse	"Файл не найден"
+//	@Failure		500		{object}	response.ErrorResponse	"Внутренняя ошибка сервера"
+//	@Router			/uploads/{id} [delete]
+func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 
-	id := c.Param("id")
-	if err := h.service.Delete(c.Request.Context(), id, userID); err != nil {
+	id := chi.URLParam(r, "id")
+	if err := h.service.Delete(r.Context(), id, userID); err != nil {
 		switch err {
 		case ErrUploadNotFound:
-			c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "upload not found"})
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "upload not found")
 		case ErrNotOwner:
-			c.JSON(http.StatusForbidden, gin.H{"success": false, "error": "you do not own this upload"})
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "you do not own this upload")
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "delete failed"})
+			response.CustomError(w, r, http.StatusInternalServerError, "DELETE_FAILED", "delete failed")
 		}
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "deleted"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "deleted"})
 }
 
-// ListMy godoc
-// @Summary List my uploads
-// @Tags Uploads
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Router /uploads [get]
-func (h *Handler) ListMy(c *gin.Context) {
-	userID := mustUserID(c)
+// ListMy список загруженных файлов текущего пользователя.
+//
+//	@Summary		Мои файлы
+//	@Description	Возвращает список всех файлов, загруженных текущим авторизованным пользователем.
+//	@Tags			Uploads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerListUploadResponse	"Успех"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/uploads [get]
+func (h *Handler) ListMy(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 
-	uploads, err := h.service.ListByUser(c.Request.Context(), userID)
+	uploads, err := h.service.ListByUser(r.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to list uploads"})
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", "failed to list uploads")
 		return
 	}
 
-	items := make([]gin.H, 0, len(uploads))
+	items := make([]response.H, 0, len(uploads))
 	for _, u := range uploads {
-		items = append(items, gin.H{
+		items = append(items, response.H{
 			"id":         u.ID,
 			"url":        u.FileURL,
 			"name":       u.OriginalName,
@@ -154,21 +213,8 @@ func (h *Handler) ListMy(c *gin.Context) {
 			"created_at": u.CreatedAt,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": items})
 }
 
-func mustUserID(c *gin.Context) int64 {
-	id, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "unauthorized"})
-		return 0
-	}
-	switch v := id.(type) {
-	case int64:
-		return v
-	case float64:
-		return int64(v)
-	}
-	c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "invalid user id"})
-	return 0
-}
+// ensure io is used (for future streaming use)
+var _ = io.Discard

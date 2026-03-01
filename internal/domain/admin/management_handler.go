@@ -2,10 +2,11 @@ package admin
 
 import (
 	"net/http"
-	"photostudio/internal/pkg/response"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+
+	"photostudio/internal/pkg/response"
 )
 
 type ManagementHandler struct {
@@ -17,10 +18,10 @@ func NewManagementHandler(service *Service) *ManagementHandler {
 }
 
 type CreateAdminRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name" binding:"required"`
-	Role     string `json:"role" binding:"required"` // super_admin, support, moderator
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+	Role     string `json:"role"` // super_admin, support, moderator
 }
 
 type UpdateAdminRequest struct {
@@ -30,28 +31,36 @@ type UpdateAdminRequest struct {
 	Password string `json:"password"` // optional
 }
 
-// ListAdmins godoc
-// @Summary List admins
-// @Description Get list of administrators
-// @Tags Admin Management
-// @Security BearerAuth
-// @Param page query int false "Page number"
-// @Param limit query int false "Items per page"
-// @Produce json
-// @Success 200 {object} response.Response
-// @Failure 401 {object} response.Response
-// @Router /admin/admins [get]
-func (h *ManagementHandler) ListAdmins(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+// ListAdmins
+//
+//	@Summary		List admins
+//	@Description	Get a paginated list of administrators
+//	@Tags			Admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			page	query		int	false	"Page number"	default(1)
+//	@Param			limit	query		int	false	"Page size"		default(20)
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/admin/management/admins [get]
+func (h *ManagementHandler) ListAdmins(w http.ResponseWriter, r *http.Request) {
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page <= 0 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit <= 0 {
+		limit = 20
+	}
 
-	admins, total, err := h.service.ListAdmins(c.Request.Context(), page, limit)
+	admins, total, err := h.service.ListAdmins(r.Context(), page, limit)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
+	response.Success(w, http.StatusOK, response.H{
 		"admins": admins,
 		"total":  total,
 		"page":   page,
@@ -59,52 +68,55 @@ func (h *ManagementHandler) ListAdmins(c *gin.Context) {
 	})
 }
 
-// CreateAdmin godoc
-// @Summary Create admin
-// @Description Create a new administrator account
-// @Tags Admin Management
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param request body CreateAdminRequest true "Admin details"
-// @Success 201 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Router /admin/admins [post]
-func (h *ManagementHandler) CreateAdmin(c *gin.Context) {
+// CreateAdmin
+//
+//	@Summary		Create admin
+//	@Description	Create a new administrator account
+//	@Tags			Admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			admin	body		CreateAdminRequest	true	"Admin fields"
+//	@Success		201		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/admin/management/admins [post]
+func (h *ManagementHandler) CreateAdmin(w http.ResponseWriter, r *http.Request) {
 	var req CreateAdminRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
-	admin, err := h.service.CreateAdmin(c.Request.Context(), req.Email, req.Password, req.Name, req.Role)
+	admin, err := h.service.CreateAdmin(r.Context(), req.Email, req.Password, req.Name, req.Role)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusCreated, admin)
+	response.Success(w, http.StatusCreated, admin)
 }
 
-// UpdateAdmin godoc
-// @Summary Update admin
-// @Description Update administrator details
-// @Tags Admin Management
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Admin UUID"
-// @Param request body UpdateAdminRequest true "Update details"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Router /admin/admins/{id} [patch]
-func (h *ManagementHandler) UpdateAdmin(c *gin.Context) {
-	id := c.Param("id")
+// UpdateAdmin
+//
+//	@Summary		Update admin
+//	@Description	Update an existing administrator account
+//	@Tags			Admin
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Admin ID"
+//	@Param			admin	body		UpdateAdminRequest	true	"Admin fields"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/admin/management/admins/{id} [patch]
+func (h *ManagementHandler) UpdateAdmin(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
 
 	var req UpdateAdminRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
 		return
 	}
 
@@ -122,11 +134,11 @@ func (h *ManagementHandler) UpdateAdmin(c *gin.Context) {
 		updates["is_active"] = *req.IsActive
 	}
 
-	admin, err := h.service.UpdateAdmin(c.Request.Context(), id, updates)
+	admin, err := h.service.UpdateAdmin(r.Context(), id, updates)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, admin)
+	response.Success(w, http.StatusOK, admin)
 }

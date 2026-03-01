@@ -1,15 +1,13 @@
 package manager
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
-func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
-	mgr := rg.Group("/manager")
-	{
-		mgr.GET("/bookings", h.GetBookings)
-		mgr.GET("/bookings/:id", h.GetBooking)
-		mgr.PATCH("/bookings/:id/deposit", h.UpdateDeposit)
-		mgr.PATCH("/bookings/:id/status", h.UpdateBookingStatus)
-		mgr.GET("/clients", h.GetClients)
-	}
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Route("/manager", func(r chi.Router) {
+		r.Get("/bookings", h.GetBookings)
+		r.Get("/bookings/{id}", h.GetBooking)
+		r.Patch("/bookings/{id}/deposit", h.UpdateDeposit)
+		r.Patch("/bookings/{id}/status", h.UpdateBookingStatus)
+		r.Get("/clients", h.GetClients)
+	})
 }
-

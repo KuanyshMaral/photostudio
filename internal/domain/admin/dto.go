@@ -6,7 +6,6 @@ import (
 	"photostudio/internal/domain/review"
 )
 
-
 type VerifyStudioRequest struct {
 	AdminNotes string `json:"admin_notes"`
 }
@@ -30,9 +29,9 @@ type BlockUserRequest struct {
 
 type StudioListResponse struct {
 	Studios []catalog.Studio `json:"studios"`
-	Total   int             `json:"total"`
-	Page    int             `json:"page"`
-	Limit   int             `json:"limit"`
+	Total   int              `json:"total"`
+	Page    int              `json:"page"`
+	Limit   int              `json:"limit"`
 }
 
 type StatisticsResponse struct {
@@ -51,9 +50,9 @@ type UserListFilter struct {
 
 type UserListResponse struct {
 	Users []auth.User `json:"users"`
-	Total int           `json:"total"`
-	Page  int           `json:"page"`
-	Limit int           `json:"limit"`
+	Total int         `json:"total"`
+	Page  int         `json:"page"`
+	Limit int         `json:"limit"`
 }
 
 type ReviewListFilter struct {

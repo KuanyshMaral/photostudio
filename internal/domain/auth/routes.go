@@ -1,25 +1,22 @@
 package auth
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
-func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
-	authGroup := v1.Group("/auth")
-	{
-		authGroup.POST("/register/client", h.RegisterClient)
-
-		authGroup.POST("/login", h.Login)
-		authGroup.POST("/verify/request", h.RequestEmailVerification)
-		authGroup.POST("/verify/confirm", h.ConfirmEmailVerification)
-		authGroup.POST("/refresh", h.Refresh)
-		authGroup.POST("/logout", h.Logout)
-	}
+func (h *Handler) RegisterPublicRoutes(r chi.Router) {
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/register/client", h.RegisterClient)
+		r.Post("/login", h.Login)
+		r.Post("/verify/request", h.RequestEmailVerification)
+		r.Post("/verify/confirm", h.ConfirmEmailVerification)
+		r.Post("/refresh", h.Refresh)
+		r.Post("/logout", h.Logout)
+	})
 }
 
-func (h *Handler) RegisterProtectedRoutes(protected *gin.RouterGroup) {
-	userGroup := protected.Group("/users")
-	{
-		userGroup.GET("/me", h.GetMe)
-		userGroup.PUT("/me", h.UpdateProfile)
-		userGroup.POST("/verification/documents", h.UploadVerificationDocuments)
-	}
+func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
+	r.Route("/users", func(r chi.Router) {
+		r.Get("/me", h.GetMe)
+		r.Put("/me", h.UpdateProfile)
+		r.Post("/verification/documents", h.UploadVerificationDocuments)
+	})
 }

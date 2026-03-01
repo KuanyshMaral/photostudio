@@ -1,62 +1,63 @@
 package admin
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/go-chi/chi/v5"
 
-func (h *Handler) RegisterPublicRoutes(v1 *gin.RouterGroup) {
-	admin := v1.Group("/admin")
-	admin.POST("/auth/login", h.authHandler.Login)
+	jwtsvc "photostudio/internal/pkg/jwt"
+)
+
+func (h *Handler) RegisterPublicRoutes(r chi.Router) {
+	r.Route("/admin", func(r chi.Router) {
+		r.Post("/auth/login", h.authHandler.Login)
+	})
 }
 
-func (h *Handler) RegisterProtectedRoutes(admin *gin.RouterGroup) {
-	// studios moderation
-	admin.GET("/studios/pending", h.GetPendingStudios)
-	admin.POST("/studios/:id/approve", h.ApproveStudio)
-	admin.POST("/studios/:id/reject", h.RejectStudio)
+func (h *Handler) RegisterProtectedRoutes(r chi.Router, jwtService *jwtsvc.Service) {
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(ChiAdminJWTAuth(jwtService))
 
-	// Admin Auth
-	// GET /admin/auth/me is protected
-	admin.GET("/auth/me", h.authHandler.GetMe)
+		// studios moderation
+		r.Get("/studios/pending", h.GetPendingStudios)
+		r.Post("/studios/{id}/approve", h.ApproveStudio)
+		r.Post("/studios/{id}/reject", h.RejectStudio)
+		r.Post("/studios/{id}/verify", h.ApproveStudio) // alias
+		r.Patch("/studios/{id}/vip", h.SetStudioVIP)
+		r.Patch("/studios/{id}/gold", h.SetStudioGold)
+		r.Patch("/studios/{id}/promo", h.SetStudioPromo)
 
-	// Admin Management
-	admin.GET("/admins", h.managementHandler.ListAdmins)
-	admin.POST("/admins", h.managementHandler.CreateAdmin)
-	admin.PATCH("/admins/:id", h.managementHandler.UpdateAdmin)
+		// Auth
+		r.Get("/auth/me", h.authHandler.GetMe)
 
-	// statistics
-	admin.GET("/stats", h.GetStats)
+		// Admin Management
+		r.Get("/admins", h.managementHandler.ListAdmins)
+		r.Post("/admins", h.managementHandler.CreateAdmin)
+		r.Patch("/admins/{id}", h.managementHandler.UpdateAdmin)
 
-	// users moderation
-	admin.GET("/users", h.GetUsers)
-	admin.PATCH("/users/:id/ban", h.BanUser)
-	admin.PATCH("/users/:id/unban", h.UnbanUser)
+		// statistics
+		r.Get("/stats", h.GetStats)
+		r.Get("/statistics", h.GetStats) // alias
+		r.Get("/analytics", h.GetPlatformAnalytics)
 
-	// reviews moderation
-	admin.GET("/reviews", h.GetReviews)
-	admin.POST("/reviews/:id/hide", h.HideReview)
-	admin.POST("/reviews/:id/show", h.ShowReview)
+		// users moderation
+		r.Get("/users", h.GetUsers)
+		r.Patch("/users/{id}/ban", h.BanUser)
+		r.Post("/users/{id}/ban", h.BanUser) // alias
+		r.Patch("/users/{id}/unban", h.UnbanUser)
+		r.Post("/users/{id}/unban", h.UnbanUser) // alias
+		r.Post("/users/{id}/block", h.BanUser)
+		r.Post("/users/{id}/unblock", h.UnbanUser)
 
-	// Aliases для обратной совместимости
-	admin.POST("/studios/:id/verify", h.ApproveStudio)
-	admin.GET("/statistics", h.GetStats)
-	admin.POST("/users/:id/block", h.BanUser)
-	admin.POST("/users/:id/unblock", h.UnbanUser)
+		// reviews moderation
+		r.Get("/reviews", h.GetReviews)
+		r.Post("/reviews/{id}/hide", h.HideReview)
+		r.Patch("/reviews/{id}/hide", h.HideReview)
+		r.Post("/reviews/{id}/show", h.ShowReview)
+		r.Delete("/reviews/{id}", h.DeleteReview)
 
-	// analytics
-	admin.GET("/analytics", h.GetPlatformAnalytics)
-
-	// vip/gold/promo
-	admin.PATCH("/studios/:id/vip", h.SetStudioVIP)
-	admin.PATCH("/studios/:id/gold", h.SetStudioGold)
-	admin.PATCH("/studios/:id/promo", h.SetStudioPromo)
-
-	// ads
-	admin.GET("/ads", h.GetAds)
-	admin.POST("/ads", h.CreateAd)
-	admin.PATCH("/ads/:id", h.UpdateAd)
-	admin.DELETE("/ads/:id", h.DeleteAd)
-
-	// reviews new style (keep old POST routes too)
-	admin.PATCH("/reviews/:id/hide", h.HideReview)
-	admin.DELETE("/reviews/:id", h.DeleteReview)
-
+		// ads
+		r.Get("/ads", h.GetAds)
+		r.Post("/ads", h.CreateAd)
+		r.Patch("/ads/{id}", h.UpdateAd)
+		r.Delete("/ads/{id}", h.DeleteAd)
+	})
 }

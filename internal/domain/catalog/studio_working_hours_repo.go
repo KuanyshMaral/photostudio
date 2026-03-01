@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"errors"
+
 	"gorm.io/gorm"
 )
 

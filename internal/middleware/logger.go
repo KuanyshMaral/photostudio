@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,64 +9,61 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 // ErrorLogger logs detailed error information and recovers from panics.
-func ErrorLogger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		start := time.Now()
-		defer func() {
-			if recovered := recover(); recovered != nil {
-				err := fmt.Errorf("%v", recovered)
-				logRequestError(c, start, "panic", err.Error(), debug.Stack())
+func ErrorLogger() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
 
-				// Return JSON response for panic
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"success": false,
-					"error": gin.H{
-						"code":    "INTERNAL_SERVER_ERROR",
-						"message": "Internal Server Error (Panic)",
-						"details": err.Error(),           // Always show panic details for now as per request "detailed response"
-						"stack":   string(debug.Stack()), // Optional: maybe too much, but requested "detailed"
-					},
-				})
-				c.Abort()
-				return
-			}
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 
-			if len(c.Errors) == 0 {
-				if c.Writer.Status() >= http.StatusInternalServerError {
-					logRequestError(c, start, "http_error", fmt.Sprintf("status=%d", c.Writer.Status()), debug.Stack())
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err := fmt.Errorf("%v", recovered)
+					logRequestError(ww, r, start, "panic", err.Error(), debug.Stack())
+
+					ww.Header().Set("Content-Type", "application/json")
+					ww.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(ww).Encode(map[string]interface{}{
+						"success": false,
+						"error": map[string]interface{}{
+							"code":    "INTERNAL_SERVER_ERROR",
+							"message": "Internal Server Error (Panic)",
+							"details": err.Error(),
+							"stack":   string(debug.Stack()),
+						},
+					})
+					return
 				}
-				return
-			}
 
-			for _, err := range c.Errors {
-				logRequestError(c, start, fmt.Sprintf("%v", err.Type), err.Error(), debug.Stack())
-				if err.Meta != nil {
-					log.Printf("request_error_meta request_id=%s meta=%+v", requestID(c), err.Meta)
+				if ww.Status() >= http.StatusInternalServerError {
+					logRequestError(ww, r, start, "http_error", fmt.Sprintf("status=%d", ww.Status()), debug.Stack())
 				}
-			}
-		}()
+			}()
 
-		c.Next()
+			next.ServeHTTP(ww, r)
+		})
 	}
 }
 
-func logRequestError(c *gin.Context, start time.Time, errType string, message string, stack []byte) {
-	sanitizedQuery := sanitizeQuery(c.Request.URL.RawQuery)
+func logRequestError(ww middleware.WrapResponseWriter, r *http.Request, start time.Time, errType string, message string, stack []byte) {
+	sanitizedQuery := sanitizeQuery(r.URL.RawQuery)
 	log.Printf(
 		"request_error type=%s status=%d method=%s path=%s query=%s client_ip=%s user_id=%d role=%s request_id=%s latency=%s error=%q stack=%s",
 		errType,
-		c.Writer.Status(),
-		c.Request.Method,
-		c.Request.URL.Path,
+		ww.Status(),
+		r.Method,
+		r.URL.Path,
 		sanitizedQuery,
-		c.ClientIP(),
-		c.GetInt64("user_id"),
-		c.GetString("role"),
-		requestID(c),
+		r.RemoteAddr,
+		chicontext.UserIDFromCtx(r.Context()),
+		chicontext.RoleFromCtx(r.Context()),
+		requestID(r),
 		time.Since(start),
 		message,
 		string(stack),
@@ -86,10 +84,10 @@ func sanitizeQuery(raw string) string {
 	return v.Encode()
 }
 
-func requestID(c *gin.Context) string {
-	requestID := c.GetHeader("X-Request-ID")
-	if requestID == "" {
-		requestID = c.GetHeader("X-Request-Id")
+func requestID(r *http.Request) string {
+	reqID := r.Header.Get("X-Request-ID")
+	if reqID == "" {
+		reqID = r.Header.Get("X-Request-Id")
 	}
-	return requestID
+	return reqID
 }

@@ -3,11 +3,12 @@ package mwork
 import (
 	"context"
 	"errors"
+	"photostudio/internal/domain/auth"
+	"strings"
+
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"photostudio/internal/domain/auth"
-	"strings"
 )
 
 type SyncResult string

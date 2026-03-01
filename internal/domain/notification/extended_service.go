@@ -14,7 +14,7 @@ type ExternalServices struct {
 
 // ExtendedService handles notifications with external integrations
 type ExtendedService struct {
-	service *Service
+	service  *Service
 	external *ExternalServices
 }
 

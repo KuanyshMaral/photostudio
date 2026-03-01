@@ -2,9 +2,10 @@ package catalog
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type StudioFilters struct {

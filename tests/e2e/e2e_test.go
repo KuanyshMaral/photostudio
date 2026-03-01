@@ -22,7 +22,8 @@ import (
 
 	jwtsvc "photostudio/internal/pkg/jwt"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ import (
 )
 
 type E2ETestSuite struct {
-	router      *gin.Engine
+	router      *chi.Mux
 	db          *gorm.DB
 	jwtService  *jwtsvc.Service
 	testCleanup func()
@@ -172,7 +173,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	authHandler := auth.NewHandler(authService, nil, nil, false, "", "")
 
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
-	catalogHandler := catalog.NewHandler(catalogService, userRepo)
+	catalogHandler := catalog.NewHandler(catalogService, userRepo, nil)
 
 	bookingService := booking.NewService(bookingRepo, roomRepo, nil, studioWorkingHoursRepo)
 	bookingHandler := booking.NewHandler(bookingService)
@@ -203,57 +204,52 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	ownershipChecker := middleware.NewOwnershipChecker(studioRepo, roomRepo)
 
 	// Setup router
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(gin.Recovery())
+	r := chi.NewRouter()
+	r.Use(chimw.Recoverer)
 
-	v1 := r.Group("/api/v1")
+	r.Route("/api/v1", func(v1 chi.Router) {
+		// Public routes
+		authHandler.RegisterPublicRoutes(v1)
+		catalogHandler.RegisterRoutes(v1)
+		reviewHandler.RegisterRoutes(v1, nil)
 
-	// Public routes
-	authHandler.RegisterPublicRoutes(v1)
-	catalogHandler.RegisterRoutes(v1)
-	reviewHandler.RegisterRoutes(v1, nil)
+		// Protected routes
+		v1.Group(func(protected chi.Router) {
+			protected.Use(middleware.ChiJWTAuth(jwtService))
 
-	// Protected routes
-	protected := v1.Group("")
-	protected.Use(middleware.JWTAuth(jwtService))
-	{
-		authHandler.RegisterProtectedRoutes(protected)
-		bookingHandler.RegisterRoutes(protected)
-		reviewHandler.RegisterRoutes(nil, protected)
+			authHandler.RegisterProtectedRoutes(protected)
+			bookingHandler.RegisterRoutes(protected)
+			reviewHandler.RegisterRoutes(nil, protected)
 
-		// Notification handler
-		notificationHandler := notification.NewHandler(notificationService)
-		prefsHandler := notification.NewPreferencesHandler(notificationService)
-		devicesHandler := notification.NewDeviceTokensHandler(notificationService)
-		notification.RegisterRoutes(protected, notificationHandler, prefsHandler, devicesHandler)
+			// Notification handler
+			notificationHandler := notification.NewHandler(notificationService)
+			prefsHandler := notification.NewPreferencesHandler(notificationService)
+			devicesHandler := notification.NewDeviceTokensHandler(notificationService)
+			notification.RegisterRoutes(protected, notificationHandler, prefsHandler, devicesHandler)
 
-		studios := protected.Group("/studios")
-		{
-			studios.GET("/my", middleware.RequireRole(string(auth.RoleStudioOwner)), catalogHandler.GetMyStudios)
-			studios.POST("", middleware.RequireRole(string(auth.RoleStudioOwner)), catalogHandler.CreateStudio)
-			studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), catalogHandler.UpdateStudio)
-			studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), catalogHandler.CreateRoom)
-			studios.GET("/:id/bookings", middleware.RequireRole(string(auth.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership(), bookingHandler.GetStudioBookings)
-		}
+			protected.Route("/studios", func(studios chi.Router) {
+				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Get("/my", catalogHandler.GetMyStudios)
+				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Post("/", catalogHandler.CreateStudio)
+				studios.With(ownershipChecker.CheckStudioOwnership()).Put("/{id}", catalogHandler.UpdateStudio)
+				studios.With(ownershipChecker.CheckStudioOwnership()).Post("/{id}/rooms", catalogHandler.CreateRoom)
+				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership()).Get("/{id}/bookings", bookingHandler.GetStudioBookings)
+			})
 
-		// Equipment route (only AddEquipment exists)
-		rooms := protected.Group("/rooms")
-		{
-			rooms.POST("/:id/equipment", catalogHandler.AddEquipment)
-		}
+			// Equipment route (only AddEquipment exists)
+			protected.Route("/rooms", func(rooms chi.Router) {
+				rooms.Post("/{id}/equipment", catalogHandler.AddEquipment)
+			})
 
-		adminGroup := protected.Group("/admin")
-		adminGroup.Use(middleware.RequireRole("admin"))
-		{
-			adminHandler.RegisterProtectedRoutes(adminGroup)
-		}
+			protected.Route("/admin", func(adminGroup chi.Router) {
+				adminGroup.Use(middleware.ChiRequireRole("admin"))
+				adminHandler.RegisterProtectedRoutes(adminGroup, jwtService)
+			})
 
-		bookings := protected.Group("/bookings")
-		{
-			bookings.PATCH("/:id/payment", middleware.RequireRole(string(auth.RoleStudioOwner)), bookingHandler.UpdatePaymentStatus)
-		}
-	}
+			protected.Route("/bookings", func(bookings chi.Router) {
+				bookings.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Patch("/{id}/payment", bookingHandler.UpdatePaymentStatus)
+			})
+		})
+	})
 
 	// Create admin user for testing
 	adminUser := &auth.User{
@@ -1408,6 +1404,5 @@ func TestCatalog_FilteringStudios(t *testing.T) {
 // =============================================================================
 
 func TestMain(m *testing.M) {
-	gin.SetMode(gin.TestMode)
 	os.Exit(m.Run())
 }

@@ -1,46 +1,27 @@
 package payment
 
-import (
-	"net/http"
+import "github.com/go-chi/chi/v5"
 
-	"github.com/gin-gonic/gin"
-)
-
-func (h *Handler) RegisterPublicWebhookRoutes(r *gin.Engine) {
-	w := r.Group("/webhooks/robokassa")
-	{
-		w.POST("/result", h.ResultCallback)
-		w.GET("/success", h.SuccessCallback)
-		w.POST("/success", h.SuccessCallback)
-		w.GET("/fail", h.FailCallback)
-		w.POST("/fail", h.FailCallback)
-	}
+// RegisterPublicWebhookRoutes registers public Robokassa webhook routes directly on the root router.
+func (h *Handler) RegisterPublicWebhookRoutes(r chi.Router) {
+	r.Route("/webhooks/robokassa", func(r chi.Router) {
+		r.Post("/result", h.ResultCallback)
+		r.Get("/success", h.SuccessCallback)
+		r.Post("/success", h.SuccessCallback)
+		r.Get("/fail", h.FailCallback)
+		r.Post("/fail", h.FailCallback)
+	})
 }
 
-func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup) {
-	rb := r.Group("/payments/robokassa")
-	{
-		rb.POST("/create", h.CreatePayment)
-		rb.POST("/init", h.InitPayment)
-	}
-	s := r.Group("/subscriptions")
-	{
-		s.POST("", h.CreateSubscription)
-		s.GET("/me", h.MySubscription)
-		s.POST("/cancel", h.CancelSubscription)
-	}
-}
-
-func (h *Handler) InitPayment(c *gin.Context) {
-	var req InitPaymentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	resp, err := h.service.InitPayment(c.Request.Context(), req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, resp)
+// RegisterProtectedRoutes registers authenticated payment routes.
+func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
+	r.Route("/payments/robokassa", func(r chi.Router) {
+		r.Post("/create", h.CreatePayment)
+		r.Post("/init", h.InitPayment)
+	})
+	r.Route("/subscriptions", func(r chi.Router) {
+		r.Post("", h.CreateSubscription)
+		r.Get("/me", h.MySubscription)
+		r.Post("/cancel", h.CancelSubscription)
+	})
 }

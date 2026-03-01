@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 
 	"photostudio/internal/domain/profile"
 	"photostudio/internal/pkg/response"
@@ -26,336 +26,385 @@ func NewHandler(service *Service, profileService *profile.Service) *Handler {
 	}
 }
 
-// SubmitLead handles POST /api/v1/leads/submit (public)
-// @Summary Submit studio owner lead
-// @Description Public endpoint for potential studio owners to submit their application
-// @Tags Leads
-// @Accept json
-// @Produce json
-// @Param request body SubmitLeadRequest true "Lead submission data"
-// @Success 201 {object} response.Response{data=OwnerLead}
-// @Failure 400 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /leads/submit [post]
-func (h *Handler) SubmitLead(c *gin.Context) {
+// swaggerLeadResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerLeadResponse struct {
+	Success bool       `json:"success"`
+	Data    *OwnerLead `json:"data"`
+}
+
+// swaggerLeadListResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerLeadListResponse struct {
+	Success bool             `json:"success"`
+	Data    LeadListResponse `json:"data"`
+}
+
+// swaggerConvertLeadResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerConvertLeadResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	UserID  int64  `json:"user_id"`
+	Email   string `json:"email"`
+}
+
+// swaggerLeadStatsResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerLeadStatsResponse struct {
+	Success bool `json:"success"`
+	Data    any  `json:"data"`
+}
+
+// SubmitLead подача заявки владельцем студии.
+//
+//	@Summary		Подать заявку лида
+//	@Description	Публичный эндпоинт для отправки заявки на регистрацию студии.
+//	@Tags			Leads
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		SubmitLeadRequest		true	"Данные заявки"
+//	@Success		201		{object}	swaggerLeadResponse		"Заявка создана"
+//	@Failure		400		{object}	response.ErrorResponse	"Ошибка входных данных"
+//	@Failure		409		{object}	response.ErrorResponse	"Email уже существует"
+//	@Failure		422		{object}	response.ErrorResponse	"Ошибка валидации"
+//	@Failure		500		{object}	response.ErrorResponse	"Внутренняя ошибка сервера"
+//	@Router			/leads/submit [post]
+func (h *Handler) SubmitLead(w http.ResponseWriter, r *http.Request) {
 	var req SubmitLeadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	// Get client IP
-	ip := c.ClientIP()
-	userAgent := c.Request.UserAgent()
+	ip := r.RemoteAddr
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ip = xff
+	}
+	userAgent := r.UserAgent()
 
-	lead, err := h.service.SubmitLead(c.Request.Context(), &req, ip, userAgent)
+	lead, err := h.service.SubmitLead(r.Context(), &req, ip, userAgent)
 	if err != nil {
 		if err == ErrEmailExists {
-			response.CustomError(c, http.StatusConflict, "EMAIL_EXISTS", "Email already registered")
+			response.CustomError(w, r, http.StatusConflict, "EMAIL_EXISTS", "Email already registered")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusCreated, lead)
+	response.JSON(w, http.StatusCreated, response.H{"success": true, "data": lead})
 }
 
-// GetLead handles GET /api/v1/admin/leads/:id
-// @Summary Get lead by ID
-// @Description Admin endpoint to view lead details
-// @Tags Admin Leads
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Success 200 {object} response.Response{data=OwnerLead}
-// @Failure 404 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /admin/leads/{id} [get]
-func (h *Handler) GetLead(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// GetLead получение заявки по ID.
+//
+//	@Summary		Получить лид
+//	@Description	Админский эндпоинт для получения заявки по её идентификатору.
+//	@Tags			Admin Leads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int						true	"ID заявки"
+//	@Success		200	{object}	swaggerLeadResponse		"Данные заявки"
+//	@Failure		400	{object}	response.ErrorResponse	"Некорректный ID"
+//	@Failure		401	{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse	"Заявка не найдена"
+//	@Failure		500	{object}	response.ErrorResponse	"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id} [get]
+func (h *Handler) GetLead(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
-	lead, err := h.service.GetByID(c.Request.Context(), id)
+	lead, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		if err == ErrLeadNotFound {
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, lead)
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": lead})
 }
 
-// ListLeads handles GET /api/v1/admin/leads
-// @Summary List leads
-// @Description Admin endpoint to list all leads with optional filtering
-// @Tags Admin Leads
-// @Produce json
-// @Security BearerAuth
-// @Param status query string false "Filter by status" Enums(new, contacted, qualified, converted, rejected, lost)
-// @Param limit query int false "Limit" default(50)
-// @Param offset query int false "Offset" default(0)
-// @Success 200 {object} response.Response{data=LeadListResponse}
-// @Failure 500 {object} response.Response
-// @Router /admin/leads [get]
-func (h *Handler) ListLeads(c *gin.Context) {
+// ListLeads список всех заявок.
+//
+//	@Summary		Список лидов
+//	@Description	Админский эндпоинт для просмотра заявок с возможностью фильтрации по статусу.
+//	@Tags			Admin Leads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			status	query		string					false	"Фильтр по статусу (new, contacted, qualified, converted, rejected)"
+//	@Param			limit	query		int						false	"Лимит (дефолт: 50)"
+//	@Param			offset	query		int						false	"Отступ"
+//	@Success		200		{object}	swaggerLeadListResponse	"Список заявок"
+//	@Failure		401		{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse	"Внутренняя ошибка сервера"
+//	@Router			/admin/leads [get]
+func (h *Handler) ListLeads(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
 	var status *Status
-	if s := c.Query("status"); s != "" {
-		statusVal := Status(s)
-		status = &statusVal
+	if s := q.Get("status"); s != "" {
+		sv := Status(s)
+		status = &sv
 	}
 
 	limit := 50
-	if l := c.Query("limit"); l != "" {
+	if l := q.Get("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 100 {
 			limit = v
 		}
 	}
-
 	offset := 0
-	if o := c.Query("offset"); o != "" {
+	if o := q.Get("offset"); o != "" {
 		if v, err := strconv.Atoi(o); err == nil && v >= 0 {
 			offset = v
 		}
 	}
 
-	leads, total, err := h.service.ListLeads(c.Request.Context(), status, limit, offset)
+	leads, total, err := h.service.ListLeads(r.Context(), status, limit, offset)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, LeadListResponse{
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": LeadListResponse{
 		Leads: convertLeads(leads),
 		Total: total,
-	})
+	}})
 }
 
-// UpdateStatus handles PATCH /api/v1/admin/leads/:id/status
-// @Summary Update lead status
-// @Description Admin endpoint to update lead status
-// @Tags Admin Leads
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Param request body UpdateLeadStatusRequest true "Status update"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /admin/leads/{id}/status [patch]
-func (h *Handler) UpdateStatus(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// UpdateStatus изменение статуса заявки.
+//
+//	@Summary		Обновить статус лида
+//	@Description	Админский эндпоинт. Позволяет вручную указать статус, примечания и причину отказа.
+//	@Tags			Admin Leads
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID заявки"
+//	@Param			request	body		UpdateLeadStatusRequest		true	"Новый статус"
+//	@Success		200		{object}	response.SuccessResponse	"Статус обновлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Заявка не найдена"
+//	@Failure		409		{object}	response.ErrorResponse		"Заявка уже конвертирована"
+//	@Failure		422		{object}	response.ErrorResponse		"Ошибка валидации"
+//	@Failure		500		{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id}/status [patch]
+func (h *Handler) UpdateStatus(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
 	var req UpdateLeadStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	if err := h.service.UpdateStatus(c.Request.Context(), id, req.Status, req.Notes, req.Reason); err != nil {
-		if err == ErrLeadNotFound {
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
-			return
+	if err := h.service.UpdateStatus(r.Context(), id, req.Status, req.Notes, req.Reason); err != nil {
+		switch err {
+		case ErrLeadNotFound:
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+		case ErrAlreadyConverted:
+			response.CustomError(w, r, http.StatusConflict, "ALREADY_CONVERTED", "Lead already converted")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		}
-		if err == ErrAlreadyConverted {
-			response.CustomError(c, http.StatusConflict, "ALREADY_CONVERTED", "Lead already converted")
-			return
-		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Status updated"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "Status updated"})
 }
 
-// AssignLead handles PATCH /api/v1/admin/leads/:id/assign
-// @Summary Assign lead to admin
-// @Description Admin endpoint to assign lead to an admin user
-// @Tags Admin Leads
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Param request body AssignLeadRequest true "Assignment data"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /admin/leads/{id}/assign [patch]
-func (h *Handler) AssignLead(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// AssignLead назначить менеджера (админа) на заявку.
+//
+//	@Summary		Назначить лида
+//	@Description	Админ назначает заявку на определенного менеджера и задает приоритет.
+//	@Tags			Admin Leads
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID заявки"
+//	@Param			request	body		AssignLeadRequest			true	"Данные для назначения"
+//	@Success		200		{object}	response.SuccessResponse	"Менеджер назначен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Заявка не найдена"
+//	@Failure		422		{object}	response.ErrorResponse		"Ошибка валидации"
+//	@Failure		500		{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id}/assign [patch]
+func (h *Handler) AssignLead(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
 	var req AssignLeadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	if err := h.service.Assign(c.Request.Context(), id, req.AdminID, req.Priority); err != nil {
+	if err := h.service.Assign(r.Context(), id, req.AdminID, req.Priority); err != nil {
 		if err == ErrLeadNotFound {
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Lead assigned"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "Lead assigned"})
 }
 
-// RejectLead handles POST /admin/leads/:id/reject
-// @Summary Reject lead
-// @Description Mark lead as rejected with reason
-// @Tags Admin Leads
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Param request body UpdateLeadStatusRequest true "Reason"
-// @Success 200 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Router /admin/leads/{id}/reject [post]
-func (h *Handler) RejectLead(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// RejectLead отклонить заявку.
+//
+//	@Summary		Отклонить лида
+//	@Description	Админ отклоняет заявку (статус rejected) с указанием причины.
+//	@Tags			Admin Leads
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID заявки"
+//	@Param			request	body		UpdateLeadStatusRequest		true	"Укажите reason (причину отказа)"
+//	@Success		200		{object}	response.SuccessResponse	"Заявка отклонена"
+//	@Failure		400		{object}	response.ErrorResponse		"Заявка уже конвертирована или неверный ID"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Заявка не найдена"
+//	@Failure		500		{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id}/reject [post]
+func (h *Handler) RejectLead(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
 	var req UpdateLeadStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	_ = response.BindJSON(r, &req)
+
+	if err := h.service.RejectLead(r.Context(), id, req.Reason); err != nil {
+		switch err {
+		case ErrLeadNotFound:
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+		case ErrAlreadyConverted:
+			response.CustomError(w, r, http.StatusBadRequest, "ALREADY_CONVERTED", "Lead already converted")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		}
 		return
 	}
 
-	if err := h.service.RejectLead(c.Request.Context(), id, req.Reason); err != nil {
-		if err == ErrLeadNotFound {
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
-			return
-		}
-		if err == ErrAlreadyConverted {
-			response.CustomError(c, http.StatusBadRequest, "ALREADY_CONVERTED", "Lead already converted")
-			return
-		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Lead rejected"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "Lead rejected"})
 }
 
-// MarkContacted handles POST /admin/leads/:id/contacted
-// @Summary Mark lead as contacted
-// @Description Update lead status to contacted and increment follow-up count
-// @Tags Admin Leads
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Success 200 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Router /admin/leads/{id}/contacted [post]
-func (h *Handler) MarkContacted(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// MarkContacted отметить заявку как "Contacted".
+//
+//	@Summary		Отметить лида как Contacted
+//	@Description	Меняет статус заявки на contacted.
+//	@Tags			Admin Leads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID заявки"
+//	@Success		200	{object}	response.SuccessResponse	"Заявка отмечена как Contacted"
+//	@Failure		400	{object}	response.ErrorResponse		"Некорректный ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Заявка не найдена"
+//	@Failure		500	{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id}/contacted [post]
+func (h *Handler) MarkContacted(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
-	if err := h.service.MarkContacted(c.Request.Context(), id); err != nil {
+	if err := h.service.MarkContacted(r.Context(), id); err != nil {
 		if err == ErrLeadNotFound {
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Lead marked as contacted"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "Lead marked as contacted"})
 }
 
-// ConvertLead handles POST /admin/leads/:id/convert
-// @Summary Convert lead to owner
-// @Description Create studio owner account from lead
-// @Tags Admin Leads
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Lead ID"
-// @Param request body ConvertLeadRequest true "Conversion data"
-// @Success 200 {object} response.Response
-// @Failure 400 {object} response.Response
-// @Router /admin/leads/{id}/convert [post]
-func (h *Handler) ConvertLead(c *gin.Context) {
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// ConvertLead конвертировать заявку в аккаунт владельца.
+//
+//	@Summary		Конвертировать лида
+//	@Description	Создает пользователя-владельца (owner) из заявки (статус converted) и профиль компании.
+//	@Tags			Admin Leads
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID заявки"
+//	@Param			request	body		ConvertLeadRequest			true	"Данные конвертации (Юр. адрес и тд)"
+//	@Success		200		{object}	swaggerConvertLeadResponse	"Лид успешно конвертирован в пользователя"
+//	@Failure		400		{object}	response.ErrorResponse		"Нельзя конвертировать (например, некорректный статус) или неверный запрос"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Заявка не найдена"
+//	@Failure		409		{object}	response.ErrorResponse		"Email уже зарегистрирован"
+//	@Failure		422		{object}	response.ErrorResponse		"Ошибка валидации"
+//	@Failure		500		{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/{id}/convert [post]
+func (h *Handler) ConvertLead(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid lead ID")
 		return
 	}
 
 	var req ConvertLeadRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	user, err := h.service.ConvertLead(c.Request.Context(), id, &req)
+	user, err := h.service.ConvertLead(r.Context(), id, &req)
 	if err != nil {
 		switch err {
 		case ErrLeadNotFound:
-			response.CustomError(c, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
+			response.CustomError(w, r, http.StatusNotFound, "LEAD_NOT_FOUND", "Lead not found")
 		case ErrAlreadyConverted:
-			response.CustomError(c, http.StatusBadRequest, "ALREADY_CONVERTED", "Lead already converted")
+			response.CustomError(w, r, http.StatusBadRequest, "ALREADY_CONVERTED", "Lead already converted")
 		case ErrCannotConvert:
-			response.CustomError(c, http.StatusBadRequest, "CANNOT_CONVERT", "Lead must be qualified or contacted")
+			response.CustomError(w, r, http.StatusBadRequest, "CANNOT_CONVERT", "Lead must be qualified or contacted")
 		case ErrEmailExists:
-			response.CustomError(c, http.StatusConflict, "EMAIL_EXISTS", "User with this email already exists")
+			response.CustomError(w, r, http.StatusConflict, "EMAIL_EXISTS", "User with this email already exists")
 		default:
-			response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		}
 		return
 	}
 
 	// Create owner profile from lead data
-	leadDetails, _ := h.service.GetByID(c.Request.Context(), id)
+	leadDetails, _ := h.service.GetByID(r.Context(), id)
 	if leadDetails != nil {
 		ownerProfileReq := &profile.CreateOwnerProfileRequest{
 			CompanyName:     leadDetails.CompanyName,
@@ -367,18 +416,38 @@ func (h *Handler) ConvertLead(c *gin.Context) {
 			Email:           leadDetails.ContactEmail,
 			Website:         getValue(leadDetails.Website),
 		}
-
-		_, _ = h.profileService.EnsureOwnerProfile(c.Request.Context(), user.ID, ownerProfileReq)
+		_, _ = h.profileService.EnsureOwnerProfile(r.Context(), user.ID, ownerProfileReq)
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
+		"success": true,
 		"message": "Lead converted successfully and profile created",
 		"user_id": user.ID,
 		"email":   user.Email,
 	})
 }
 
-// Helper to get string value from sql.NullString
+// GetStats получение статистики по лидам.
+//
+//	@Summary		Статистика по лидам
+//	@Description	Админский эндпоинт для просмотра воронки заявок (счетчики по статусам).
+//	@Tags			Admin Leads
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerLeadStatsResponse	"Успех"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/admin/leads/stats [get]
+func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.service.GetStats(r.Context())
+	if err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": stats})
+}
+
 func getValue(ns sql.NullString) string {
 	if ns.Valid {
 		return ns.String
@@ -386,26 +455,6 @@ func getValue(ns sql.NullString) string {
 	return ""
 }
 
-// GetStats handles GET /api/v1/admin/leads/stats
-// @Summary Get lead statistics
-// @Description Admin endpoint to get lead counts by status
-// @Tags Admin Leads
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /admin/leads/stats [get]
-func (h *Handler) GetStats(c *gin.Context) {
-	stats, err := h.service.GetStats(c.Request.Context())
-	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, stats)
-}
-
-// Helper to convert pointer slice to value slice
 func convertLeads(leads []*OwnerLead) []OwnerLead {
 	result := make([]OwnerLead, len(leads))
 	for i, lead := range leads {

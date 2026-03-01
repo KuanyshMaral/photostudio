@@ -1,9 +1,9 @@
 package booking
 
 import (
-	"time"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
+	"time"
 )
 
 type BookingStatus string
@@ -45,6 +45,6 @@ type Booking struct {
 	DepositAmount float64 `json:"deposit_amount,omitempty"`
 
 	// Связи
-	User *auth.User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	User *auth.User    `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	Room *catalog.Room `json:"room,omitempty" gorm:"foreignKey:RoomID"`
 }

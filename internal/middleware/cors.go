@@ -1,13 +1,12 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"strings"
 )
 
-func CORS() gin.HandlerFunc {
+func CORS() func(http.Handler) http.Handler {
 	// Базовые разрешённые origins (локальная разработка)
 	allowedOrigins := map[string]bool{
 		"http://localhost:3000": true,
@@ -17,7 +16,6 @@ func CORS() gin.HandlerFunc {
 	}
 
 	// Дополнительные origins из ENV (на будущее)
-	// пример: CORS_ALLOWED_ORIGINS=https://app.com,https://admin.app.com
 	if extra := os.Getenv("CORS_ALLOWED_ORIGINS"); extra != "" {
 		for _, o := range strings.Split(extra, ",") {
 			o = strings.TrimSpace(o)
@@ -27,38 +25,35 @@ func CORS() gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
-		origin := c.GetHeader("Origin")
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
 
-		if origin != "" && !allowedOrigins[origin] {
-			if c.Request.Method == http.MethodOptions {
-				c.AbortWithStatus(http.StatusForbidden)
+			if origin != "" && !allowedOrigins[origin] {
+				if r.Method == http.MethodOptions {
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
+				next.ServeHTTP(w, r)
 				return
 			}
-			c.Next()
-			return
-		}
 
-		// Если Origin есть и он разрешён — отражаем его (важно для credentials)
-		if origin != "" && allowedOrigins[origin] {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-			c.Writer.Header().Set("Vary", "Origin") // важно для кешей/прокси
-			c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		}
+			if origin != "" && allowedOrigins[origin] {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Vary", "Origin")
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			}
 
-		// Всегда полезно отдавать эти заголовки (и для preflight тоже)
-		c.Writer.Header().Set("Access-Control-Allow-Headers",
-			"Authorization, Content-Type")
-		c.Writer.Header().Set("Access-Control-Allow-Methods",
-			"GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		c.Writer.Header().Set("Access-Control-Max-Age", "600")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Max-Age", "600")
 
-		// Preflight запросы должны завершаться ДО JWT/Role middleware
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent) // 204
-			return
-		}
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 
-		c.Next()
+			next.ServeHTTP(w, r)
+		})
 	}
 }

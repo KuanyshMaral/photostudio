@@ -1,56 +1,55 @@
 package catalog
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
-// OwnershipMiddleware для проверки прав владения студией/комнатой
+// OwnershipMiddleware for chi — provides chi-native middleware for studio/room ownership checks.
 type OwnershipMiddleware interface {
-	CheckStudioOwnership() gin.HandlerFunc
-	CheckRoomOwnership() gin.HandlerFunc
+	CheckStudioOwnership() func(http.Handler) http.Handler
+	CheckRoomOwnership() func(http.Handler) http.Handler
 }
 
-// RegisterRoutes регистрирует публичные маршруты каталога
-func (h *Handler) RegisterRoutes(r *gin.RouterGroup) {
+// RegisterRoutes registers public catalog routes (no auth required).
+func (h *Handler) RegisterRoutes(r chi.Router) {
 	// Public studio routes
-	studios := r.Group("/studios")
-	{
-		studios.GET("", h.GetStudios)                                   // List studios with filtering
-		studios.GET("/:id", h.GetStudioByID)                            // Get studio details
-		studios.GET("/:id/working-hours", h.GetStudioWorkingHours)      // Get working hours
-		studios.GET("/:id/working-hours/v2", h.GetStudioWorkingHoursV2) // Get working hours v2
-	}
+	r.Route("/studios", func(r chi.Router) {
+		r.Get("", h.GetStudios)
+		r.Get("/{id}", h.GetStudioByID)
+		r.Get("/{id}/working-hours", h.GetStudioWorkingHours)
+		r.Get("/{id}/working-hours/v2", h.GetStudioWorkingHoursV2)
+	})
 
-	// Получение типов комнат
-	r.GET("/room-types", h.GetRoomTypes)
-
-	// Public routes для комнат
-	r.GET("/rooms", h.GetRooms)
-	r.GET("/rooms/:id", h.GetRoomByID)
+	r.Get("/room-types", h.GetRoomTypes)
+	r.Get("/rooms", h.GetRooms)
+	r.Get("/rooms/{id}", h.GetRoomByID)
 }
 
-// RegisterProtectedRoutes регистрирует защищенные маршруты (требуется авторизация)
-func (h *Handler) RegisterProtectedRoutes(r *gin.RouterGroup, ownershipChecker OwnershipMiddleware) {
+// RegisterProtectedRoutes registers authenticated catalog routes (JWT required).
+func (h *Handler) RegisterProtectedRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
 	// Studio management (Owner only)
-	studios := r.Group("/studios")
-	{
-		studios.POST("", h.CreateStudio)
-		studios.PUT("/:id", ownershipChecker.CheckStudioOwnership(), h.UpdateStudio)
-		studios.PUT("/:id/working-hours", ownershipChecker.CheckStudioOwnership(), h.UpdateStudioWorkingHours)
+	r.Route("/studios", func(r chi.Router) {
+		r.Post("", h.CreateStudio)
 
-		// Room management within studio
-		studios.POST("/:id/rooms", ownershipChecker.CheckStudioOwnership(), h.CreateRoom)
-		studios.POST("/:id/photos", ownershipChecker.CheckStudioOwnership(), h.UploadStudioPhotos)
-	}
+		r.Group(func(r chi.Router) {
+			r.Use(ownershipChecker.CheckStudioOwnership())
+			r.Put("/{id}", h.UpdateStudio)
+			r.Put("/{id}/working-hours", h.UpdateStudioWorkingHours)
+			r.Post("/{id}/rooms", h.CreateRoom)
+			r.Post("/{id}/photos", h.UploadStudioPhotos)
+		})
+	})
 
 	// Direct room management
-	rooms := r.Group("/rooms")
-	{
-		rooms.PUT("/:id", ownershipChecker.CheckRoomOwnership(), h.UpdateRoom)
-		rooms.DELETE("/:id", ownershipChecker.CheckRoomOwnership(), h.DeleteRoom)
-		rooms.POST("/:id/equipment", ownershipChecker.CheckRoomOwnership(), h.AddEquipment)
-	}
+	r.Group(func(r chi.Router) {
+		r.Use(ownershipChecker.CheckRoomOwnership())
+		r.Put("/rooms/{id}", h.UpdateRoom)
+		r.Delete("/rooms/{id}", h.DeleteRoom)
+		r.Post("/rooms/{id}/equipment", h.AddEquipment)
+	})
 
 	// User's studios
-	r.GET("/studios/my", h.GetMyStudios)
+	r.Get("/studios/my", h.GetMyStudios)
 }

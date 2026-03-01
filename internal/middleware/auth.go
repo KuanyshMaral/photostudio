@@ -2,13 +2,12 @@ package middleware
 
 import (
 	"net/http"
-	"photostudio/internal/domain/catalog"
-	"photostudio/internal/pkg/jwt"
-	"photostudio/internal/pkg/response"
 	"strconv"
-	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+
+	"photostudio/internal/domain/catalog"
+	"photostudio/internal/pkg/chicontext"
 )
 
 const maxWebSocketTokenLength = 8192
@@ -30,198 +29,75 @@ func NewOwnershipChecker(
 	}
 }
 
-// CheckStudioOwnership verifies the user owns the studio
-// Expects studio ID in URL param "id"
-func (oc *OwnershipChecker) CheckStudioOwnership() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userID := c.GetInt64("user_id")
-		if userID == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "UNAUTHORIZED", "message": "Authentication required"},
-			})
-			return
-		}
-
-		studioIDStr := c.Param("id")
-		studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "INVALID_ID", "message": "Invalid studio ID"},
-			})
-			return
-		}
-
-		studio, err := oc.studioRepo.GetByID(c.Request.Context(), studioID)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "NOT_FOUND", "message": "Studio not found"},
-			})
-			return
-		}
-
-		if studio.OwnerID != userID {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "FORBIDDEN", "message": "You don't own this studio"},
-			})
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// CheckRoomOwnership verifies the user owns the studio that owns the room
-// Expects room ID in URL param "id"
-func (oc *OwnershipChecker) CheckRoomOwnership() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		userID := c.GetInt64("user_id")
-		if userID == 0 {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "UNAUTHORIZED", "message": "Authentication required"},
-			})
-			return
-		}
-
-		roomIDStr := c.Param("id")
-		roomID, err := strconv.ParseInt(roomIDStr, 10, 64)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "INVALID_ID", "message": "Invalid room ID"},
-			})
-			return
-		}
-
-		room, err := oc.roomRepo.GetByID(c.Request.Context(), roomID)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "NOT_FOUND", "message": "Room not found"},
-			})
-			return
-		}
-
-		studio, err := oc.studioRepo.GetByID(c.Request.Context(), room.StudioID)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "NOT_FOUND", "message": "Studio not found"},
-			})
-			return
-		}
-
-		if studio.OwnerID != userID {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"success": false,
-				"error":   gin.H{"code": "FORBIDDEN", "message": "You don't own this resource"},
-			})
-			return
-		}
-
-		c.Next()
-	}
-}
-
-// JWTAuth requires a valid JWT Bearer token and puts user_id (int64) into context
-func JWTAuth(jwtService *jwt.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			upgrade := strings.EqualFold(c.GetHeader("Upgrade"), "websocket")
-			connUpgrade := strings.Contains(strings.ToLower(c.GetHeader("Connection")), "upgrade")
-			isNotificationsWS := strings.HasSuffix(c.Request.URL.Path, "/notifications/ws")
-			isChatsWS := strings.HasSuffix(c.Request.URL.Path, "/chats/ws")
-
-			// Browser WebSocket clients cannot set custom Authorization headers,
-			// allow token in query for websocket endpoints used by browser clients.
-			if upgrade && connUpgrade && (isNotificationsWS || isChatsWS) {
-				qToken := c.Query("token")
-				if len(qToken) > maxWebSocketTokenLength {
-					response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token is too long")
-					c.Abort()
-					return
-				}
-				if qToken != "" {
-					authHeader = "Bearer " + qToken
-				}
-			}
-			if authHeader == "" {
-				response.CustomError(c, http.StatusUnauthorized, "AUTH_HEADER_MISSING", "Authorization header is required")
-				c.Abort()
-				return
-			}
-		}
-
-		// Expected format: "Bearer <token>"
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			response.CustomError(c, http.StatusUnauthorized, "INVALID_AUTH_FORMAT", "Authorization header must be 'Bearer <token>'")
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
-
-		claims, err := jwtService.ValidateToken(tokenString)
-
-		if err != nil {
-			response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid or expired token")
-			c.Abort()
-			return
-		}
-
-		if claims.TokenType == "access_admin" {
-			if !isAdminTokenAllowedOnEndpoint(c) {
-				response.CustomError(c, http.StatusForbidden, "FORBIDDEN", "Admin token is not allowed for this endpoint")
-				c.Abort()
+// CheckStudioOwnership verifies the user owns the studio (chi-native http.Handler version).
+// Satisfies catalog.OwnershipMiddleware and booking.OwnershipMiddleware.
+func (oc *OwnershipChecker) CheckStudioOwnership() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := chicontext.UserIDFromCtx(r.Context())
+			if userID == 0 {
+				chiWriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 				return
 			}
 
-			c.Set("admin_id", claims.AdminID)
-			c.Set("role", claims.Role)
-			c.Set("is_admin_token", true)
-			c.Next()
-			return
-		}
+			studioIDStr := chi.URLParam(r, "id")
+			studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
+			if err != nil {
+				chiWriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+				return
+			}
 
-		if claims.UserID <= 0 {
-			response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Token subject is invalid")
-			c.Abort()
-			return
-		}
+			studio, err := oc.studioRepo.GetByID(r.Context(), studioID)
+			if err != nil {
+				chiWriteError(w, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+				return
+			}
 
-		// Everything is OK → store normalized user_id in context for downstream handlers
-		// (new format: sub, legacy fallback: user_id during migration)
-		c.Set("user_id", claims.UserID)
-		// Optional: you can also store role if you need it later
-		c.Set("role", claims.Role)
+			if studio.OwnerID != userID {
+				chiWriteError(w, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
+				return
+			}
 
-		c.Next()
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
-func isAdminTokenAllowedOnEndpoint(c *gin.Context) bool {
-	if c.FullPath() == "/api/v1/chats/:id/members" && c.Request.Method == http.MethodPost {
-		return true
-	}
+// CheckRoomOwnership verifies the user owns the studio for the given room (chi-native version).
+func (oc *OwnershipChecker) CheckRoomOwnership() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID := chicontext.UserIDFromCtx(r.Context())
+			if userID == 0 {
+				chiWriteError(w, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+				return
+			}
 
-	if c.FullPath() == "/api/v1/chats/:id/members/:user_id" && c.Request.Method == http.MethodDelete {
-		return true
-	}
+			roomIDStr := chi.URLParam(r, "id")
+			roomID, err := strconv.ParseInt(roomIDStr, 10, 64)
+			if err != nil {
+				chiWriteError(w, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
+				return
+			}
 
-	path := c.Request.URL.Path
-	if c.Request.Method == http.MethodPost {
-		return strings.HasPrefix(path, "/api/v1/chats/") && strings.HasSuffix(path, "/members")
-	}
+			room, err := oc.roomRepo.GetByID(r.Context(), roomID)
+			if err != nil {
+				chiWriteError(w, http.StatusNotFound, "NOT_FOUND", "Room not found")
+				return
+			}
 
-	if c.Request.Method == http.MethodDelete {
-		return strings.HasPrefix(path, "/api/v1/chats/") && strings.Contains(path, "/members/")
-	}
+			studio, err := oc.studioRepo.GetByID(r.Context(), room.StudioID)
+			if err != nil {
+				chiWriteError(w, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+				return
+			}
 
-	return false
+			if studio.OwnerID != userID {
+				chiWriteError(w, http.StatusForbidden, "FORBIDDEN", "You don't own this resource")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

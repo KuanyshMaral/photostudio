@@ -8,7 +8,7 @@ import (
 
 // CleanupService handles background cleanup tasks for notifications
 type CleanupService struct {
-	repo Repository
+	repo            Repository
 	deviceTokenRepo DeviceTokenRepository
 }
 
@@ -96,10 +96,10 @@ func (c *CleanupService) RunScheduledCleanup(ctx context.Context, config Cleanup
 
 // CleanupConfig holds configuration for cleanup tasks
 type CleanupConfig struct {
-	NotificationRetentionDays     int           // Keep notifications for N days (default: 90)
-	DeviceTokenInactivityDays     int           // Remove unused tokens after N days (default: 90)
-	CleanupInterval               time.Duration // How often to run cleanup (default: 24h)
-	EnableAutomaticCleanup        bool          // Enable automatic cleanup via goroutine
+	NotificationRetentionDays int           // Keep notifications for N days (default: 90)
+	DeviceTokenInactivityDays int           // Remove unused tokens after N days (default: 90)
+	CleanupInterval           time.Duration // How often to run cleanup (default: 24h)
+	EnableAutomaticCleanup    bool          // Enable automatic cleanup via goroutine
 }
 
 // DefaultCleanupConfig returns default cleanup configuration

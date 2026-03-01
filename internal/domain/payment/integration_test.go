@@ -13,7 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -44,11 +46,15 @@ func setupPaymentTest(t *testing.T) (*Service, *Handler, *gorm.DB) {
 
 func TestBookingPaymentCreationAndWebhook(t *testing.T) {
 	s, h, db := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	authGroup := r.Group("/")
-	authGroup.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(authGroup)
+	r := chi.NewRouter()
+	r.Group(func(authGroup chi.Router) {
+		authGroup.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(authGroup)
+	})
 	h.RegisterPublicWebhookRoutes(r)
 
 	body, _ := json.Marshal(CreatePaymentRequest{BookingID: 10, Amount: "100.00", Description: "booking"})
@@ -83,8 +89,7 @@ func TestBookingPaymentCreationAndWebhook(t *testing.T) {
 
 func TestWebhookInvalidSignature(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
+	r := chi.NewRouter()
 	h.RegisterPublicWebhookRoutes(r)
 	webReq := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("OutSum=100.00&InvId=123&SignatureValue=bad"))
 	webReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
