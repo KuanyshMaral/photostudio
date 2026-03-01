@@ -17,7 +17,8 @@ type CreateRoomRequest struct {
 	PricePerHourMin float64  `json:"price_per_hour_min" validate:"required,gte=0"`
 	PricePerHourMax *float64 `json:"price_per_hour_max,omitempty"`
 	Amenities       []string `json:"amenities,omitempty"`
-	Photos          []string `json:"photos"`
+	Photos          []string `json:"photos"`               // Deprecated: use upload_ids
+	UploadIDs       []string `json:"upload_ids,omitempty"` // UUID refs from POST /uploads
 }
 
 // ---------- EQUIPMENT ----------
@@ -34,29 +35,31 @@ type CreateEquipmentRequest struct {
 // ---------- STUDIO ----------
 
 type CreateStudioRequest struct {
-	Name         string                 `json:"name" validate:"required"`
-	Description  string                 `json:"description"`
-	Address      string                 `json:"address" validate:"required"`
-	District     string                 `json:"district"`
-	City         string                 `json:"city" validate:"required"`
-	Phone        string                 `json:"phone"`
-	Email        string                 `json:"email"`
-	Website      string                 `json:"website"`
+	Name         string          `json:"name" validate:"required"`
+	Description  string          `json:"description"`
+	Address      string          `json:"address" validate:"required"`
+	District     string          `json:"district"`
+	City         string          `json:"city" validate:"required"`
+	Phone        string          `json:"phone"`
+	Email        string          `json:"email"`
+	Website      string          `json:"website"`
 	WorkingHours WorkingHoursMap `json:"working_hours,omitempty"`
+	UploadIDs    []string        `json:"upload_ids,omitempty"` // UUID refs from POST /uploads
 }
 
 // ---------- STUDIO UPDATE ----------
 
 type UpdateStudioRequest struct {
-	Name         string                 `json:"name" validate:"required"`
-	Description  string                 `json:"description"`
-	Address      string                 `json:"address" validate:"required"`
-	City         string                 `json:"city" validate:"required"`
-	Phone        string                 `json:"phone"`
-	Email        string                 `json:"email"`
-	Website      string                 `json:"website"`
+	Name         string          `json:"name" validate:"required"`
+	Description  string          `json:"description"`
+	Address      string          `json:"address" validate:"required"`
+	City         string          `json:"city" validate:"required"`
+	Phone        string          `json:"phone"`
+	Email        string          `json:"email"`
+	Website      string          `json:"website"`
 	WorkingHours WorkingHoursMap `gorm:"type:jsonb" json:"working_hours,omitempty"`
-	District     string                 `json:"district,omitempty"`
+	District     string          `json:"district,omitempty"`
+	UploadIDs    []string        `json:"upload_ids,omitempty"` // IDs to append; delete via DELETE /attachments/:id
 }
 
 type UpdateRoomRequest struct {
@@ -68,19 +71,20 @@ type UpdateRoomRequest struct {
 	PricePerHourMin *float64  `json:"price_per_hour_min,omitempty"`
 	PricePerHourMax *float64  `json:"price_per_hour_max,omitempty"`
 	Amenities       *[]string `json:"amenities,omitempty"`
-	Photos          *[]string `json:"photos,omitempty"`
+	Photos          *[]string `json:"photos,omitempty"`     // Deprecated: use upload_ids
+	UploadIDs       []string  `json:"upload_ids,omitempty"` // IDs to append; delete via DELETE /attachments/:id
 }
 
 // ---------- WORKING HOURS ----------
 
 // WorkingHoursResponse — ответ с часами работы
 type WorkingHoursResponse struct {
-	StudioID     int64                 `json:"studio_id"`
+	StudioID     int64          `json:"studio_id"`
 	Hours        []WorkingHours `json:"hours"`
-	CompactText  string                `json:"compact_text"` // "Пн-Пт: 10:00-20:00"
-	IsOpenNow    bool                  `json:"is_open_now"`
-	StatusText   string                `json:"status_text"`              // "Открыто (закроется в 20:00)"
-	NextOpenTime string                `json:"next_open_time,omitempty"` // Когда откроется
+	CompactText  string         `json:"compact_text"` // "Пн-Пт: 10:00-20:00"
+	IsOpenNow    bool           `json:"is_open_now"`
+	StatusText   string         `json:"status_text"`              // "Открыто (закроется в 20:00)"
+	NextOpenTime string         `json:"next_open_time,omitempty"` // Когда откроется
 }
 
 // FormatCompactHours форматирует часы в компактный вид
