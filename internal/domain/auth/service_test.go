@@ -171,21 +171,3 @@ func TestService_Login_WrongPassword(t *testing.T) {
 
 	assert.ErrorIs(t, err, ErrInvalidCredentials)
 }
-
-func TestService_AppendVerificationDocs(t *testing.T) {
-	userRepo := new(mockUserRepo)
-	ownerProfileRepo := new(mockOwnerProfileRepo)
-	jwtSvc := new(mockJWTService)
-
-	urls := []string{"/static/verification/doc1.pdf"}
-
-	ownerProfileRepo.On("GetByUserID", mock.Anything, int64(5)).Return(&profile.OwnerProfile{}, nil)
-	ownerProfileRepo.On("Update", mock.Anything, mock.Anything).Return(nil)
-
-	service := NewService(userRepo, ownerProfileRepo, nil, jwtSvc, NewDevConsoleMailer(false), "pepper", time.Minute*5, time.Minute, "refresh_pepper", time.Hour*24)
-
-	err := service.AppendVerificationDocs(context.Background(), 5, urls)
-
-	assert.NoError(t, err)
-	ownerProfileRepo.AssertExpectations(t)
-}

@@ -27,8 +27,8 @@ func setupNotificationTest(t *testing.T) (*gorm.DB, *chi.Mux) {
 	require.NoError(t, db.AutoMigrate(&auth.User{}, &Notification{}, &UserPreferences{}, &DeviceToken{}))
 
 	users := []auth.User{
-		{ID: 101, Email: "a@test.local", PasswordHash: "x", Role: auth.RoleClient, Name: "A"},
-		{ID: 202, Email: "b@test.local", PasswordHash: "x", Role: auth.RoleClient, Name: "B"},
+		{ID: 101, Email: "a@test.local", PasswordHash: "x", Role: auth.RoleClient},
+		{ID: 202, Email: "b@test.local", PasswordHash: "x", Role: auth.RoleClient},
 	}
 	for _, u := range users {
 		require.NoError(t, db.Create(&u).Error)

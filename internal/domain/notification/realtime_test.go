@@ -29,7 +29,7 @@ func TestServiceCreate_PublishesRealtimeEvent(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.AutoMigrate(&auth.User{}, &Notification{}, &UserPreferences{}, &DeviceToken{}))
 
-	u := auth.User{ID: 321, Email: "ws@test.local", PasswordHash: "x", Role: auth.RoleClient, Name: "WS"}
+	u := auth.User{ID: 321, Email: "ws@test.local", PasswordHash: "x", Role: auth.RoleClient}
 	require.NoError(t, db.Create(&u).Error)
 
 	repo := NewRepository(db)

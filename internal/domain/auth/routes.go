@@ -12,7 +12,5 @@ func (h *Handler) RegisterPublicRoutes(r chi.Router) {
 }
 
 func (h *Handler) RegisterProtectedRoutes(r chi.Router) {
-	r.Get("/me", h.GetMe)
-	r.Put("/me", h.UpdateProfile)
-	r.Post("/verification/documents", h.UploadVerificationDocuments)
+	// Only returning empty block since other protected routes were moved
 }

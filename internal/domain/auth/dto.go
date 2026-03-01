@@ -10,6 +10,11 @@ type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
 }
+
+// RefreshTokenRequest is the JSON body accepted by POST /auth/refresh and POST /auth/logout
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
 type UserPublic struct {
 	ID    int64  `json:"id"`
 	Role  string `json:"role"`
@@ -73,4 +78,58 @@ type VerifyRequestDTO struct {
 type VerifyConfirmDTO struct {
 	Email string `json:"email" binding:"required,email"`
 	Code  string `json:"code" binding:"required"`
+}
+
+// =========================
+// SWAGGER WRAPPER DTOs
+// =========================
+
+// swaggerVerifyResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerVerifyResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Status string `json:"status"`
+	} `json:"data"`
+}
+
+// swaggerTokensResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerTokensResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Tokens struct {
+			AccessToken  string `json:"access_token"`
+			RefreshToken string `json:"refresh_token"`
+		} `json:"tokens"`
+	} `json:"data"`
+}
+
+// swaggerLoginResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerLoginResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		User struct {
+			ID           int64  `json:"id"`
+			Email        string `json:"email"`
+			Role         string `json:"role"`
+			StudioStatus string `json:"studio_status"`
+		} `json:"user"`
+		Tokens struct {
+			AccessToken  string `json:"access_token"`
+			RefreshToken string `json:"refresh_token"`
+		} `json:"tokens"`
+	} `json:"data"`
+}
+
+// swaggerRegisterClientResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerRegisterClientResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		User struct {
+			ID           int64  `json:"id"`
+			Email        string `json:"email"`
+			Role         string `json:"role"`
+			StudioStatus string `json:"studio_status"`
+		} `json:"user"`
+		VerificationSent bool `json:"verification_sent"`
+	} `json:"data"`
 }

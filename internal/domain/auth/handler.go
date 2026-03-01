@@ -2,15 +2,9 @@ package auth
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
 	"photostudio/internal/pkg/utils"
 )
@@ -44,8 +38,11 @@ func NewHandler(service *Service, profileService ProfileService, bookingReader B
 //
 //	@Accept		json
 //	@Produce	json
-//	@Param		body	body		VerifyRequestDTO	true	"payload"
-//	@Success	200		{object}	map[string]interface{}
+//	@Param		body	body		VerifyRequestDTO		true	"payload"
+//	@Success	200		{object}	swaggerVerifyResponse	"Подтверждение отправки"
+//	@Failure	400		{object}	response.ErrorResponse	"Ошибка валидации"
+//	@Failure	429		{object}	response.ErrorResponse	"Слишком много запросов"
+//	@Failure	500		{object}	response.ErrorResponse	"Ошибка сервера"
 //	@Router		/auth/verify/request [post]
 func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Request) {
 	var req VerifyRequestDTO
@@ -74,8 +71,11 @@ func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Reques
 //
 //	@Accept		json
 //	@Produce	json
-//	@Param		body	body		VerifyConfirmDTO	true	"payload"
-//	@Success	200		{object}	map[string]interface{}
+//	@Param		body	body		VerifyConfirmDTO		true	"payload"
+//	@Success	200		{object}	swaggerVerifyResponse	"Успешное подтверждение"
+//	@Failure	400		{object}	response.ErrorResponse	"Ошибка валидации или неверный код"
+//	@Failure	429		{object}	response.ErrorResponse	"Слишком много запросов"
+//	@Failure	500		{object}	response.ErrorResponse	"Ошибка сервера"
 //	@Router		/auth/verify/confirm [post]
 func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Request) {
 	var req VerifyConfirmDTO
@@ -104,22 +104,28 @@ func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Reques
 
 // Refresh
 //
-//	@Summary	Refresh token
+//	@Summary	Обновление токенов
+//	@Description	Обновляет access/refresh токены по валидному refresh token.
 //	@Tags		Auth
 //
+//	@Accept		json
 //	@Produce	json
-//	@Success	200	{object}	map[string]interface{}
+//	@Param		request	body		RefreshTokenRequest		true	"Refresh token"
+//	@Success	200		{object}	swaggerTokensResponse	"Токены обновлены"
+//	@Failure	401		{object}	response.ErrorResponse	"Неавторизован или токен не валиден"
+//	@Failure	403		{object}	response.ErrorResponse	"Доступ запрещен"
+//	@Failure	500		{object}	response.ErrorResponse	"Ошибка сервера"
 //	@Router		/auth/refresh [post]
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("refresh_token")
-	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+	var req RefreshTokenRequest
+	if err := response.BindJSON(r, &req); err != nil || strings.TrimSpace(req.RefreshToken) == "" {
 		response.CustomError(w, r, http.StatusUnauthorized, "INVALID_REFRESH_TOKEN", "Refresh token is missing or invalid")
 		return
 	}
 
 	clientIP := utils.GetClientIP(r)
 
-	result, err := h.service.RefreshSession(r.Context(), cookie.Value, r.UserAgent(), clientIP)
+	result, err := h.service.RefreshSession(r.Context(), req.RefreshToken, r.UserAgent(), clientIP)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidRefreshToken):
@@ -136,9 +142,11 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setRefreshCookie(w, result.RefreshToken)
 	response.Success(w, http.StatusOK, response.H{
-		"tokens": response.H{"access_token": result.AccessToken},
+		"tokens": response.H{
+			"access_token":  result.AccessToken,
+			"refresh_token": result.RefreshToken,
+		},
 	})
 }
 
@@ -147,16 +155,21 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 //	@Summary	Logout
 //	@Tags		Auth
 //
-//	@Success	204	"No Content"
+//	@Accept		json
+//	@Param		request	body	RefreshTokenRequest	false	"Refresh token to revoke"
+//	@Success	204		"No Content"
+//	@Failure	500		{object}	response.ErrorResponse	"Ошибка сервера"
 //	@Router		/auth/logout [post]
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
-	if cookie, err := r.Cookie("refresh_token"); err == nil && strings.TrimSpace(cookie.Value) != "" {
-		if logoutErr := h.service.Logout(r.Context(), cookie.Value); logoutErr != nil {
+	var req RefreshTokenRequest
+	// Best-effort: parse body but don't fail if missing
+	_ = response.BindJSON(r, &req)
+	if strings.TrimSpace(req.RefreshToken) != "" {
+		if logoutErr := h.service.Logout(r.Context(), req.RefreshToken); logoutErr != nil {
 			response.CustomError(w, r, http.StatusInternalServerError, "LOGOUT_FAILED", "Failed to logout")
 			return
 		}
 	}
-	h.setRefreshCookie(w, "") // clear
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -167,8 +180,11 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 //
 //	@Accept		json
 //	@Produce	json
-//	@Param		body	body		RegisterClientRequest	true	"payload"
-//	@Success	201		{object}	RegisterClientResponseSwagger
+//	@Param		body	body		RegisterClientRequest			true	"payload"
+//	@Success	201		{object}	swaggerRegisterClientResponse	"Успешная регистрация"
+//	@Failure	400		{object}	response.ErrorResponse			"Ошибка валидации"
+//	@Failure	409		{object}	response.ErrorResponse			"Email уже существует"
+//	@Failure	500		{object}	response.ErrorResponse			"Ошибка сервера"
 //	@Router		/auth/register/client [post]
 func (h *Handler) RegisterClient(w http.ResponseWriter, r *http.Request) {
 	var req RegisterClientRequest
@@ -191,9 +207,7 @@ func (h *Handler) RegisterClient(w http.ResponseWriter, r *http.Request) {
 		"user": response.H{
 			"id":            user.ID,
 			"email":         user.Email,
-			"name":          user.Name,
 			"role":          user.Role,
-			"phone":         user.Phone,
 			"studio_status": user.StudioStatus,
 		},
 		"verification_sent": verificationSent,
@@ -205,8 +219,12 @@ func (h *Handler) RegisterClient(w http.ResponseWriter, r *http.Request) {
 //	@Summary	Войти в аккаунт
 //	@Tags		Auth
 //
-//	@Param		request	body		LoginRequest	true	"Учётные данные"
-//	@Success	200		{object}	map[string]interface{}
+//	@Param		request	body		LoginRequest			true	"Учётные данные"
+//	@Success	200		{object}	swaggerLoginResponse	"Успешный вход"
+//	@Failure	400		{object}	response.ErrorResponse	"Ошибка валидации"
+//	@Failure	401		{object}	response.ErrorResponse	"Неверные учетные данные"
+//	@Failure	403		{object}	response.ErrorResponse	"Доступ запрещен"
+//	@Failure	500		{object}	response.ErrorResponse	"Ошибка сервера"
 //
 //	@Router		/auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -235,169 +253,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.setRefreshCookie(w, loginResult.RefreshToken)
+	h.setRefreshCookie(w, loginResult.RefreshToken) // keep cookie for backward compat during transition
 	response.Success(w, http.StatusOK, response.H{
 		"user": response.H{
 			"id":            loginResult.User.ID,
 			"email":         loginResult.User.Email,
-			"name":          loginResult.User.Name,
 			"role":          loginResult.User.Role,
-			"phone":         loginResult.User.Phone,
 			"studio_status": loginResult.User.StudioStatus,
 		},
-		"tokens": response.H{"access_token": loginResult.AccessToken},
-	})
-}
-
-// GetMe
-//
-//	@Summary	Получить профиль пользователя
-//	@Tags		Auth
-//
-//	@Security	BearerAuth
-//	@Success	200	{object}	map[string]interface{}
-//
-//	@Router		/users/me [get]
-func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
-	userID := chicontext.UserIDFromCtx(r.Context())
-	if userID == 0 {
-		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
-		return
-	}
-
-	user, err := h.service.GetCurrentUser(r.Context(), userID)
-	if err != nil {
-		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "User not found")
-		return
-	}
-
-	var stats *UserStats
-	if h.bookingReader != nil {
-		if s, err := h.bookingReader.GetStatsByUserID(user.ID); err == nil && s != nil {
-			stats = &UserStats{
-				TotalBookings:     int(s.Total),
-				UpcomingBookings:  int(s.Upcoming),
-				CompletedBookings: int(s.Completed),
-				CancelledBookings: int(s.Cancelled),
-			}
-		}
-	}
-
-	var profileData interface{}
-	if h.profileService != nil {
-		switch user.Role {
-		case RoleClient:
-			profileData, _ = h.profileService.EnsureClientProfile(r.Context(), user.ID)
-		case RoleStudioOwner:
-			profileData, _ = h.profileService.GetOwnerProfile(r.Context(), user.ID)
-		}
-	}
-
-	response.JSON(w, http.StatusOK, response.H{
-		"user":    user,
-		"stats":   stats,
-		"profile": profileData,
-	})
-}
-
-// UpdateProfile
-//
-//	@Summary	Обновить профиль пользователя
-//	@Tags		Auth
-//
-//	@Security	BearerAuth
-//	@Param		request	body		UpdateProfileRequest	true	"Данные для обновления"
-//	@Success	200		{object}	map[string]interface{}
-//
-//	@Router		/users/me [put]
-func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	userID := chicontext.UserIDFromCtx(r.Context())
-
-	var req UpdateProfileRequest
-	if err := response.BindJSON(r, &req); err != nil {
-		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body")
-		return
-	}
-
-	user, err := h.service.UpdateProfile(r.Context(), userID, req)
-	if err != nil {
-		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", "Could not update profile")
-		return
-	}
-
-	response.Success(w, http.StatusOK, response.H{
-		"user": response.H{
-			"id":    user.ID,
-			"name":  user.Name,
-			"phone": user.Phone,
-			"email": user.Email,
-			"role":  user.Role,
+		"tokens": response.H{
+			"access_token":  loginResult.AccessToken,
+			"refresh_token": loginResult.RefreshToken,
 		},
-	})
-}
-
-// UploadVerificationDocuments
-//
-//	@Summary	Загрузить документы верификации
-//	@Tags		Auth
-//
-//	@Security	BearerAuth
-//	@Accept		multipart/form-data
-//	@Param		documents	formData	file	true	"Файлы документов"
-//	@Success	200			{object}	map[string]interface{}
-//
-//	@Router		/users/verification/documents [post]
-func (h *Handler) UploadVerificationDocuments(w http.ResponseWriter, r *http.Request) {
-	userID := chicontext.UserIDFromCtx(r.Context())
-
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		response.CustomError(w, r, http.StatusBadRequest, "INVALID_FORM", "Failed to parse form")
-		return
-	}
-
-	files := r.MultipartForm.File["documents"]
-	if len(files) == 0 {
-		response.CustomError(w, r, http.StatusBadRequest, "NO_FILES", "No files uploaded")
-		return
-	}
-
-	uploadDir := "./uploads/verification"
-	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		response.CustomError(w, r, http.StatusInternalServerError, "STORAGE_ERROR", "Failed to create upload directory")
-		return
-	}
-
-	var uploadedURLs []string
-	for _, fh := range files {
-		filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), fh.Filename)
-		savePath := filepath.Join(uploadDir, filename)
-
-		f, err := fh.Open()
-		if err != nil {
-			response.CustomError(w, r, http.StatusInternalServerError, "SAVE_FAILED", "Failed to open file")
-			return
-		}
-		out, err := os.Create(savePath)
-		if err != nil {
-			f.Close()
-			response.CustomError(w, r, http.StatusInternalServerError, "SAVE_FAILED", "Failed to save file")
-			return
-		}
-		_, _ = io.Copy(out, f)
-		out.Close()
-		f.Close()
-
-		uploadedURLs = append(uploadedURLs, "/static/verification/"+filename)
-	}
-
-	if err := h.service.AppendVerificationDocs(r.Context(), userID, uploadedURLs); err != nil {
-		response.CustomError(w, r, http.StatusInternalServerError, "DB_ERROR", "Failed to save document references")
-		return
-	}
-
-	response.Success(w, http.StatusOK, response.H{
-		"message":       "Documents uploaded successfully",
-		"uploaded_urls": uploadedURLs,
 	})
 }
 

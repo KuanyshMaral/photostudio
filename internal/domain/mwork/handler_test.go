@@ -103,9 +103,9 @@ func TestSyncUserUpdateByMworkUserID(t *testing.T) {
 		Email:        "old@example.com",
 		PasswordHash: "hash",
 		Role:         auth.RoleClient,
-		Name:         "Old Name",
-		MworkUserID:  uuid.NewString(),
-		MworkRole:    "model",
+
+		MworkUserID: uuid.NewString(),
+		MworkRole:   "model",
 	}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -133,7 +133,6 @@ func TestSyncUserLinkByEmail(t *testing.T) {
 		Email:        "Case@Example.com",
 		PasswordHash: "hash",
 		Role:         auth.RoleClient,
-		Name:         "Case User",
 	}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -160,7 +159,6 @@ func TestSyncUserLinkByEmailNormalized(t *testing.T) {
 		Email:        "Case@Example.com",
 		PasswordHash: "hash",
 		Role:         auth.RoleClient,
-		Name:         "Case User",
 	}
 	require.NoError(t, db.Create(&user).Error)
 
@@ -269,9 +267,9 @@ func TestSyncUserConflict(t *testing.T) {
 		Email:        "conflict@example.com",
 		PasswordHash: "hash",
 		Role:         auth.RoleClient,
-		Name:         "Conflict User",
-		MworkUserID:  uuid.NewString(),
-		MworkRole:    "model",
+
+		MworkUserID: uuid.NewString(),
+		MworkRole:   "model",
 	}
 	require.NoError(t, db.Create(&user).Error)
 
