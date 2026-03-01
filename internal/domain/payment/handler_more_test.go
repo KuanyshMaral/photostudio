@@ -8,16 +8,22 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestHandlerSubscriptionAndValidationBranches(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 	h.RegisterPublicWebhookRoutes(r)
 
 	for _, tc := range []string{"/payments/robokassa/create", "/subscriptions"} {
@@ -48,11 +54,15 @@ func TestHandlerSubscriptionAndValidationBranches(t *testing.T) {
 
 func TestInitPaymentRouteAndReplayForbidden(t *testing.T) {
 	s, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 	h.RegisterPublicWebhookRoutes(r)
 
 	b, _ := json.Marshal(InitPaymentRequest{BookingID: 10, OutSum: "100.00"})
@@ -84,16 +94,17 @@ func TestInitPaymentRouteAndReplayForbidden(t *testing.T) {
 }
 
 func TestCollectShpWithQueryAndForm(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.POST("/x", func(c *gin.Context) {
-		_ = c.Request.ParseForm()
-		m := collectShp(c)
+	r := chi.NewRouter()
+	r.Post("/x", func(w http.ResponseWriter, req *http.Request) {
+		_ = req.ParseForm()
+		m := collectShp(req)
 		if m["a"] != "1" || m["b"] != "2" {
-			c.String(500, "bad")
+			w.WriteHeader(500)
+			w.Write([]byte("bad"))
 			return
 		}
-		c.String(200, "ok")
+		w.WriteHeader(200)
+		w.Write([]byte("ok"))
 	})
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/x?Shp_b=2", bytes.NewBufferString("Shp_a=1"))
@@ -106,8 +117,7 @@ func TestCollectShpWithQueryAndForm(t *testing.T) {
 
 func TestResultCallbackBadRequestOnMissingParams(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
+	r := chi.NewRouter()
 	h.RegisterPublicWebhookRoutes(r)
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", bytes.NewBufferString("InvId=123"))
@@ -120,11 +130,15 @@ func TestResultCallbackBadRequestOnMissingParams(t *testing.T) {
 
 func TestCreatePaymentInvalidAmountReturnsBadRequest(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"out_sum":"-1"}`))
@@ -137,11 +151,15 @@ func TestCreatePaymentInvalidAmountReturnsBadRequest(t *testing.T) {
 
 func TestCreatePaymentSwaggerPlaceholderSubscriptionIDIsIgnored(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"amount":"100.00","subscription_id":"string"}`))
@@ -154,11 +172,15 @@ func TestCreatePaymentSwaggerPlaceholderSubscriptionIDIsIgnored(t *testing.T) {
 
 func TestCreatePaymentInvalidSubscriptionIDReturnsBadRequest(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/payments/robokassa/create", bytes.NewBufferString(`{"booking_id":10,"amount":"100.00","subscription_id":"not-a-uuid"}`))

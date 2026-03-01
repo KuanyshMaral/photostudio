@@ -1,13 +1,16 @@
 package manager
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"photostudio/internal/domain/booking"
-	"photostudio/internal/domain/owner"
-	"photostudio/internal/pkg/response"
 	"strconv"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+
+	"photostudio/internal/domain/booking"
+	"photostudio/internal/domain/owner"
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 type Handler struct {
@@ -22,72 +25,106 @@ func NewHandler(bookingRepo booking.BookingRepository, ownerRepo *owner.OwnerCRM
 	}
 }
 
-// GetBookings получает список бронирований по студиям владельца.
-// @Summary		Получить отфильтрованные бронирования
-// @Description	Выводит список бронирований для всех студий владельца с деталями с возможностью фильтрирования по статусу, дате, клиенту.
-// @Tags		Менеджер - Управление бронированиями
-// @Security	BearerAuth
-// @Param		status		query	string	false	"Фильтр по статусу (all, pending, confirmed, cancelled, completed)"
-// @Param		client		query	string	false	"Фильтр по имени клиента"
-// @Param		studio_id	query	int	false	"Фильтр по ID студии"
-// @Param		room_id		query	int	false	"Фильтр по ID комнаты"
-// @Param		date_from	query	string	false	"Начальная дата (YYYY-MM-DD)"
-// @Param		date_to		query	string	false	"Выконачая дата (YYYY-MM-DD)"
-// @Param		page		query	int	false	"Номер страницы"
-// @Param		per_page	query	int	false	"Количество бронирований на странице (макс 100)"
-// @Success		200	{object}		map[string]interface{} "Список бронирований с пагинацией"
-// @Failure		400	{object}		map[string]interface{} "Ошибка в параметрах"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/manager/bookings [GET]
-func (h *Handler) GetBookings(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// swaggerManagerBookingsResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerManagerBookingsResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Bookings []any `json:"bookings"` // booking.Booking type
+		Total    int64 `json:"total"`
+		Page     int   `json:"page"`
+		PerPage  int   `json:"per_page"`
+	} `json:"data"`
+}
 
+// swaggerManagerBookingResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerManagerBookingResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Booking any `json:"booking"`
+	} `json:"data"`
+}
+
+// swaggerManagerClientsResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerManagerClientsResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Clients []any `json:"clients"` // owner.Client type
+		Total   int64 `json:"total"`
+		Page    int   `json:"page"`
+		PerPage int   `json:"per_page"`
+	} `json:"data"`
+}
+
+// GetBookings получение забронированных студий для менеджера.
+//
+//	@Summary		Получить бронирования (для менеджера)
+//	@Description	Возвращает список бронирований студий владельца по фильтрам.
+//	@Tags			Manager
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			status		query		string							false	"Фильтр по статусу (например, completed, cancelled, all)"
+//	@Param			client		query		string							false	"Фильтр по имени клиента"
+//	@Param			studio_id	query		int								false	"Фильтр по ID студии"
+//	@Param			room_id		query		int								false	"Фильтр по ID комнаты"
+//	@Param			date_from	query		string							false	"Начальная дата (YYYY-MM-DD)"
+//	@Param			date_to		query		string							false	"Конечная дата (YYYY-MM-DD)"
+//	@Param			page		query		int								false	"Номер страницы"
+//	@Param			per_page	query		int								false	"Количество элементов (макс 100)"
+//	@Success		200			{object}	swaggerManagerBookingsResponse	"Список бронирований"
+//	@Failure		401			{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500			{object}	response.ErrorResponse			"Внутренняя ошибка сервера"
+//	@Router			/manager/bookings [get]
+func (h *Handler) GetBookings(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	q := r.URL.Query()
+
+	statusVal := q.Get("status")
+	if statusVal == "" {
+		statusVal = "all"
+	}
 	filters := booking.ManagerBookingFilters{
-		Status:     c.DefaultQuery("status", "all"),
-		ClientName: c.Query("client"),
+		Status:     statusVal,
+		ClientName: q.Get("client"),
 	}
 
-	if studioID := c.Query("studio_id"); studioID != "" {
-		if id, err := strconv.ParseInt(studioID, 10, 64); err == nil {
+	if v := q.Get("studio_id"); v != "" {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil {
 			filters.StudioID = id
 		}
 	}
-	if roomID := c.Query("room_id"); roomID != "" {
-		if id, err := strconv.ParseInt(roomID, 10, 64); err == nil {
+	if v := q.Get("room_id"); v != "" {
+		if id, err := strconv.ParseInt(v, 10, 64); err == nil {
 			filters.RoomID = id
 		}
 	}
-
-	if dateFrom := c.Query("date_from"); dateFrom != "" {
-		if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
+	if v := q.Get("date_from"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
 			filters.DateFrom = t
 		}
 	}
-	if dateTo := c.Query("date_to"); dateTo != "" {
-		if t, err := time.Parse("2006-01-02", dateTo); err == nil {
+	if v := q.Get("date_to"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
 			filters.DateTo = t.Add(24*time.Hour - time.Second)
 		}
 	}
-
-	if page := c.Query("page"); page != "" {
-		if p, err := strconv.Atoi(page); err == nil {
+	if v := q.Get("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
 			filters.Page = p
 		}
 	}
-	if perPage := c.Query("per_page"); perPage != "" {
-		if pp, err := strconv.Atoi(perPage); err == nil && pp <= 100 {
+	if v := q.Get("per_page"); v != "" {
+		if pp, err := strconv.Atoi(v); err == nil && pp <= 100 {
 			filters.PerPage = pp
 		}
 	}
 
-	bookings, total, err := h.bookingRepo.GetManagerBookings(c.Request.Context(), ownerID, filters)
+	bookings, total, err := h.bookingRepo.GetManagerBookings(r.Context(), ownerID, filters)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
+	response.Success(w, http.StatusOK, response.H{
 		"bookings": bookings,
 		"total":    total,
 		"page":     filters.Page,
@@ -95,168 +132,173 @@ func (h *Handler) GetBookings(c *gin.Context) {
 	})
 }
 
-// GetBooking получает детали одного бронирования.
-// @Summary		Открыть детали бронирования
-// @Description	Получает подробную информацию о бронировании (клиент, студия, настройки, цену, статус).
-// @Tags		Менеджер - Управление бронированиями
-// @Security	BearerAuth
-// @Param		id	path	int	true	"ID бронирования"
-// @Success		200	{object}		map[string]interface{} "Подробная информация о бронировании"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено или доступ запрещён"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/manager/bookings/:id [GET]
-func (h *Handler) GetBooking(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// GetBooking детали бронирования.
+//
+//	@Summary		Детали бронирования
+//	@Description	Возвращает подробности конкретного бронирования.
+//	@Tags			Manager
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int								true	"ID бронирования"
+//	@Success		200	{object}	swaggerManagerBookingResponse	"Данные бронирования"
+//	@Failure		400	{object}	response.ErrorResponse			"Некорректный ID"
+//	@Failure		401	{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse			"Бронирование не найдено или нет прав"
+//	@Router			/manager/bookings/{id} [get]
+func (h *Handler) GetBooking(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 
-	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	bookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
 		return
 	}
 
-	booking, err := h.bookingRepo.GetBookingForManager(c.Request.Context(), ownerID, bookingID)
+	b, err := h.bookingRepo.GetBookingForManager(r.Context(), ownerID, bookingID)
 	if err != nil {
-		response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
+		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"booking": booking})
+	response.Success(w, http.StatusOK, response.H{"booking": b})
 }
 
 type UpdateDepositRequest struct {
-	DepositAmount float64 `json:"deposit_amount" binding:"required,min=0"`
+	DepositAmount float64 `json:"deposit_amount"`
 }
 
-// UpdateDeposit обновляет внесённою стоимость на бронировании.
-// @Summary		Обновить рассчётные средства
-// @Description	Обновляет внесённые средства (залог или авансовые платежи) для бронирования.
-// @Tags		Менеджер - Управление бронированиями
-// @Security	BearerAuth
-// @Param		id		path	int						true	"ID бронирования"
-// @Param		request	body	UpdateDepositRequest		true	"Новая сумма залога"
-// @Success		200	{object}		map[string]interface{} "Намавка депозита обновлена"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверные данные"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/manager/bookings/:id/deposit [PATCH]
-func (h *Handler) UpdateDeposit(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// UpdateDeposit изменение суммы залога бронирования.
+//
+//	@Summary		Обновить залог
+//	@Description	Менеджер обновляет расчет суммы залога за бронирование.
+//	@Tags			Manager
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID бронирования"
+//	@Param			request	body		UpdateDepositRequest		true	"Новая сумма"
+//	@Success		200		{object}	response.SuccessResponse	"Залог обновлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Бронирование не найдено"
+//	@Failure		500		{object}	response.ErrorResponse		"Внутренняя ошибка сервера"
+//	@Router			/manager/bookings/{id}/deposit [patch]
+func (h *Handler) UpdateDeposit(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 
-	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	bookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
 		return
 	}
 
 	var req UpdateDepositRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
 
-	// ownership check
-	_, err = h.bookingRepo.GetBookingForManager(c.Request.Context(), ownerID, bookingID)
-	if err != nil {
-		response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
+	if _, err = h.bookingRepo.GetBookingForManager(r.Context(), ownerID, bookingID); err != nil {
+		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
 		return
 	}
 
-	if err := h.bookingRepo.UpdateDeposit(c.Request.Context(), bookingID, req.DepositAmount); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
+	if err := h.bookingRepo.UpdateDeposit(r.Context(), bookingID, req.DepositAmount); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Deposit updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Deposit updated"})
 }
 
 type UpdateStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=pending confirmed cancelled completed"`
+	Status string `json:"status"`
 }
 
-// UpdateBookingStatus обновляет статус бронирования.
-// @Summary		Обновить статус бронирования
-// @Description	Меняет статус бронирования: pending -> confirmed -> completed или cancelled.
-// @Tags		Менеджер - Управление бронированиями
-// @Security	BearerAuth
-// @Param		id		path	int						true	"ID бронирования"
-// @Param		request	body	UpdateStatusRequest		true	"Новый статус (pending, confirmed, cancelled, completed)"
-// @Success		200	{object}		map[string]interface{} "Статус бронирования обновлен"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверные данные"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		404	{object}		map[string]interface{} "Бронирование не найдено"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/manager/bookings/:id/status [PATCH]
-func (h *Handler) UpdateBookingStatus(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// UpdateBookingStatus обновление статуса бронирования.
+//
+//	@Summary		Обновить статус брони
+//	@Description	Меняет статус бронирования (например, подтверждено, отменено).
+//	@Tags			Manager
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID бронирования"
+//	@Param			request	body		UpdateStatusRequest			true	"Новый статус"
+//	@Success		200		{object}	response.SuccessResponse	"Статус обновлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Бронирование не найдено"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка на сервере"
+//	@Router			/manager/bookings/{id}/status [patch]
+func (h *Handler) UpdateBookingStatus(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 
-	bookingID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	bookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid booking ID")
 		return
 	}
 
 	var req UpdateStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
 
-	// ownership check
-	_, err = h.bookingRepo.GetBookingForManager(c.Request.Context(), ownerID, bookingID)
-	if err != nil {
-		response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
+	if _, err = h.bookingRepo.GetBookingForManager(r.Context(), ownerID, bookingID); err != nil {
+		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Booking not found or access denied")
 		return
 	}
 
-	if err := h.bookingRepo.UpdateStatus(c.Request.Context(), bookingID, req.Status); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
+	if err := h.bookingRepo.UpdateStatus(r.Context(), bookingID, req.Status); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Status updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Status updated"})
 }
 
-// GetClients получает список клиентов студий владельца.
-// @Summary		Получить список клиентов
-// @Description	Выводит список всех клиентов, которые бронировали студии владельца, с возможностью поиска по имени.
-// @Tags		Менеджер - Отношения с клиентами
-// @Security	BearerAuth
-// @Param		search	query	string	false	"Поиск по имени клиента"
-// @Param		page	query	int	false	"Номер страницы"
-// @Param		per_page	query	int	false	"Количество клиентов на странице (макс 100)"
-// @Success		200	{object}		map[string]interface{} "Список клиентов с пагинацией"
-// @Failure		400	{object}		map[string]interface{} "Ошибка в параметрах"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/manager/clients [GET]
-func (h *Handler) GetClients(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	search := c.Query("search")
+// GetClients получение списка клиентов менеджера (владельца).
+//
+//	@Summary		Список клиентов
+//	@Description	Возвращает список клиентов с пагинацией и поиском по имени.
+//	@Tags			Manager
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			search		query		string							false	"Поиск по имени"
+//	@Param			page		query		int								false	"Номер страницы"
+//	@Param			per_page	query		int								false	"Клиентов на странице (макс 100)"
+//	@Success		200			{object}	swaggerManagerClientsResponse	"Список клиентов"
+//	@Failure		401			{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500			{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/manager/clients [get]
+func (h *Handler) GetClients(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	q := r.URL.Query()
+	search := q.Get("search")
 
 	page := 1
 	perPage := 20
 
-	if p := c.Query("page"); p != "" {
-		if v, err := strconv.Atoi(p); err == nil {
-			page = v
+	if v := q.Get("page"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			page = p
 		}
 	}
-	if pp := c.Query("per_page"); pp != "" {
-		if v, err := strconv.Atoi(pp); err == nil && v <= 100 {
-			perPage = v
+	if v := q.Get("per_page"); v != "" {
+		if pp, err := strconv.Atoi(v); err == nil && pp <= 100 {
+			perPage = pp
 		}
 	}
 
-	clients, total, err := h.ownerRepo.GetClients(c.Request.Context(), ownerID, search, page, perPage)
+	clients, total, err := h.ownerRepo.GetClients(r.Context(), ownerID, search, page, perPage)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
+	response.Success(w, http.StatusOK, response.H{
 		"clients":  clients,
 		"total":    total,
 		"page":     page,

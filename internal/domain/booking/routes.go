@@ -1,41 +1,42 @@
 package booking
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
-// OwnershipMiddleware для проверки прав владения студией
+// OwnershipMiddleware for chi — wraps the studio ownership check.
 type OwnershipMiddleware interface {
-	CheckStudioOwnership() gin.HandlerFunc
+	CheckStudioOwnership() func(http.Handler) http.Handler
 }
 
-// RegisterRoutes регистрирует все маршруты для бронирований
-func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
-	rg.POST("/bookings", h.CreateBooking)
+// RegisterRoutes registers all booking routes on a chi.Router that already has JWT auth applied.
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/bookings", h.CreateBooking)
 
-	// Availability endpoints
-	rg.GET("/rooms/:id/availability", h.GetRoomAvailability)
-	rg.GET("/rooms/:id/busy-slots", h.GetBusySlots)
+	// Availability endpoints (public info but under auth group)
+	r.Get("/rooms/{id}/availability", h.GetRoomAvailability)
+	r.Get("/rooms/{id}/busy-slots", h.GetBusySlots)
 
 	// User booking history
-	rg.GET("/users/me/bookings", h.GetMyBookings)
+	r.Get("/users/me/bookings", h.GetMyBookings)
 
 	// Booking lifecycle management
-	rg.PATCH("/bookings/:id/status", h.UpdateBookingStatus)
-	rg.PATCH("/bookings/:id/confirm", h.ConfirmBooking)
-	rg.PATCH("/bookings/:id/cancel", h.CancelBooking)
-	rg.PATCH("/bookings/:id/complete", h.CompleteBooking)
-	rg.PATCH("/bookings/:id/mark-paid", h.MarkBookingPaid)
+	r.Patch("/bookings/{id}/status", h.UpdateBookingStatus)
+	r.Patch("/bookings/{id}/confirm", h.ConfirmBooking)
+	r.Patch("/bookings/{id}/cancel", h.CancelBooking)
+	r.Patch("/bookings/{id}/complete", h.CompleteBooking)
+	r.Patch("/bookings/{id}/mark-paid", h.MarkBookingPaid)
 
 	// Deposit management
-	rg.PATCH("/bookings/:id/deposit", h.UpdateDeposit)
+	r.Patch("/bookings/{id}/deposit", h.UpdateDeposit)
 }
 
-// RegisterStudioRoutes регистрирует маршруты для владельцев студий
-func (h *Handler) RegisterStudioRoutes(r *gin.RouterGroup, ownershipChecker OwnershipMiddleware) {
-	// Owner-specific routes для управления бронированиями студий
-	studios := r.Group("/studios")
-	{
-		studios.GET("/:id/bookings", ownershipChecker.CheckStudioOwnership(), h.GetStudioBookings)
-	}
+// RegisterStudioRoutes registers owner-specific studio booking routes.
+func (h *Handler) RegisterStudioRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
+	r.Route("/studios/{id}/bookings", func(r chi.Router) {
+		r.Use(ownershipChecker.CheckStudioOwnership())
+		r.Get("", h.GetStudioBookings)
+	})
 }

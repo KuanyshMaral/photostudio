@@ -5,8 +5,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
+
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 // Handler handles HTTP requests for the chat domain
@@ -19,368 +22,511 @@ func NewHandler(service *Service, hub *Hub) *Handler {
 	return &Handler{service: service, hub: hub}
 }
 
+// swaggerRoomData is a wrapper strictly for generating Swagger documentation.
+type swaggerRoomData struct {
+	ID          string `json:"id"`
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	CreatorID   *int64 `json:"creator_id"`
+	CreatedAt   string `json:"created_at"`
+	UnreadCount int    `json:"unread_count,omitempty"`
+	MemberCount int    `json:"member_count,omitempty"`
+}
+
+// swaggerRoomResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerRoomResponse struct {
+	Success bool            `json:"success"`
+	Data    swaggerRoomData `json:"data"`
+}
+
+// swaggerListRoomsResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerListRoomsResponse struct {
+	Success bool              `json:"success"`
+	Data    []swaggerRoomData `json:"data"`
+}
+
+// swaggerMessageData is a wrapper strictly for generating Swagger documentation.
+type swaggerMessageData struct {
+	ID             string `json:"id"`
+	RoomID         string `json:"room_id"`
+	SenderID       int64  `json:"sender_id"`
+	Content        string `json:"content"`
+	IsRead         bool   `json:"is_read"`
+	CreatedAt      string `json:"created_at"`
+	UploadID       string `json:"upload_id,omitempty"`
+	AttachmentURL  string `json:"attachment_url,omitempty"`
+	AttachmentName string `json:"attachment_name,omitempty"`
+	AttachmentMime string `json:"attachment_mime,omitempty"`
+}
+
+// swaggerMessageResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerMessageResponse struct {
+	Success bool               `json:"success"`
+	Data    swaggerMessageData `json:"data"`
+}
+
+// swaggerListMessagesResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerListMessagesResponse struct {
+	Success bool                 `json:"success"`
+	Data    []swaggerMessageData `json:"data"`
+}
+
+// swaggerUnreadCountResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerUnreadCountResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		UnreadCount int `json:"unread_count"`
+	} `json:"data"`
+}
+
+// swaggerMemberData is a wrapper strictly for generating Swagger documentation.
+type swaggerMemberData struct {
+	UserID   int64  `json:"user_id"`
+	Role     string `json:"role"`
+	JoinedAt string `json:"joined_at"`
+}
+
+// swaggerListMembersResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerListMembersResponse struct {
+	Success bool                `json:"success"`
+	Data    []swaggerMemberData `json:"data"`
+}
+
 // ---- Room endpoints ----
 
-// CreateDirectRoom godoc
-// @Summary Start or get a 1-on-1 room
-// @Tags Chat
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param body body createDirectRequest true "Recipient"
-// @Success 201 {object} map[string]interface{}
-// @Router /chats/direct [post]
-func (h *Handler) CreateDirectRoom(c *gin.Context) {
-	userID := mustUserID(c)
+// CreateDirectRoom создание комнаты 1-на-1 (direct).
+//
+//	@Summary		Создать чат (direct)
+//	@Description	Создает или возвращает существующий личный чат с пользователем.
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		createDirectRequest		true	"ID получателя"
+//	@Success		201		{object}	swaggerRoomResponse		"Чат"
+//	@Failure		400		{object}	response.ErrorResponse	"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		403		{object}	response.ErrorResponse	"Пользователь заблокирован"
+//	@Failure		500		{object}	response.ErrorResponse	"Ошибка сервера"
+//	@Router			/chat/rooms/direct [post]
+func (h *Handler) CreateDirectRoom(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 	var req createDirectRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 		return
 	}
-	room, err := h.service.GetOrCreateDirectRoom(c.Request.Context(), userID, req.RecipientID)
+	room, err := h.service.GetOrCreateDirectRoom(r.Context(), userID, req.RecipientID)
 	if err != nil {
-		handleRoomError(c, err)
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"success": true, "data": roomResponse(room)})
+	response.JSON(w, http.StatusCreated, response.H{"success": true, "data": roomResponse(room)})
 }
 
-// CreateGroupRoom godoc
-// @Summary Create a group room
-// @Tags Chat
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param body body createGroupRequest true "Group details"
-// @Success 201 {object} map[string]interface{}
-// @Router /chats/group [post]
-func (h *Handler) CreateGroupRoom(c *gin.Context) {
-	userID := mustUserID(c)
+// CreateGroupRoom создание групповой комнаты.
+//
+//	@Summary		Создать чат (group)
+//	@Description	Создает групповой чат с названием и списком участников.
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		createGroupRequest		true	"Данные группы"
+//	@Success		201		{object}	swaggerRoomResponse		"Групповой чат"
+//	@Failure		400		{object}	response.ErrorResponse	"Ошибка входных данных"
+//	@Failure		401		{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse	"Ошибка сервера"
+//	@Router			/chat/rooms/group [post]
+func (h *Handler) CreateGroupRoom(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 	var req createGroupRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 		return
 	}
-	room, err := h.service.CreateGroupRoom(c.Request.Context(), userID, req.Name, req.MemberIDs)
+	room, err := h.service.CreateGroupRoom(r.Context(), userID, req.Name, req.MemberIDs)
 	if err != nil {
-		handleRoomError(c, err)
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"success": true, "data": roomResponse(room)})
+	response.JSON(w, http.StatusCreated, response.H{"success": true, "data": roomResponse(room)})
 }
 
-// ListRooms godoc
-// @Summary List my rooms
-// @Tags Chat
-// @Security BearerAuth
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Router /chats [get]
-func (h *Handler) ListRooms(c *gin.Context) {
-	userID := mustUserID(c)
+// ListRooms получение списка комнат пользователя.
+//
+//	@Summary		Список чатов
+//	@Description	Возвращает список всех чатов, в которых состоит пользователь.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerListRoomsResponse	"Список чатов"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms [get]
+func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	rooms, err := h.service.ListRooms(c.Request.Context(), userID)
+	rooms, err := h.service.ListRooms(r.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to list rooms"})
+		response.JSON(w, http.StatusInternalServerError, response.H{"success": false, "error": "failed to list rooms"})
 		return
 	}
-	items := make([]gin.H, 0, len(rooms))
-	for _, r := range rooms {
-		item := roomResponse(r.Room)
-		item["unread_count"] = r.UnreadCount
-		item["member_count"] = len(r.Members)
+	items := make([]response.H, 0, len(rooms))
+	for _, rm := range rooms {
+		item := roomResponse(rm.Room)
+		item["unread_count"] = rm.UnreadCount
+		item["member_count"] = len(rm.Members)
 		items = append(items, item)
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": items})
 }
 
 // ---- Message endpoints ----
 
-// GetMessages godoc
-// @Summary Get messages in a room
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Param limit query int false "Limit (default 50)"
-// @Param offset query int false "Offset"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/messages [get]
-func (h *Handler) GetMessages(c *gin.Context) {
-	userID := mustUserID(c)
+// GetMessages получение сообщений в комнате.
+//
+//	@Summary		Сообщения чата
+//	@Description	Возвращает список сообщений в чате (с пагинацией).
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string						true	"ID чата"
+//	@Param			limit	query		int							false	"Кол-во сообщений"
+//	@Param			offset	query		int							false	"Отступ"
+//	@Success		200		{object}	swaggerListMessagesResponse	"Список сообщений"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403		{object}	response.ErrorResponse		"Вы не являетесь участником чата"
+//	@Failure		404		{object}	response.ErrorResponse		"Чат не найден"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/messages [get]
+func (h *Handler) GetMessages(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	roomID := c.Param("id")
+	roomID := chi.URLParam(r, "id")
 	limit := 50
 	offset := 0
-	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 100 {
+	q := r.URL.Query()
+	if l, err := strconv.Atoi(q.Get("limit")); err == nil && l > 0 && l <= 100 {
 		limit = l
 	}
-	if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+	if o, err := strconv.Atoi(q.Get("offset")); err == nil && o >= 0 {
 		offset = o
 	}
-	msgs, err := h.service.GetMessages(c.Request.Context(), userID, roomID, limit, offset)
+	msgs, err := h.service.GetMessages(r.Context(), userID, roomID, limit, offset)
 	if err != nil {
-		handleRoomError(c, err)
+		handleRoomError(w, err)
 		return
 	}
-	items := make([]gin.H, 0, len(msgs))
+	items := make([]response.H, 0, len(msgs))
 	for _, m := range msgs {
 		items = append(items, messageResponse(m))
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": items})
 }
 
-// SendMessage godoc
-// @Summary Send a message
-// @Tags Chat
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param id path string true "Room ID"
-// @Param body body sendMessageRequest true "Message"
-// @Success 201 {object} map[string]interface{}
-// @Router /chats/{id}/messages [post]
-func (h *Handler) SendMessage(c *gin.Context) {
-	userID := mustUserID(c)
+// SendMessage отправка сообщения в комнату.
+//
+//	@Summary		Отправить сообщение
+//	@Description	Отправляет текстовое сообщение (с возможным вложением) в чат.
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string					true	"ID чата"
+//	@Param			request	body		sendMessageRequest		true	"Сообщение"
+//	@Success		201		{object}	swaggerMessageResponse	"Сообщение отправлено"
+//	@Failure		400		{object}	response.ErrorResponse	"Ошибка запроса"
+//	@Failure		401		{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		403		{object}	response.ErrorResponse	"Нет прав отправлять в этот чат (пользователь заблокирован или вы не участник)"
+//	@Failure		404		{object}	response.ErrorResponse	"Чат не найден"
+//	@Failure		500		{object}	response.ErrorResponse	"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/messages [post]
+func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	roomID := c.Param("id")
+	roomID := chi.URLParam(r, "id")
 	var req sendMessageRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 		return
 	}
-	msg, err := h.service.SendMessage(c.Request.Context(), userID, roomID, req.Content, req.UploadID)
+	msg, err := h.service.SendMessage(r.Context(), userID, roomID, req.Content, req.UploadID)
 	if err != nil {
-		handleRoomError(c, err)
+		handleRoomError(w, err)
 		return
 	}
 
-	// Broadcast via WebSocket
 	h.hub.BroadcastToRoom(roomID, &WSEvent{
 		Type:    EventNewMessage,
 		RoomID:  roomID,
 		Payload: messageResponse(msg),
 	})
 
-	c.JSON(http.StatusCreated, gin.H{"success": true, "data": messageResponse(msg)})
+	response.JSON(w, http.StatusCreated, response.H{"success": true, "data": messageResponse(msg)})
 }
 
-// MarkAsRead godoc
-// @Summary Mark room as read
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/read [post]
-func (h *Handler) MarkAsRead(c *gin.Context) {
-	userID := mustUserID(c)
+// MarkAsRead отметить сообщения как прочитанные.
+//
+//	@Summary		Отметить прочитанными
+//	@Description	Помечает все сообщения в указанном чате как прочитанные для текущего юзера.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string						true	"ID чата"
+//	@Success		200	{object}	response.SuccessResponse	"Отмечено"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403	{object}	response.ErrorResponse		"Не участник"
+//	@Failure		404	{object}	response.ErrorResponse		"Чат не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/read [post]
+func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	roomID := c.Param("id")
-	if err := h.service.MarkAsRead(c.Request.Context(), userID, roomID); err != nil {
-		handleRoomError(c, err)
+	roomID := chi.URLParam(r, "id")
+	if err := h.service.MarkAsRead(r.Context(), userID, roomID); err != nil {
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	response.JSON(w, http.StatusOK, response.H{"success": true})
 }
 
-// GetUnreadCount godoc
-// @Summary Total unread messages count
-// @Tags Chat
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/unread [get]
-func (h *Handler) GetUnreadCount(c *gin.Context) {
-	userID := mustUserID(c)
+// GetUnreadCount получение количества непрочитанных сообщений во всех чатах.
+//
+//	@Summary		Счетчик непрочитанных
+//	@Description	Возвращает общее количество непрочитанных сообщений текущего пользователя во всех чатах.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerUnreadCountResponse	"Кол-во"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/unread [get]
+func (h *Handler) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	count, _ := h.service.GetUnreadCount(c.Request.Context(), userID)
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"unread_count": count}})
+	count, _ := h.service.GetUnreadCount(r.Context(), userID)
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": response.H{"unread_count": count}})
 }
 
 // ---- Member management ----
 
-// GetMembers godoc
-// @Summary Get room members
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/members [get]
-func (h *Handler) GetMembers(c *gin.Context) {
-	userID := mustUserID(c)
+// GetMembers получить участников чата.
+//
+//	@Summary		Участники чата
+//	@Description	Возвращает список пользователей, состоящих в этом чате.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string						true	"ID чата"
+//	@Success		200	{object}	swaggerListMembersResponse	"Участники"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403	{object}	response.ErrorResponse		"Не участник"
+//	@Failure		404	{object}	response.ErrorResponse		"Чат не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/members [get]
+func (h *Handler) GetMembers(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	roomID := c.Param("id")
-	members, err := h.service.GetMembers(c.Request.Context(), userID, roomID)
+	roomID := chi.URLParam(r, "id")
+	members, err := h.service.GetMembers(r.Context(), userID, roomID)
 	if err != nil {
-		handleRoomError(c, err)
+		handleRoomError(w, err)
 		return
 	}
-	items := make([]gin.H, 0, len(members))
+	items := make([]response.H, 0, len(members))
 	for _, m := range members {
-		items = append(items, gin.H{
+		items = append(items, response.H{
 			"user_id":   m.UserID,
 			"role":      m.Role,
 			"joined_at": m.JoinedAt,
 		})
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": items})
 }
 
-// AddMember godoc
-// @Summary Add member to group room (admin only)
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Param body body addMemberRequest true "User to add"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/members [post]
-func (h *Handler) AddMember(c *gin.Context) {
-	roomID := c.Param("id")
+// AddMember добавить участника в групповой чат.
+//
+//	@Summary		Добавить участника
+//	@Description	Админ чата или глобальный админ добавляет пользователя.
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string						true	"ID чата"
+//	@Param			request	body		addMemberRequest			true	"Пользователь"
+//	@Success		200		{object}	response.SuccessResponse	"Добавлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка: не группа и тд"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403		{object}	response.ErrorResponse		"Нет прав (не админ)"
+//	@Failure		404		{object}	response.ErrorResponse		"Чат не найден"
+//	@Failure		409		{object}	response.ErrorResponse		"Уже участник"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/members [post]
+func (h *Handler) AddMember(w http.ResponseWriter, r *http.Request) {
+	roomID := chi.URLParam(r, "id")
 	var req addMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 		return
 	}
 
-	if isAdminToken, _ := c.Get("is_admin_token"); isAdminToken == true {
-		if err := h.service.AddMemberByPlatformAdmin(c.Request.Context(), roomID, req.UserID); err != nil {
-			handleRoomError(c, err)
+	if chicontext.IsAdminTokenFromCtx(r.Context()) {
+		if err := h.service.AddMemberByPlatformAdmin(r.Context(), roomID, req.UserID); err != nil {
+			handleRoomError(w, err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "member added"})
+		response.JSON(w, http.StatusOK, response.H{"success": true, "message": "member added"})
 		return
 	}
 
-	userID := mustUserID(c)
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-
-	if err := h.service.AddMember(c.Request.Context(), userID, roomID, req.UserID); err != nil {
-		handleRoomError(c, err)
+	if err := h.service.AddMember(r.Context(), userID, roomID, req.UserID); err != nil {
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "member added"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "member added"})
 }
 
-// RemoveMember godoc
-// @Summary Remove member from group room (admin only)
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Param user_id path int true "User ID to remove"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/members/{user_id} [delete]
-func (h *Handler) RemoveMember(c *gin.Context) {
-	roomID := c.Param("id")
-	targetID, err := strconv.ParseInt(c.Param("user_id"), 10, 64)
+// RemoveMember удалить участника из группового чата.
+//
+//	@Summary		Удалить участника
+//	@Description	Админ чата или платформы удаляет пользователя.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string						true	"ID чата"
+//	@Param			user_id	path		int							true	"ID пользователя"
+//	@Success		200		{object}	response.SuccessResponse	"Удален"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка запроса"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403		{object}	response.ErrorResponse		"Нет прав"
+//	@Failure		404		{object}	response.ErrorResponse		"Чат или участник не найден"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/members/{user_id} [delete]
+func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	roomID := chi.URLParam(r, "id")
+	targetID, err := strconv.ParseInt(chi.URLParam(r, "user_id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid user_id"})
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": "invalid user_id"})
 		return
 	}
 
-	if isAdminToken, _ := c.Get("is_admin_token"); isAdminToken == true {
-		if err := h.service.RemoveMemberByPlatformAdmin(c.Request.Context(), roomID, targetID); err != nil {
-			handleRoomError(c, err)
+	if chicontext.IsAdminTokenFromCtx(r.Context()) {
+		if err := h.service.RemoveMemberByPlatformAdmin(r.Context(), roomID, targetID); err != nil {
+			handleRoomError(w, err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "member removed"})
+		response.JSON(w, http.StatusOK, response.H{"success": true, "message": "member removed"})
 		return
 	}
 
-	userID := mustUserID(c)
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	if err := h.service.RemoveMember(c.Request.Context(), userID, roomID, targetID); err != nil {
-		handleRoomError(c, err)
+	if err := h.service.RemoveMember(r.Context(), userID, roomID, targetID); err != nil {
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "member removed"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "member removed"})
 }
 
-// LeaveRoom godoc
-// @Summary Leave a room
-// @Tags Chat
-// @Security BearerAuth
-// @Param id path string true "Room ID"
-// @Success 200 {object} map[string]interface{}
-// @Router /chats/{id}/leave [post]
-func (h *Handler) LeaveRoom(c *gin.Context) {
-	userID := mustUserID(c)
+// LeaveRoom покинуть чат.
+//
+//	@Summary		Покинуть чат
+//	@Description	Текущий пользователь добровольно выходит из группового чата.
+//	@Tags			Chat
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string						true	"ID чата"
+//	@Success		200	{object}	response.SuccessResponse	"Вышел"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		403	{object}	response.ErrorResponse		"Не в чате"
+//	@Failure		404	{object}	response.ErrorResponse		"Чат не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/chat/rooms/{id}/leave [post]
+func (h *Handler) LeaveRoom(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
-	roomID := c.Param("id")
-	if err := h.service.RemoveMember(c.Request.Context(), userID, roomID, userID); err != nil {
-		handleRoomError(c, err)
+	roomID := chi.URLParam(r, "id")
+	if err := h.service.RemoveMember(r.Context(), userID, roomID, userID); err != nil {
+		handleRoomError(w, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "message": "left room"})
+	response.JSON(w, http.StatusOK, response.H{"success": true, "message": "left room"})
 }
 
 // ---- WebSocket ----
 
-// WebSocket godoc
-// @Summary Connect to WebSocket for real-time chat
-// @Tags Chat
-// @Security BearerAuth
-// @Param token query string false "JWT access token for browser WebSocket clients (alternative to Authorization header)"
-// @Success 101 {string} string "Switching Protocols"
-// @Failure 400 {object} map[string]interface{} "Invalid WebSocket handshake"
-// @Failure 426 {object} map[string]interface{} "Upgrade Required"
-// @Router /chats/ws [get]
-func (h *Handler) WebSocket(c *gin.Context) {
-	userID := mustUserID(c)
+func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 		return
 	}
 
-	if !websocket.IsWebSocketUpgrade(c.Request) {
-		c.JSON(http.StatusUpgradeRequired, gin.H{
+	if !websocket.IsWebSocketUpgrade(r) {
+		response.JSON(w, http.StatusUpgradeRequired, response.H{
 			"success": false,
-			"error":   "websocket upgrade required; use ws:// or wss:// client (Swagger 'Execute' and plain HTTP GET are not supported for this endpoint)",
+			"error":   "websocket upgrade required",
 		})
 		return
 	}
 
-	if strings.TrimSpace(c.GetHeader("Sec-WebSocket-Key")) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if strings.TrimSpace(r.Header.Get("Sec-WebSocket-Key")) == "" {
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
 			"error":   "invalid websocket handshake: missing Sec-WebSocket-Key",
 		})
 		return
 	}
 
-	// Upgrade HTTP connection
-	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "failed to upgrade connection"})
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": "failed to upgrade connection"})
 		return
 	}
 
-	// Auto-subscribe: Fetch user's current rooms
-	rooms, err := h.service.ListRooms(c.Request.Context(), userID)
+	rooms, err := h.service.ListRooms(r.Context(), userID)
 	var roomIDs []string
 	if err == nil {
-		for _, r := range rooms {
-			roomIDs = append(roomIDs, r.ID)
+		for _, rm := range rooms {
+			roomIDs = append(roomIDs, rm.ID)
 		}
 	}
 
@@ -389,7 +535,7 @@ func (h *Handler) WebSocket(c *gin.Context) {
 
 // ---- Helpers ----
 
-func roomResponse(r *Room) gin.H {
+func roomResponse(r *Room) response.H {
 	name := ""
 	if r.Name.Valid {
 		name = r.Name.String
@@ -398,7 +544,7 @@ func roomResponse(r *Room) gin.H {
 	if r.CreatorID.Valid {
 		creatorID = &r.CreatorID.Int64
 	}
-	return gin.H{
+	return response.H{
 		"id":         r.ID,
 		"type":       r.Type,
 		"name":       name,
@@ -407,8 +553,8 @@ func roomResponse(r *Room) gin.H {
 	}
 }
 
-func messageResponse(m *Message) gin.H {
-	resp := gin.H{
+func messageResponse(m *Message) response.H {
+	resp := response.H{
 		"id":         m.ID,
 		"room_id":    m.RoomID,
 		"sender_id":  m.SenderID,
@@ -425,57 +571,41 @@ func messageResponse(m *Message) gin.H {
 	return resp
 }
 
-func handleRoomError(c *gin.Context, err error) {
+func handleRoomError(w http.ResponseWriter, err error) {
 	switch err {
 	case ErrRoomNotFound:
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusNotFound, response.H{"success": false, "error": err.Error()})
 	case ErrNotRoomMember:
-		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusForbidden, response.H{"success": false, "error": err.Error()})
 	case ErrNotRoomAdmin:
-		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusForbidden, response.H{"success": false, "error": err.Error()})
 	case ErrAlreadyMember:
-		c.JSON(http.StatusConflict, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusConflict, response.H{"success": false, "error": err.Error()})
 	case ErrCannotChatSelf:
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 	case ErrUserBlocked:
-		c.JSON(http.StatusForbidden, gin.H{"success": false, "error": err.Error()})
+		response.JSON(w, http.StatusForbidden, response.H{"success": false, "error": err.Error()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "internal error"})
+		response.JSON(w, http.StatusInternalServerError, response.H{"success": false, "error": "internal error"})
 	}
-}
-
-func mustUserID(c *gin.Context) int64 {
-	id, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "unauthorized"})
-		return 0
-	}
-	switch v := id.(type) {
-	case int64:
-		return v
-	case float64:
-		return int64(v)
-	}
-	c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "invalid user id"})
-	return 0
 }
 
 // ---- Request types ----
 
 type createDirectRequest struct {
-	RecipientID int64 `json:"recipient_id" binding:"required"`
+	RecipientID int64 `json:"recipient_id"`
 }
 
 type createGroupRequest struct {
-	Name      string  `json:"name" binding:"required"`
+	Name      string  `json:"name"`
 	MemberIDs []int64 `json:"member_ids"`
 }
 
 type sendMessageRequest struct {
 	Content  string  `json:"content"`
-	UploadID *string `json:"upload_id"` // optional
+	UploadID *string `json:"upload_id"`
 }
 
 type addMemberRequest struct {
-	UserID int64 `json:"user_id" binding:"required"`
+	UserID int64 `json:"user_id"`
 }

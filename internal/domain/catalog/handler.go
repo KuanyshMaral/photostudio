@@ -4,18 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"photostudio/internal/domain/attachment"
-	"photostudio/internal/domain/auth"
-	"photostudio/internal/pkg/response"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"gorm.io/gorm"
+
+	"photostudio/internal/domain/attachment"
+	"photostudio/internal/domain/auth"
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 type Handler struct {
@@ -24,95 +27,91 @@ type Handler struct {
 	attachmentSvc *attachment.Service
 }
 
-func NewHandler(
-	service *Service,
-	userRepo *auth.UserRepository,
-	attachmentSvc *attachment.Service,
-) *Handler {
-	return &Handler{
-		service:       service,
-		userRepo:      userRepo,
-		attachmentSvc: attachmentSvc,
-	}
+func NewHandler(service *Service, userRepo *auth.UserRepository, attachmentSvc *attachment.Service) *Handler {
+	return &Handler{service: service, userRepo: userRepo, attachmentSvc: attachmentSvc}
 }
 
 /* ---------- STUDIO HANDLERS ---------- */
 
-// GetStudios получение списка студий с фильтрацией и поиском
-// @Summary Получить список студий
-// @Description Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.
-// @Tags Catalog - Студии
-// @Accept json
-// @Produce json
-// @Param city query string false "Фильтр по городу" example("Moscow")
-// @Param room_type query string false "Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)" example("Fashion")
-// @Param search query string false "Поиск по названию студии" example("My Studio")
-// @Param min_price query number false "Минимальная цена в час" example(100)
-// @Param max_price query number false "Максимальная цена в час" example(1000)
-// @Param sort_by query string false "Поле для сортировки (rating, price, created_at)" example("rating")
-// @Param sort_order query string false "Порядок сортировки (asc, desc)" example("desc")
-// @Param page query integer false "Номер страницы" example(1)
-// @Param limit query integer false "Количество студий на странице (максимум 100)" example(20)
-// @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий и информацией о пагинации"
-// @Failure 400 {object} map[string]interface{} "Некорректные параметры запроса"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios [get]
-func (h *Handler) GetStudios(c *gin.Context) {
+// GetStudios
+//
+//	@Summary		List studios
+//	@Description	Get a list of studios with filtering and pagination
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			city		query		string	false	"City name"
+//	@Param			room_type	query		string	false	"Room type"
+//	@Param			search		query		string	false	"Search by name"
+//	@Param			sort_by		query		string	false	"Sort field (rating, price)"	default(rating)
+//	@Param			sort_order	query		string	false	"Sort order (asc, desc)"		default(desc)
+//	@Param			min_price	query		number	false	"Minimum price"
+//	@Param			max_price	query		number	false	"Maximum price"
+//	@Param			limit		query		int		false	"Limit"	default(20)
+//	@Param			page		query		int		false	"Page"	default(1)
+//	@Success		200			{object}	map[string]interface{}
+//	@Failure		400			{object}	map[string]interface{}
+//	@Failure		500			{object}	map[string]interface{}
+//	@Router			/studios [get]
+func (h *Handler) GetStudios(w http.ResponseWriter, r *http.Request) {
 	var f StudioFilters
 
-	// Parse query parameters
-	f.City = c.Query("city")
-	f.RoomType = c.Query("room_type")
-	// Search + sorting
-	f.Search = c.Query("search")
-	f.SortBy = c.DefaultQuery("sort_by", "rating")
-	f.SortOrder = c.DefaultQuery("sort_order", "desc")
+	q := r.URL.Query()
+	f.City = q.Get("city")
+	f.RoomType = q.Get("room_type")
+	f.Search = q.Get("search")
+	f.SortBy = q.Get("sort_by")
+	if f.SortBy == "" {
+		f.SortBy = "rating"
+	}
+	f.SortOrder = q.Get("sort_order")
+	if f.SortOrder == "" {
+		f.SortOrder = "desc"
+	}
 
-	if minPrice := c.Query("min_price"); minPrice != "" {
+	if minPrice := q.Get("min_price"); minPrice != "" {
 		if val, err := strconv.ParseFloat(minPrice, 64); err == nil {
 			f.MinPrice = val
 		}
 	}
-
-	if maxPrice := c.Query("max_price"); maxPrice != "" {
+	if maxPrice := q.Get("max_price"); maxPrice != "" {
 		if val, err := strconv.ParseFloat(maxPrice, 64); err == nil {
 			f.MaxPrice = val
 		}
 	}
 
-	// Pagination
-	f.Limit = 20 // default
-	if limit := c.Query("limit"); limit != "" {
+	f.Limit = 20
+	if limit := q.Get("limit"); limit != "" {
 		if val, err := strconv.Atoi(limit); err == nil && val > 0 && val <= 100 {
 			f.Limit = val
 		}
 	}
 
 	f.Offset = 0
-	if page := c.Query("page"); page != "" {
+	if page := q.Get("page"); page != "" {
 		if val, err := strconv.Atoi(page); err == nil && val > 0 {
 			f.Offset = (val - 1) * f.Limit
 		}
 	}
 
-	studios, total, err := h.service.studioRepo.GetAll(c.Request.Context(), f)
+	studios, total, err := h.service.studioRepo.GetAll(r.Context(), f)
 	if err != nil {
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
 	for i := range studios {
-		h.enrichStudioWithAttachments(c.Request.Context(), &studios[i])
+		h.enrichStudioWithAttachments(r.Context(), &studios[i])
 	}
 
 	totalPages := (int(total) + f.Limit - 1) / f.Limit
 	currentPage := (f.Offset / f.Limit) + 1
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
+		"data": response.H{
 			"studios": studios,
-			"pagination": gin.H{
+			"pagination": response.H{
 				"page":        currentPage,
 				"limit":       f.Limit,
 				"total":       total,
@@ -122,88 +121,81 @@ func (h *Handler) GetStudios(c *gin.Context) {
 	})
 }
 
-// GetStudioByID получение информации о студии по ID
-// @Summary Получить студию по ID
-// @Description Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.
-// @Tags Catalog - Студии
-// @Accept json
-// @Produce json
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о студии"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
-// @Failure 404 {object} map[string]interface{} "Студия не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id} [get]
-func (h *Handler) GetStudioByID(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// GetStudioByID
+//
+//	@Summary		Get studio by ID
+//	@Description	Get detailed information about a specific studio
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Studio ID"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/studios/{id} [get]
+func (h *Handler) GetStudioByID(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_ID",
-				"message": "Invalid studio ID",
-			},
+			"error":   response.H{"code": "INVALID_ID", "message": "Invalid studio ID"},
 		})
 		return
 	}
 
-	studio, err := h.service.studioRepo.GetByID(c.Request.Context(), studioID)
+	studio, err := h.service.studioRepo.GetByID(r.Context(), studioID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
+			response.JSON(w, http.StatusNotFound, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Studio not found",
-				},
+				"error":   response.H{"code": "NOT_FOUND", "message": "Studio not found"},
 			})
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	h.enrichStudioWithAttachments(c.Request.Context(), studio)
+	h.enrichStudioWithAttachments(r.Context(), studio)
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
-			"studio": studio,
-		},
+		"data":    response.H{"studio": studio},
 	})
 }
 
-// GetStudioWorkingHours получение часов работы студии (устаревший формат)
-// @Summary Получить часы работы студии (v1)
-// @Description Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.
-// @Tags Catalog - Часы работы
-// @Accept json
-// @Produce json
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Success 200 {object} map[string]interface{} "Успешный ответ с часами работы и статусом"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
-// @Failure 404 {object} map[string]interface{} "Студия не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Deprecated
-// @Router /studios/{id}/working-hours [get]
-func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// GetStudioWorkingHours
+//
+//	@Summary		Get studio working hours (Legacy)
+//	@Description	Get today's working hours for a studio
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Studio ID"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/studios/{id}/working-hours [get]
+func (h *Handler) GetStudioWorkingHours(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
 		return
 	}
 
-	status, err := h.service.GetStudioWorkingStatus(c.Request.Context(), studioID)
+	status, err := h.service.GetStudioWorkingStatus(r.Context(), studioID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Studio not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
+	response.Success(w, http.StatusOK, response.H{
 		"is_open":       status.IsOpen,
 		"message":       status.Message,
 		"open_time":     status.OpenTime,
@@ -212,493 +204,411 @@ func (h *Handler) GetStudioWorkingHours(c *gin.Context) {
 	})
 }
 
-// GetStudioWorkingHoursV2 получение часов работы студии с текущим статусом
-// @Summary Получить часы работы студии (v2)
-// @Description Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.
-// @Tags Catalog - Часы работы
-// @Accept json
-// @Produce json
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о часах работы и текущем статусе"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
-// @Failure 404 {object} map[string]interface{} "Студия не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id}/working-hours/v2 [get]
-func (h *Handler) GetStudioWorkingHoursV2(c *gin.Context) {
-	studioIDStr := c.Param("id")
-	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
+// GetStudioWorkingHoursV2
+//
+//	@Summary		Get studio full working hours
+//	@Description	Get comprehensive 7-day schedule for a studio
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Studio ID"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/studios/{id}/working-hours/v2 [get]
+func (h *Handler) GetStudioWorkingHoursV2(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
 		return
 	}
 
-	hoursResponse, err := h.service.GetStudioWorkingHours(c.Request.Context(), studioID)
+	hoursResponse, err := h.service.GetStudioWorkingHours(r.Context(), studioID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Studio not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Studio not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, hoursResponse)
+	response.Success(w, http.StatusOK, hoursResponse)
 }
 
-// UpdateStudioWorkingHours обновление часов работы студии
-// @Summary Обновить часы работы студии
-// @Description Обновляет расписание работы студии. Требует аутентификации. Только владелец студии может обновлять её часы работы. Принимает массив объектов с информацией о рабочих днях и часах.
-// @Tags Catalog - Часы работы
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Param body body array true "Массив объектов WorkingHours с расписанием работы по дням недели"
-// @Success 200 {object} map[string]interface{} "Успешное обновление часов работы"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id}/working-hours [put]
-func (h *Handler) UpdateStudioWorkingHours(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// UpdateStudioWorkingHours
+//
+//	@Summary		Update studio working hours
+//	@Description	Set the 7-day schedule for a studio (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int				true	"Studio ID"
+//	@Param			hours	body		[]WorkingHours	true	"Working hours schedule"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios/{id}/working-hours [put]
+func (h *Handler) UpdateStudioWorkingHours(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
 		return
 	}
 
 	var hours []WorkingHours
-	if err := c.ShouldBindJSON(&hours); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "VALIDATION_ERROR", err)
+	if err := response.BindJSON(r, &hours); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", err)
 		return
 	}
 
-	userID := c.GetInt64("user_id")
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
-	err = h.service.UpdateStudioWorkingHours(c.Request.Context(), userID, studioID, hours)
-	if err != nil {
+	if err = h.service.UpdateStudioWorkingHours(r.Context(), userID, studioID, hours); err != nil {
 		if errors.Is(err, ErrForbidden) {
-			response.CustomError(c, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "You don't own this studio")
 			return
 		}
-		response.CustomError(c, http.StatusBadRequest, "UPDATE_ERROR", err)
+		response.CustomError(w, r, http.StatusBadRequest, "UPDATE_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"message": "Working hours updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Working hours updated"})
 }
 
-// GetMyStudios получение всех студий текущего владельца
-// @Summary Получить мои студии
-// @Description Получает список всех студий, принадлежащих текущему авторизованному владельцу студии. Требует валидного JWT токена в заголовке Authorization.
-// @Tags Catalog - Студии
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "Успешный ответ со списком студий владельца"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/my [get]
-func (h *Handler) GetMyStudios(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// GetMyStudios
+//
+//	@Summary		Get my studios
+//	@Description	Get a list of studios owned by the authenticated user
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios/my [get]
+func (h *Handler) GetMyStudios(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
 
-	studios, err := h.service.GetStudiosByOwner(c.Request.Context(), userID)
+	studios, err := h.service.GetStudiosByOwner(r.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get studios")
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", "Failed to get studios")
 		return
 	}
 
 	for i := range studios {
-		h.enrichStudioWithAttachments(c.Request.Context(), &studios[i])
+		h.enrichStudioWithAttachments(r.Context(), &studios[i])
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"studios": studios})
+	response.Success(w, http.StatusOK, response.H{"studios": studios})
 }
 
-// CreateStudio создание новой студии
-// @Summary Создать новую студию
-// @Description Создает новую студию в каталоге. Требует аутентификации и верификации пользователя как владельца студии. Пользователь должен иметь роль студии-владельца и пройти верификацию.
-// @Tags Catalog - Студии
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param body body CreateStudioRequest true "Данные для создания студии (название, описание, адрес, город, цена и т.д.)"
-// @Success 201 {object} map[string]interface{} "Студия успешно создана, возвращает объект созданной студии"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 403 {object} map[string]interface{} "Пользователь не является верифицированным владельцем студии"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios [post]
-func (h *Handler) CreateStudio(c *gin.Context) {
+// CreateStudio
+//
+//	@Summary		Create studio
+//	@Description	Create a new studio (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		CreateStudioRequest	true	"Studio details"
+//	@Success		201		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios [post]
+func (h *Handler) CreateStudio(w http.ResponseWriter, r *http.Request) {
 	var req CreateStudioRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request body",
-				"details": err.Error(),
-			},
+			"error":   response.H{"code": "INVALID_REQUEST", "message": "Invalid request body", "details": err.Error()},
 		})
 		return
 	}
 
-	// Get user_id and role from context (set by auth middleware)
-	userID := c.GetInt64("user_id")
-	//role = c.GetString("role")
-
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		response.JSON(w, http.StatusUnauthorized, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "UNAUTHORIZED",
-				"message": "User not authenticated",
-			},
+			"error":   response.H{"code": "UNAUTHORIZED", "message": "User not authenticated"},
 		})
 		return
 	}
 
-	// Create minimal user object for service
-	userObj, err := h.userRepo.GetByID(c.Request.Context(), userID)
+	userObj, err := h.userRepo.GetByID(r.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		response.JSON(w, http.StatusInternalServerError, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INTERNAL_ERROR",
-				"message": "Failed to load user",
-			},
+			"error":   response.H{"code": "INTERNAL_ERROR", "message": "Failed to load user"},
 		})
 		return
 	}
 
-	studio, err := h.service.CreateStudio(c.Request.Context(), userObj, req)
+	studio, err := h.service.CreateStudio(r.Context(), userObj, req)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
-			response.Forbidden(c, "Only verified studio owners can create studios")
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "Only verified studio owners can create studios")
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	// Attach any uploaded files to the new studio gallery
 	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
 		if attached, attachErr := h.attachmentSvc.Attach(
-			c.Request.Context(),
-			req.UploadIDs,
-			userID,
-			attachment.TargetStudioGallery,
-			studio.ID,
-			attachment.Metadata{},
-		); attachErr != nil {
-			// Non-fatal: studio was created, just log + skip gallery
-			_ = c.Error(attachErr)
-		} else {
-			studio.Attachments = make([]AttachmentURL, len(attached))
-			for i, a := range attached {
-				studio.Attachments[i] = AttachmentURL{
-					ID: a.ID, URL: a.URL,
-					OriginalName: a.OriginalName, MimeType: a.MimeType,
-					SortOrder: a.SortOrder,
-				}
-			}
+			r.Context(), req.UploadIDs, userID,
+			attachment.TargetStudioGallery, studio.ID, attachment.Metadata{},
+		); attachErr == nil {
+			studio.Attachments = toAttachmentURLs(attached)
 		}
 	} else {
-		h.enrichStudioWithAttachments(c.Request.Context(), studio)
+		h.enrichStudioWithAttachments(r.Context(), studio)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.JSON(w, http.StatusCreated, response.H{
 		"success": true,
-		"data": gin.H{
-			"studio": studio,
-		},
+		"data":    response.H{"studio": studio},
 		"message": "Studio created successfully",
 	})
 }
 
-// UpdateStudio обновление информации о студии
-// @Summary Обновить студию
-// @Description Обновляет информацию о студии (названия, описание, адрес, город, цена в час и другие параметры). Требует аутентификации. Только владелец студии может её обновлять.
-// @Tags Catalog - Студии
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Param body body UpdateStudioRequest true "Данные для обновления студии"
-// @Success 200 {object} map[string]interface{} "Студия успешно обновлена, возвращает обновленный объект"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 403 {object} map[string]interface{} "Недостаточно прав для обновления этой студии"
-// @Failure 404 {object} map[string]interface{} "Студия не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id} [put]
-func (h *Handler) UpdateStudio(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// UpdateStudio
+//
+//	@Summary		Update studio
+//	@Description	Update an existing studio's details (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Studio ID"
+//	@Param			request	body		UpdateStudioRequest	true	"Studio details"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		404		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios/{id} [put]
+func (h *Handler) UpdateStudio(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_ID",
-				"message": "Invalid studio ID",
-			},
+			"error":   response.H{"code": "INVALID_ID", "message": "Invalid studio ID"},
 		})
 		return
 	}
 
 	var req UpdateStudioRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request body",
-				"details": err.Error(),
-			},
+			"error":   response.H{"code": "INVALID_REQUEST", "message": "Invalid request body", "details": err.Error()},
 		})
 		return
 	}
 
-	userID := c.GetInt64("user_id")
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		response.JSON(w, http.StatusUnauthorized, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "UNAUTHORIZED",
-				"message": "User not authenticated",
-			},
+			"error":   response.H{"code": "UNAUTHORIZED", "message": "User not authenticated"},
 		})
 		return
 	}
 
-	studio, err := h.service.UpdateStudio(c.Request.Context(), userID, studioID, req)
+	studio, err := h.service.UpdateStudio(r.Context(), userID, studioID, req)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
-			response.Forbidden(c, "You don't have permission to update this studio")
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "You don't have permission to update this studio")
 			return
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.NotFound(c, "Studio not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Studio not found")
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	// Attach any new uploaded files (appends to existing gallery)
 	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
 		if attached, attachErr := h.attachmentSvc.Attach(
-			c.Request.Context(),
-			req.UploadIDs,
-			userID,
-			attachment.TargetStudioGallery,
-			studio.ID,
-			attachment.Metadata{},
-		); attachErr != nil {
-			_ = c.Error(attachErr)
-		} else {
-			studio.Attachments = make([]AttachmentURL, len(attached))
-			for i, a := range attached {
-				studio.Attachments[i] = AttachmentURL{
-					ID: a.ID, URL: a.URL,
-					OriginalName: a.OriginalName, MimeType: a.MimeType,
-					SortOrder: a.SortOrder,
-				}
-			}
+			r.Context(), req.UploadIDs, userID,
+			attachment.TargetStudioGallery, studio.ID, attachment.Metadata{},
+		); attachErr == nil {
+			studio.Attachments = toAttachmentURLs(attached)
 		}
 	} else {
-		h.enrichStudioWithAttachments(c.Request.Context(), studio)
+		h.enrichStudioWithAttachments(r.Context(), studio)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
-			"studio": studio,
-		},
+		"data":    response.H{"studio": studio},
 		"message": "Studio updated successfully",
 	})
 }
 
-// UpdateRoom обновление информации о комнате
-// @Summary Обновить комнату
-// @Description Обновляет информацию о комнате в студии (названия, тип комнаты, описание и другие параметры). Требует аутентификации.
-// @Tags Catalog - Комнаты
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
-// @Param body body UpdateRoomRequest true "Данные для обновления комнаты"
-// @Success 200 {object} map[string]interface{} "Комната успешно обновлена"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса или тип комнаты"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/rooms/{id} [put]
-func (h *Handler) UpdateRoom(c *gin.Context) {
-	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+/* ---------- ROOM HANDLERS ---------- */
+
+// UpdateRoom
+//
+//	@Summary		Update room
+//	@Description	Update an existing room's details (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Room ID"
+//	@Param			request	body		UpdateRoomRequest	true	"Room details"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		404		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/rooms/{id} [put]
+func (h *Handler) UpdateRoom(w http.ResponseWriter, r *http.Request) {
+	roomID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
 		return
 	}
 
 	var req UpdateRoomRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
 
-	room, err := h.service.UpdateRoom(c.Request.Context(), roomID, req)
+	room, err := h.service.UpdateRoom(r.Context(), roomID, req)
 	if err != nil {
 		if errors.Is(err, ErrInvalidRoomType) {
-			response.CustomError(c, http.StatusBadRequest, "INVALID_ROOM_TYPE", err)
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_ROOM_TYPE", err)
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	// Attach any new uploaded files (appends to room gallery)
-	userID := c.GetInt64("user_id")
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil && userID != 0 {
 		if attached, attachErr := h.attachmentSvc.Attach(
-			c.Request.Context(),
-			req.UploadIDs,
-			userID,
-			attachment.TargetRoomGallery,
-			room.ID,
-			attachment.Metadata{},
-		); attachErr != nil {
-			_ = c.Error(attachErr)
-		} else {
-			room.Attachments = make([]AttachmentURL, len(attached))
-			for i, a := range attached {
-				room.Attachments[i] = AttachmentURL{
-					ID: a.ID, URL: a.URL,
-					OriginalName: a.OriginalName, MimeType: a.MimeType,
-					SortOrder: a.SortOrder,
-				}
-			}
+			r.Context(), req.UploadIDs, userID,
+			attachment.TargetRoomGallery, room.ID, attachment.Metadata{},
+		); attachErr == nil {
+			room.Attachments = toAttachmentURLs(attached)
 		}
 	} else {
-		h.enrichRoomWithAttachments(c.Request.Context(), room)
+		h.enrichRoomWithAttachments(r.Context(), room)
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"room": room})
+	response.Success(w, http.StatusOK, response.H{"room": room})
 }
 
-// DeleteRoom удаление комнаты из студии
-// @Summary Удалить комнату
-// @Description Удаляет комнату из студии. Требует аутентификации. Только владелец студии может удалять комнаты.
-// @Tags Catalog - Комнаты
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
-// @Success 200 {object} map[string]interface{} "Комната успешно удалена"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/rooms/{id} [delete]
-func (h *Handler) DeleteRoom(c *gin.Context) {
-	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// DeleteRoom
+//
+//	@Summary		Delete room
+//	@Description	Delete a room by ID (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Room ID"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		401	{object}	map[string]interface{}
+//	@Failure		403	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/rooms/{id} [delete]
+func (h *Handler) DeleteRoom(w http.ResponseWriter, r *http.Request) {
+	roomID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid room ID")
 		return
 	}
 
-	if err := h.service.DeleteRoom(c.Request.Context(), roomID); err != nil {
-		handleError(c, err)
+	if err := h.service.DeleteRoom(r.Context(), roomID); err != nil {
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"deleted": true})
+	response.Success(w, http.StatusOK, response.H{"deleted": true})
 }
 
 /* ---------- PHOTO HANDLERS ---------- */
 
-// UploadStudioPhotos загрузка фотографий студии
-// @Summary Загрузить фотографии студии
-// @Description Загружает фотографии студии. Поддерживает загрузку до 10 файлов одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла: 5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.
-// @Tags Catalog - Фотографии
-// @Accept multipart/form-data
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Param photos formData []file true "Файлы изображений для загрузки (до 10 файлов)" CollectionFormat(multi)
-// @Success 200 {object} map[string]interface{} "Фотографии успешно загружены, возвращает список URL загруженных файлов"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса, файл слишком большой или недопустимый формат"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id}/photos [post]
-func (h *Handler) UploadStudioPhotos(c *gin.Context) {
-	// 1. Extract studio ID from URL param
-	studioIDStr := c.Param("id")
-	studioID, err := strconv.ParseInt(studioIDStr, 10, 64)
+// UploadStudioPhotos
+//
+//	@Summary		Upload studio photos
+//	@Description	Upload multiple photos for a studio (Legacy)
+//	@Tags			Catalog
+//	@Accept			multipart/form-data
+//	@Produce		json
+//	@Param			id		path		int		true	"Studio ID"
+//	@Param			photos	formData	file	true	"Photos to upload (max 10 allowed, jpeg/png/webp, ≤5MB each)"
+//	@Success		200		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios/{id}/photos [post]
+func (h *Handler) UploadStudioPhotos(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid studio ID")
 		return
 	}
 
-	// 2. Get userID from context (set by JWT middleware)
-	v, ok := c.Get("user_id")
-	if !ok {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Missing user_id in context")
+	userID := chicontext.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Missing user_id in context")
 		return
 	}
 
-	var userID int64
-	switch t := v.(type) {
-	case int64:
-		userID = t
-	case int:
-		userID = int64(t)
-	case float64:
-		userID = int64(t)
-	default:
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user_id type in context")
+	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_FORM", "Invalid multipart form")
 		return
 	}
 
-	// 3. Parse multipart form
-	form, err := c.MultipartForm()
-	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_FORM", "Invalid multipart form")
-		return
-	}
-
-	files := form.File["photos"]
+	files := r.MultipartForm.File["photos"]
 	if len(files) == 0 {
-		response.CustomError(c, http.StatusBadRequest, "NO_FILES", "No files provided")
+		response.CustomError(w, r, http.StatusBadRequest, "NO_FILES", "No files provided")
 		return
 	}
-
-	// Cut request to max 10 files (final limit is enforced in service too)
 	if len(files) > 10 {
 		files = files[:10]
 	}
 
-	// 4. Create upload dir
 	uploadDir := fmt.Sprintf("./uploads/studios/%d", studioID)
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPLOAD_DIR_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "UPLOAD_DIR_ERROR", err)
 		return
 	}
 
 	var uploadedURLs []string
-	for _, file := range files {
-		// size limit 5MB
-		if file.Size > 5*1024*1024 {
+	for _, fh := range files {
+		if fh.Size > 5*1024*1024 {
 			continue
 		}
-
-		// extension whitelist: jpg, png, webp
-		ext := strings.ToLower(filepath.Ext(file.Filename))
+		ext := strings.ToLower(filepath.Ext(fh.Filename))
 		if ext == ".jpeg" {
 			ext = ".jpg"
 		}
@@ -706,389 +616,338 @@ func (h *Handler) UploadStudioPhotos(c *gin.Context) {
 			continue
 		}
 
-		// Generate unique name
 		newName := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 		savePath := filepath.Join(uploadDir, newName)
 
-		if err := c.SaveUploadedFile(file, savePath); err != nil {
+		src, err := fh.Open()
+		if err != nil {
 			continue
 		}
+		dst, err := os.Create(savePath)
+		if err != nil {
+			_ = src.Close()
+			continue
+		}
+		_, _ = io.Copy(dst, src)
+		_ = src.Close()
+		_ = dst.Close()
 
 		url := fmt.Sprintf("/static/studios/%d/%s", studioID, newName)
 		uploadedURLs = append(uploadedURLs, url)
 	}
 
 	if len(uploadedURLs) == 0 {
-		response.CustomError(c, http.StatusBadRequest, "NO_VALID_FILES", "No valid files uploaded")
+		response.CustomError(w, r, http.StatusBadRequest, "NO_VALID_FILES", "No valid files uploaded")
 		return
 	}
 
-	// 5. Save URLs in DB (service enforces max 10 total and ownership)
-	if err := h.service.AddStudioPhotos(c.Request.Context(), userID, studioID, uploadedURLs); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "PHOTO_UPLOAD_ERROR", err)
+	if err := h.service.AddStudioPhotos(r.Context(), userID, studioID, uploadedURLs); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "PHOTO_UPLOAD_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{
-		"uploaded": len(uploadedURLs),
-		"urls":     uploadedURLs,
-	})
+	response.Success(w, http.StatusOK, response.H{"uploaded": len(uploadedURLs), "urls": uploadedURLs})
 }
 
-/* ---------- ROOM HANDLERS ---------- */
+/* ---------- ROOM LIST/CRUD ---------- */
 
-// GetRooms получение списка комнат студии
-// @Summary Получить комнаты студии
-// @Description Получает список всех комнат конкретной студии или всех комнат во всех студиях. Может быть отфильтровано по ID студии через параметр запроса.
-// @Tags Catalog - Комнаты
-// @Accept json
-// @Produce json
-// @Param studio_id query integer false "ID студии для фильтрации комнат. Если не указан, возвращает все комнаты" example(1)
-// @Success 200 {object} map[string]interface{} "Успешный ответ со списком комнат"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/rooms [get]
-func (h *Handler) GetRooms(c *gin.Context) {
+// GetRooms
+//
+//	@Summary		List rooms
+//	@Description	Get a list of rooms, optionally filtered by studio ID
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			studio_id	query		int	false	"Studio ID filter"
+//	@Success		200			{object}	map[string]interface{}
+//	@Failure		400			{object}	map[string]interface{}
+//	@Failure		500			{object}	map[string]interface{}
+//	@Router			/rooms [get]
+func (h *Handler) GetRooms(w http.ResponseWriter, r *http.Request) {
 	var studioIDPtr *int64
-	if studioIDStr := c.Query("studio_id"); studioIDStr != "" {
+	if studioIDStr := r.URL.Query().Get("studio_id"); studioIDStr != "" {
 		if studioID, err := strconv.ParseInt(studioIDStr, 10, 64); err == nil {
 			studioIDPtr = &studioID
 		}
 	}
 
-	rooms, err := h.service.roomRepo.GetAll(c.Request.Context(), studioIDPtr)
+	rooms, err := h.service.roomRepo.GetAll(r.Context(), studioIDPtr)
 	if err != nil {
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
 	for i := range rooms {
-		h.enrichRoomWithAttachments(c.Request.Context(), &rooms[i])
+		h.enrichRoomWithAttachments(r.Context(), &rooms[i])
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
-			"rooms": rooms,
-		},
+		"data":    response.H{"rooms": rooms},
 	})
 }
 
-// GetRoomByID получение информации о комнате по ID
-// @Summary Получить комнату по ID
-// @Description Получает полную информацию о комнате, включая её характеристики, тип, оборудование и фотографии по уникальному идентификатору.
-// @Tags Catalog - Комнаты
-// @Accept json
-// @Produce json
-// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
-// @Success 200 {object} map[string]interface{} "Успешный ответ с информацией о комнате"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат ID"
-// @Failure 404 {object} map[string]interface{} "Комната не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/rooms/{id} [get]
-func (h *Handler) GetRoomByID(c *gin.Context) {
-	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// GetRoomByID
+//
+//	@Summary		Get room by ID
+//	@Description	Get detailed information about a specific room
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"Room ID"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	map[string]interface{}
+//	@Failure		404	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/rooms/{id} [get]
+func (h *Handler) GetRoomByID(w http.ResponseWriter, r *http.Request) {
+	roomID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_ID",
-				"message": "Invalid room ID",
-			},
+			"error":   response.H{"code": "INVALID_ID", "message": "Invalid room ID"},
 		})
 		return
 	}
 
-	room, err := h.service.roomRepo.GetByID(c.Request.Context(), roomID)
+	room, err := h.service.roomRepo.GetByID(r.Context(), roomID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
+			response.JSON(w, http.StatusNotFound, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Room not found",
-				},
+				"error":   response.H{"code": "NOT_FOUND", "message": "Room not found"},
 			})
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	h.enrichRoomWithAttachments(c.Request.Context(), room)
+	h.enrichRoomWithAttachments(r.Context(), room)
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
-			"room": room,
-		},
+		"data":    response.H{"room": room},
 	})
 }
 
-// CreateRoom создание новой комнаты в студии
-// @Summary Создать новую комнату
-// @Description Создает новую комнату в студии. Требует аутентификации. Только владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion, Portrait, Creative, Commercial.
-// @Tags Catalog - Комнаты
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор студии" example(1)
-// @Param body body CreateRoomRequest true "Данные для создания комнаты (названия, тип, описание и т.д.)"
-// @Success 201 {object} map[string]interface{} "Комната успешно создана, возвращает объект созданной комнаты"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса или тип комнаты"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 403 {object} map[string]interface{} "Недостаточно прав для добавления комнат в эту студию"
-// @Failure 404 {object} map[string]interface{} "Студия не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /studios/{id}/rooms [post]
-func (h *Handler) CreateRoom(c *gin.Context) {
-	studioID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// CreateRoom
+//
+//	@Summary		Create room
+//	@Description	Add a new room to a studio (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int					true	"Studio ID"
+//	@Param			request	body		CreateRoomRequest	true	"Room details"
+//	@Success		201		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		404		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/studios/{id}/rooms [post]
+func (h *Handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_ID",
-				"message": "Invalid studio ID",
-			},
+			"error":   response.H{"code": "INVALID_ID", "message": "Invalid studio ID"},
 		})
 		return
 	}
 
 	var req CreateRoomRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request body",
-				"details": err.Error(),
-			},
+			"error":   response.H{"code": "INVALID_REQUEST", "message": "Invalid request body", "details": err.Error()},
 		})
 		return
 	}
 
-	userID := c.GetInt64("user_id")
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		response.JSON(w, http.StatusUnauthorized, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "UNAUTHORIZED",
-				"message": "User not authenticated",
-			},
+			"error":   response.H{"code": "UNAUTHORIZED", "message": "User not authenticated"},
 		})
 		return
 	}
 
-	room, err := h.service.CreateRoom(c.Request.Context(), userID, studioID, req)
+	room, err := h.service.CreateRoom(r.Context(), userID, studioID, req)
 	if err != nil {
-
 		if errors.Is(err, ErrInvalidRoomType) {
-			c.JSON(http.StatusBadRequest, gin.H{
+			response.JSON(w, http.StatusBadRequest, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "INVALID_ROOM_TYPE",
-					"message": "Invalid room type. Must be one of: Fashion, Portrait, Creative, Commercial",
-				},
+				"error":   response.H{"code": "INVALID_ROOM_TYPE", "message": "Invalid room type. Must be one of: Fashion, Portrait, Creative, Commercial"},
 			})
 			return
 		}
-
 		if errors.Is(err, ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{
+			response.JSON(w, http.StatusForbidden, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "FORBIDDEN",
-					"message": "You don't have permission to add rooms to this studio",
-				},
+				"error":   response.H{"code": "FORBIDDEN", "message": "You don't have permission to add rooms to this studio"},
 			})
 			return
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
+			response.JSON(w, http.StatusNotFound, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Studio not found",
-				},
+				"error":   response.H{"code": "NOT_FOUND", "message": "Studio not found"},
 			})
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	// Attach any uploaded files to the new room gallery
 	if len(req.UploadIDs) > 0 && h.attachmentSvc != nil {
 		if attached, attachErr := h.attachmentSvc.Attach(
-			c.Request.Context(),
-			req.UploadIDs,
-			userID,
-			attachment.TargetRoomGallery,
-			room.ID,
-			attachment.Metadata{},
-		); attachErr != nil {
-			_ = c.Error(attachErr)
-		} else {
-			room.Attachments = make([]AttachmentURL, len(attached))
-			for i, a := range attached {
-				room.Attachments[i] = AttachmentURL{
-					ID: a.ID, URL: a.URL,
-					OriginalName: a.OriginalName, MimeType: a.MimeType,
-					SortOrder: a.SortOrder,
-				}
-			}
+			r.Context(), req.UploadIDs, userID,
+			attachment.TargetRoomGallery, room.ID, attachment.Metadata{},
+		); attachErr == nil {
+			room.Attachments = toAttachmentURLs(attached)
 		}
 	} else {
-		h.enrichRoomWithAttachments(c.Request.Context(), room)
+		h.enrichRoomWithAttachments(r.Context(), room)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.JSON(w, http.StatusCreated, response.H{
 		"success": true,
-		"data": gin.H{
-			"room": room,
-		},
+		"data":    response.H{"room": room},
 		"message": "Room created successfully",
 	})
 }
 
-// GetRoomTypes получение списка доступных типов комнат
-// @Summary Получить типы комнат
-// @Description Возвращает список всех доступных типов комнат, которые могут быть использованы при создании или обновлении комнаты в студии. Например: Fashion, Portrait, Creative, Commercial.
-// @Tags Catalog - Типы комнат
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]interface{} "Успешный ответ со списком доступных типов комнат"
-// @Router /api/v1/room-types [get]
-func (h *Handler) GetRoomTypes(c *gin.Context) {
-	types := ValidRoomTypes()
+/* ---------- ROOM TYPES ---------- */
 
+// GetRoomTypes
+//
+//	@Summary		Get room types
+//	@Description	Get a list of available predefined room types
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Router			/rooms/types [get]
+func (h *Handler) GetRoomTypes(w http.ResponseWriter, r *http.Request) {
+	types := ValidRoomTypes()
 	typeStrings := make([]string, len(types))
 	for i, t := range types {
 		typeStrings[i] = string(t)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	response.JSON(w, http.StatusOK, response.H{
 		"success": true,
-		"data": gin.H{
-			"room_types": typeStrings,
-		},
+		"data":    response.H{"room_types": typeStrings},
 	})
 }
 
 /* ---------- EQUIPMENT HANDLERS ---------- */
 
-// AddEquipment добавление оборудования в комнату
-// @Summary Добавить оборудование в комнату
-// @Description Добавляет оборудование в комнату студии. Требует аутентификации. Только владелец студии может добавлять оборудование. Оборудование содержит названия и другую информацию о предметах в комнате.
-// @Tags Catalog - Оборудование
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path integer true "Уникальный идентификатор комнаты" example(1)
-// @Param body body CreateEquipmentRequest true "Данные оборудования для добавления (названия, тип и т.д.)"
-// @Success 201 {object} map[string]interface{} "Оборудование успешно добавлено, возвращает объект добавленного оборудования"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 403 {object} map[string]interface{} "Недостаточно прав для добавления оборудования в эту комнату"
-// @Failure 404 {object} map[string]interface{} "Комната не найдена"
-// @Failure 500 {object} map[string]interface{} "Внутренняя ошибка сервера"
-// @Router /api/v1/rooms/{id}/equipment [post]
-func (h *Handler) AddEquipment(c *gin.Context) {
-	roomID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// AddEquipment
+//
+//	@Summary		Add equipment
+//	@Description	Add new equipment to a room (Owner only)
+//	@Tags			Catalog
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int						true	"Room ID"
+//	@Param			request	body		CreateEquipmentRequest	true	"Equipment details"
+//	@Success		201		{object}	map[string]interface{}
+//	@Failure		400		{object}	map[string]interface{}
+//	@Failure		401		{object}	map[string]interface{}
+//	@Failure		403		{object}	map[string]interface{}
+//	@Failure		404		{object}	map[string]interface{}
+//	@Failure		500		{object}	map[string]interface{}
+//	@Security		BearerAuth
+//	@Router			/rooms/{id}/equipment [post]
+func (h *Handler) AddEquipment(w http.ResponseWriter, r *http.Request) {
+	roomID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_ID",
-				"message": "Invalid room ID",
-			},
+			"error":   response.H{"code": "INVALID_ID", "message": "Invalid room ID"},
 		})
 		return
 	}
 
 	var req CreateEquipmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := response.BindJSON(r, &req); err != nil {
+		response.JSON(w, http.StatusBadRequest, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_REQUEST",
-				"message": "Invalid request body",
-				"details": err.Error(),
-			},
+			"error":   response.H{"code": "INVALID_REQUEST", "message": "Invalid request body", "details": err.Error()},
 		})
 		return
 	}
 
-	userID := c.GetInt64("user_id")
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		response.JSON(w, http.StatusUnauthorized, response.H{
 			"success": false,
-			"error": gin.H{
-				"code":    "UNAUTHORIZED",
-				"message": "User not authenticated",
-			},
+			"error":   response.H{"code": "UNAUTHORIZED", "message": "User not authenticated"},
 		})
 		return
 	}
 
-	equipment, err := h.service.AddEquipment(c.Request.Context(), userID, roomID, req)
+	equipment, err := h.service.AddEquipment(r.Context(), userID, roomID, req)
 	if err != nil {
 		if errors.Is(err, ErrForbidden) {
-			c.JSON(http.StatusForbidden, gin.H{
+			response.JSON(w, http.StatusForbidden, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "FORBIDDEN",
-					"message": "You don't have permission to add equipment to this room",
-				},
+				"error":   response.H{"code": "FORBIDDEN", "message": "You don't have permission to add equipment to this room"},
 			})
 			return
 		}
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
+			response.JSON(w, http.StatusNotFound, response.H{
 				"success": false,
-				"error": gin.H{
-					"code":    "NOT_FOUND",
-					"message": "Room not found",
-				},
+				"error":   response.H{"code": "NOT_FOUND", "message": "Room not found"},
 			})
 			return
 		}
-		handleError(c, err)
+		handleErrorHTTP(w, r, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	response.JSON(w, http.StatusCreated, response.H{
 		"success": true,
-		"data": gin.H{
-			"equipment": equipment,
-		},
+		"data":    response.H{"equipment": equipment},
 		"message": "Equipment added successfully",
 	})
 }
 
-/* ---------- ROUTE REGISTRATION ---------- */
-
-// RegisterRoutes registers all catalog routes
-
-// RegisterProtectedRoutes registers protected catalog routes that require authentication
-
 /* ---------- ERROR HANDLING ---------- */
 
-func handleError(c *gin.Context, err error) {
+func handleErrorHTTP(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
 	}
-
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		response.NotFound(c, "Resource not found")
+		response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Resource not found")
 	case errors.Is(err, ErrForbidden):
-		response.Forbidden(c, "You don't have permission to perform this action")
+		response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "You don't have permission to perform this action")
 	default:
-		response.ServerError(c, err) // emits error_trace + terminal log on non-prod
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 	}
 }
 
-// -- Enrichment Helpers --
+/* ---------- ATTACHMENT ENRICHMENT ---------- */
+
+func toAttachmentURLs(attachments []*attachment.AttachmentWithURL) []AttachmentURL {
+	out := make([]AttachmentURL, len(attachments))
+	for i, a := range attachments {
+		out[i] = AttachmentURL{
+			ID: a.ID, URL: a.URL,
+			OriginalName: a.OriginalName, MimeType: a.MimeType,
+			SortOrder: a.SortOrder,
+		}
+	}
+	return out
+}
 
 func (h *Handler) enrichStudioWithAttachments(ctx context.Context, studio *Studio) {
 	if h.attachmentSvc == nil {
@@ -1099,12 +958,9 @@ func (h *Handler) enrichStudioWithAttachments(ctx context.Context, studio *Studi
 		studio.Attachments = make([]AttachmentURL, len(attachments))
 		for i, a := range attachments {
 			studio.Attachments[i] = AttachmentURL{
-				ID:           a.ID,
-				URL:          a.URL,
-				OriginalName: a.OriginalName,
-				MimeType:     a.MimeType,
-				SortOrder:    a.SortOrder,
-				Caption:      a.Metadata.Caption,
+				ID: a.ID, URL: a.URL,
+				OriginalName: a.OriginalName, MimeType: a.MimeType,
+				SortOrder: a.SortOrder, Caption: a.Metadata.Caption,
 			}
 		}
 	}
@@ -1119,12 +975,9 @@ func (h *Handler) enrichRoomWithAttachments(ctx context.Context, room *Room) {
 		room.Attachments = make([]AttachmentURL, len(attachments))
 		for i, a := range attachments {
 			room.Attachments[i] = AttachmentURL{
-				ID:           a.ID,
-				URL:          a.URL,
-				OriginalName: a.OriginalName,
-				MimeType:     a.MimeType,
-				SortOrder:    a.SortOrder,
-				Caption:      a.Metadata.Caption,
+				ID: a.ID, URL: a.URL,
+				OriginalName: a.OriginalName, MimeType: a.MimeType,
+				SortOrder: a.SortOrder, Caption: a.Metadata.Caption,
 			}
 		}
 	}

@@ -1,10 +1,11 @@
 package notification
 
 import (
-	"github.com/gin-gonic/gin"
 	"net/http"
-	"photostudio/internal/pkg/response"
 	"time"
+
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 // PreferencesHandler handles notification preferences API endpoints
@@ -18,97 +19,82 @@ func NewPreferencesHandler(service *Service) *PreferencesHandler {
 }
 
 // GetPreferences возвращает настройки уведомлений пользователя.
-// @Summary		Получить настройки уведомлений
-// @Description	Возвращает текущие настройки уведомлений для пользователя.
-// @Tags		Уведомления - Настройки
-// @Security	BearerAuth
-// @Success		200	{object}		PreferencesResponse "Настройки уведомлений"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/preferences [GET]
-func (h *PreferencesHandler) GetPreferences(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Получить настройки уведомлений
+//	@Tags		Уведомления - Настройки
+//	@Security	BearerAuth
+//	@Router		/notifications/preferences [GET]
+func (h *PreferencesHandler) GetPreferences(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	prefs, err := h.service.GetPreferences(c.Request.Context(), userID)
+	prefs, err := h.service.GetPreferences(r.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get preferences")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get preferences")
 		return
 	}
 
-	respPrefs := h.prefsToResponse(prefs)
-	response.Success(c, http.StatusOK, respPrefs)
+	response.Success(w, http.StatusOK, h.prefsToResponse(prefs))
 }
 
 // UpdatePreferences обновляет настройки уведомлений.
-// @Summary		Обновить настройки уведомлений
-// @Description	Обновляет настройки уведомлений для текущего пользователя.
-// @Tags		Уведомления - Настройки
-// @Security	BearerAuth
-// @Param		body	body		UpdatePreferencesRequest	true	"Данные для обновления"
-// @Success		200	{object}		PreferencesResponse "Обновленные настройки"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/preferences [PATCH]
-func (h *PreferencesHandler) UpdatePreferences(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Обновить настройки уведомлений
+//	@Tags		Уведомления - Настройки
+//	@Security	BearerAuth
+//	@Router		/notifications/preferences [PATCH]
+func (h *PreferencesHandler) UpdatePreferences(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
 	var req UpdatePreferencesRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 		return
 	}
 
 	if req.IsEmpty() {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "empty update payload")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "empty update payload")
 		return
 	}
 
-	prefs, err := h.service.UpdatePreferences(c.Request.Context(), userID, &req)
+	prefs, err := h.service.UpdatePreferences(r.Context(), userID, &req)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update preferences")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update preferences")
 		return
 	}
 
-	respPrefs := h.prefsToResponse(prefs)
-	response.Success(c, http.StatusOK, respPrefs)
+	response.Success(w, http.StatusOK, h.prefsToResponse(prefs))
 }
 
 // ResetPreferences сбрасывает настройки на значения по умолчанию.
-// @Summary		Сбросить настройки
-// @Description	Сбрасывает все настройки уведомлений на значения по умолчанию.
-// @Tags		Уведомления - Настройки
-// @Security	BearerAuth
-// @Success		200	{object}		PreferencesResponse "Восстановленные настройки"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/preferences/reset [POST]
-func (h *PreferencesHandler) ResetPreferences(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Сбросить настройки
+//	@Tags		Уведомления - Настройки
+//	@Security	BearerAuth
+//	@Router		/notifications/preferences/reset [POST]
+func (h *PreferencesHandler) ResetPreferences(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	prefs, err := h.service.ResetPreferences(c.Request.Context(), userID)
+	prefs, err := h.service.ResetPreferences(r.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to reset preferences")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to reset preferences")
 		return
 	}
 
-	respPrefs := h.prefsToResponse(prefs)
-	response.Success(c, http.StatusOK, respPrefs)
+	response.Success(w, http.StatusOK, h.prefsToResponse(prefs))
 }
 
-// prefsToResponse converts UserPreferences to PreferencesResponse
 func (h *PreferencesHandler) prefsToResponse(prefs *UserPreferences) *PreferencesResponse {
 	return &PreferencesResponse{
 		ID:              prefs.ID,

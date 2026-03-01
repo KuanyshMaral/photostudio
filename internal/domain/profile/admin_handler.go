@@ -3,9 +3,9 @@ package profile
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
 	"photostudio/internal/pkg/validator"
 )
@@ -20,79 +20,89 @@ func NewAdminHandler(service *Service) *AdminHandler {
 	return &AdminHandler{service: service}
 }
 
-// GetProfile handles GET /api/v1/profile/admin
-// @Summary Get admin profile
-// @Description Get authenticated admin's profile
-// @Tags Admin Profile
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} response.Response{data=AdminProfile}
-// @Failure 404 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/admin [get]
-func (h *AdminHandler) GetProfile(c *gin.Context) {
-	adminIDStr := c.GetString("admin_id")
-	userID, err := uuid.Parse(adminIDStr)
-	if err != nil {
-		response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid admin ID")
-		return
-	}
-
-	profile, err := h.service.GetAdminProfile(c.Request.Context(), userID)
-	if err != nil {
-		if err == ErrProfileNotFound {
-			response.CustomError(c, http.StatusNotFound, "PROFILE_NOT_FOUND", "Admin profile not found")
-			return
-		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
-		return
-	}
-
-	response.Success(c, http.StatusOK, profile)
+// swaggerAdminProfileResponse wrapper
+type swaggerAdminProfileResponse struct {
+	Success bool          `json:"success"`
+	Data    *AdminProfile `json:"data"`
 }
 
-// UpdateProfile handles PUT /api/v1/profile/admin
-// @Summary Update admin profile
-// @Description Update authenticated admin's profile (admin only)
-// @Tags Admin Profile
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param request body UpdateAdminProfileRequest true "Profile update"
-// @Success 200 {object} response.Response{data=AdminProfile}
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/admin [put]
-func (h *AdminHandler) UpdateProfile(c *gin.Context) {
-	adminIDStr := c.GetString("admin_id")
+// GetProfile возвращает профиль администратора.
+//
+//	@Summary		Профиль админа
+//	@Description	Возвращает данные профиля текущего администратора.
+//	@Tags			Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerAdminProfileResponse	"Профиль"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Профиль не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/profile/admin [get]
+func (h *AdminHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	adminIDStr := chicontext.AdminIDFromCtx(r.Context())
 	userID, err := uuid.Parse(adminIDStr)
 	if err != nil {
-		response.CustomError(c, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid admin ID")
+		response.CustomError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid admin ID")
+		return
+	}
+
+	profile, err := h.service.GetAdminProfile(r.Context(), userID)
+	if err != nil {
+		if err == ErrProfileNotFound {
+			response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Admin profile not found")
+			return
+		}
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		return
+	}
+
+	response.Success(w, http.StatusOK, profile)
+}
+
+// UpdateProfile редактирует профиль администратора.
+//
+//	@Summary		Обновить профиль
+//	@Description	Обновляет профиль администратора.
+//	@Tags			Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		UpdateAdminProfileRequest	true	"Данные"
+//	@Success		200		{object}	swaggerAdminProfileResponse	"Профиль обновлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка валидации/формата"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Профиль не найден"
+//	@Failure		422		{object}	response.ErrorResponse		"Unprocessable entity"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/profile/admin [patch]
+func (h *AdminHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	adminIDStr := chicontext.AdminIDFromCtx(r.Context())
+	userID, err := uuid.Parse(adminIDStr)
+	if err != nil {
+		response.CustomError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Invalid admin ID")
 		return
 	}
 
 	var req UpdateAdminProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	profile, err := h.service.UpdateAdminProfile(c.Request.Context(), userID, &req)
+	profile, err := h.service.UpdateAdminProfile(r.Context(), userID, &req)
 	if err != nil {
 		if err == ErrProfileNotFound {
-			response.CustomError(c, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
+			response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, profile)
+	response.Success(w, http.StatusOK, profile)
 }

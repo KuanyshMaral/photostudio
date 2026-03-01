@@ -5,17 +5,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestRouteRegistrationsAndHelpers(t *testing.T) {
 	_, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
+	r := chi.NewRouter()
 	h.RegisterPublicWebhookRoutes(r)
-	p := r.Group("/")
-	p.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(p)
+	r.Group(func(p chi.Router) {
+		p.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(p)
+	})
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/webhooks/robokassa/result", nil)

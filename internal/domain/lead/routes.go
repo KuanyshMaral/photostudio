@@ -1,23 +1,22 @@
 package lead
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
 // RegisterPublicRoutes registers public lead routes
-func RegisterPublicRoutes(r *gin.RouterGroup, handler *Handler) {
-	r.POST("/leads/submit", handler.SubmitLead)
+func RegisterPublicRoutes(r chi.Router, handler *Handler) {
+	r.Post("/leads/submit", handler.SubmitLead)
 }
 
 // RegisterAdminRoutes registers admin lead routes
-func RegisterAdminRoutes(r *gin.RouterGroup, handler *Handler) {
-	leads := r.Group("/leads")
-	{
-		leads.GET("", handler.ListLeads)
-		leads.GET("/stats", handler.GetStats)
-		leads.GET("/:id", handler.GetLead)
-		leads.PATCH("/:id/status", handler.UpdateStatus)
-		leads.PATCH("/:id/assign", handler.AssignLead)
-		leads.POST("/:id/reject", handler.RejectLead)
-		leads.POST("/:id/contacted", handler.MarkContacted)
-		leads.POST("/:id/convert", handler.ConvertLead)
-	}
+func RegisterAdminRoutes(r chi.Router, handler *Handler) {
+	r.Route("/leads", func(r chi.Router) {
+		r.Get("", handler.ListLeads)
+		r.Get("/stats", handler.GetStats)
+		r.Get("/{id}", handler.GetLead)
+		r.Patch("/{id}/status", handler.UpdateStatus)
+		r.Patch("/{id}/assign", handler.AssignLead)
+		r.Post("/{id}/reject", handler.RejectLead)
+		r.Post("/{id}/contacted", handler.MarkContacted)
+		r.Post("/{id}/convert", handler.ConvertLead)
+	})
 }

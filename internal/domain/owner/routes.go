@@ -1,41 +1,38 @@
 package owner
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
-func (h *Handler) RegisterRoutes(rg *gin.RouterGroup) {
-	owner := rg.Group("/owner")
-	{
+func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Route("/owner", func(r chi.Router) {
 		// PIN
-		owner.POST("/set-pin", h.SetPIN)
-		owner.POST("/verify-pin", h.VerifyPIN)
-		owner.GET("/has-pin", h.HasPIN)
+		r.Post("/set-pin", h.SetPIN)
+		r.Post("/verify-pin", h.VerifyPIN)
+		r.Get("/has-pin", h.HasPIN)
 
 		// Procurement
-		owner.GET("/procurement", h.GetProcurement)
-		owner.POST("/procurement", h.CreateProcurement)
-		owner.PATCH("/procurement/:id", h.UpdateProcurement)
-		owner.DELETE("/procurement/:id", h.DeleteProcurement)
+		r.Get("/procurement", h.GetProcurement)
+		r.Post("/procurement", h.CreateProcurement)
+		r.Patch("/procurement/{id}", h.UpdateProcurement)
+		r.Delete("/procurement/{id}", h.DeleteProcurement)
 
 		// Maintenance
-		owner.GET("/maintenance", h.GetMaintenance)
-		owner.POST("/maintenance", h.CreateMaintenance)
-		owner.PATCH("/maintenance/:id", h.UpdateMaintenance)
-		owner.DELETE("/maintenance/:id", h.DeleteMaintenance)
+		r.Get("/maintenance", h.GetMaintenance)
+		r.Post("/maintenance", h.CreateMaintenance)
+		r.Patch("/maintenance/{id}", h.UpdateMaintenance)
+		r.Delete("/maintenance/{id}", h.DeleteMaintenance)
 
 		// Analytics
-		owner.GET("/analytics", h.GetAnalytics)
-	}
+		r.Get("/analytics", h.GetAnalytics)
+	})
 }
 
-func (h *Handler) RegisterCompanyRoutes(rg *gin.RouterGroup) {
-	company := rg.Group("/company")
-	{
-		company.GET("/profile", h.GetCompanyProfile)
-		company.PUT("/profile", h.UpdateCompanyProfile)
-		company.GET("/portfolio", h.GetPortfolio)
-		company.POST("/portfolio", h.AddPortfolioProject)
-		company.DELETE("/portfolio/:id", h.DeletePortfolioProject)
-		company.PUT("/portfolio/reorder", h.ReorderPortfolio)
-	}
+func (h *Handler) RegisterCompanyRoutes(r chi.Router) {
+	r.Route("/company", func(r chi.Router) {
+		r.Get("/profile", h.GetCompanyProfile)
+		r.Put("/profile", h.UpdateCompanyProfile)
+		r.Get("/portfolio", h.GetPortfolio)
+		r.Post("/portfolio", h.AddPortfolioProject)
+		r.Delete("/portfolio/{id}", h.DeletePortfolioProject)
+		r.Put("/portfolio/reorder", h.ReorderPortfolio)
+	})
 }
-

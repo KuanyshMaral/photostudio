@@ -1,21 +1,20 @@
 package profile
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
 // RegisterRoutes registers all profile routes
-func RegisterRoutes(r *gin.RouterGroup, clientHandler *ClientHandler, ownerHandler *OwnerHandler, adminHandler *AdminHandler) {
-	profile := r.Group("/profile")
-	{
+func RegisterRoutes(r chi.Router, clientHandler *ClientHandler, ownerHandler *OwnerHandler, adminHandler *AdminHandler) {
+	r.Route("/profile", func(r chi.Router) {
 		// Client profile (role: client)
-		profile.GET("/client", clientHandler.GetProfile)
-		profile.PUT("/client", clientHandler.UpdateProfile)
+		r.Get("/client", clientHandler.GetProfile)
+		r.Put("/client", clientHandler.UpdateProfile)
 
 		// Owner profile (role: studio_owner)
-		profile.GET("/owner", ownerHandler.GetProfile)
-		profile.PUT("/owner", ownerHandler.UpdateProfile)
+		r.Get("/owner", ownerHandler.GetProfile)
+		r.Put("/owner", ownerHandler.UpdateProfile)
 
 		// Admin profile (role: admin)
-		profile.GET("/admin", adminHandler.GetProfile)
-		profile.PUT("/admin", adminHandler.UpdateProfile)
-	}
+		r.Get("/admin", adminHandler.GetProfile)
+		r.Put("/admin", adminHandler.UpdateProfile)
+	})
 }

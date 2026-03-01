@@ -3,10 +3,6 @@ package mwork
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"photostudio/internal/database"
@@ -14,6 +10,11 @@ import (
 	"photostudio/internal/middleware"
 	"strings"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 type syncResponse struct {
@@ -28,9 +29,8 @@ type errorResponse struct {
 	} `json:"error"`
 }
 
-func setupRouter(t *testing.T) (*gin.Engine, *gorm.DB) {
+func setupRouter(t *testing.T) (*chi.Mux, *gorm.DB) {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
 
 	db, err := database.Connect(":memory:")
 	require.NoError(t, err)
@@ -40,19 +40,20 @@ func setupRouter(t *testing.T) (*gin.Engine, *gorm.DB) {
 	service := NewService(userRepo)
 	handler := NewHandler(service)
 
-	router := gin.New()
-	internal := router.Group("/internal")
-	internal.Use(middleware.InternalTokenAuth())
-	handler.RegisterRoutes(internal)
+	router := chi.NewRouter()
+	router.Route("/internal", func(r chi.Router) {
+		r.Use(middleware.ChiInternalTokenAuth)
+		handler.RegisterRoutes(r)
+	})
 
 	return router, db
 }
 
-func performRequest(router *gin.Engine, method, path string, body interface{}, token string) *httptest.ResponseRecorder {
+func performRequest(router *chi.Mux, method, path string, body interface{}, token string) *httptest.ResponseRecorder {
 	return performRequestWithHeaders(router, method, path, body, token, nil)
 }
 
-func performRequestWithHeaders(router *gin.Engine, method, path string, body interface{}, token string, headers map[string]string) *httptest.ResponseRecorder {
+func performRequestWithHeaders(router *chi.Mux, method, path string, body interface{}, token string, headers map[string]string) *httptest.ResponseRecorder {
 	var buf bytes.Buffer
 	if body != nil {
 		_ = json.NewEncoder(&buf).Encode(body)

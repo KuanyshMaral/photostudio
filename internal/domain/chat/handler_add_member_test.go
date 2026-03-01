@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,22 +72,22 @@ func (r *addMemberTestRepo) CountTotalUnread(ctx context.Context, userID int64) 
 }
 
 func TestAddMember_WithAdminTokenWithoutUserID_Succeeds(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	repo := &addMemberTestRepo{
 		room:    &Room{ID: "7ae6034b-f7c7-4505-9c13-f457a7f47561", Type: RoomTypeGroup, CreatedAt: time.Now()},
 		members: map[int64]bool{},
 	}
 	h := NewHandler(NewService(repo, nil), nil)
 
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("is_admin_token", true)
-		c.Next()
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := chicontext.SetIsAdminToken(req.Context(), true)
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
 	})
-	r.POST("/chats/:id/members", h.AddMember)
+	r.Post("/chats/{id}/members", h.AddMember)
 
-	body, _ := json.Marshal(gin.H{"user_id": int64(9)})
+	body, _ := json.Marshal(map[string]interface{}{"user_id": int64(9)})
 	req := httptest.NewRequest(http.MethodPost, "/chats/7ae6034b-f7c7-4505-9c13-f457a7f47561/members", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -98,20 +100,20 @@ func TestAddMember_WithAdminTokenWithoutUserID_Succeeds(t *testing.T) {
 }
 
 func TestRemoveMember_WithAdminTokenWithoutUserID_Succeeds(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
 	repo := &addMemberTestRepo{
 		room:    &Room{ID: "7ae6034b-f7c7-4505-9c13-f457a7f47561", Type: RoomTypeGroup, CreatedAt: time.Now()},
 		members: map[int64]bool{9: true},
 	}
 	h := NewHandler(NewService(repo, nil), nil)
 
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("is_admin_token", true)
-		c.Next()
+	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			ctx := chicontext.SetIsAdminToken(req.Context(), true)
+			next.ServeHTTP(w, req.WithContext(ctx))
+		})
 	})
-	r.DELETE("/chats/:id/members/:user_id", h.RemoveMember)
+	r.Delete("/chats/{id}/members/{user_id}", h.RemoveMember)
 
 	req := httptest.NewRequest(http.MethodDelete, "/chats/7ae6034b-f7c7-4505-9c13-f457a7f47561/members/9", nil)
 	w := httptest.NewRecorder()

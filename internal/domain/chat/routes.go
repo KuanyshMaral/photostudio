@@ -1,31 +1,30 @@
 package chat
 
-import "github.com/gin-gonic/gin"
+import "github.com/go-chi/chi/v5"
 
 // RegisterRoutes registers all chat routes under the protected group
-func RegisterRoutes(r *gin.RouterGroup, h *Handler) {
-	rooms := r.Group("/chats")
-	{
+func RegisterRoutes(r chi.Router, h *Handler) {
+	r.Route("/chats", func(r chi.Router) {
 		// Room creation
-		rooms.POST("/direct", h.CreateDirectRoom)
-		rooms.POST("/group", h.CreateGroupRoom)
+		r.Post("/direct", h.CreateDirectRoom)
+		r.Post("/group", h.CreateGroupRoom)
 
 		// Room listing & unread
-		rooms.GET("", h.ListRooms)
-		rooms.GET("/unread", h.GetUnreadCount)
+		r.Get("", h.ListRooms)
+		r.Get("/unread", h.GetUnreadCount)
 
 		// WebSocket
-		rooms.GET("/ws", h.WebSocket)
+		r.Get("/ws", h.WebSocket)
 
 		// Per-room operations
-		rooms.GET("/:id/messages", h.GetMessages)
-		rooms.POST("/:id/messages", h.SendMessage)
-		rooms.POST("/:id/read", h.MarkAsRead)
-		rooms.POST("/:id/leave", h.LeaveRoom)
+		r.Get("/{id}/messages", h.GetMessages)
+		r.Post("/{id}/messages", h.SendMessage)
+		r.Post("/{id}/read", h.MarkAsRead)
+		r.Post("/{id}/leave", h.LeaveRoom)
 
 		// Member management (group admin only)
-		rooms.GET("/:id/members", h.GetMembers)
-		rooms.POST("/:id/members", h.AddMember)
-		rooms.DELETE("/:id/members/:user_id", h.RemoveMember)
-	}
+		r.Get("/{id}/members", h.GetMembers)
+		r.Post("/{id}/members", h.AddMember)
+		r.Delete("/{id}/members/{user_id}", h.RemoveMember)
+	})
 }

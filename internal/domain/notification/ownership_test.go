@@ -10,17 +10,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"photostudio/internal/domain/auth"
+	"photostudio/internal/pkg/chicontext"
 )
 
-func setupNotificationTest(t *testing.T) (*gorm.DB, *gin.Engine) {
+func setupNotificationTest(t *testing.T) (*gorm.DB, *chi.Mux) {
 	t.Helper()
-	gin.SetMode(gin.TestMode)
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
@@ -43,14 +43,16 @@ func setupNotificationTest(t *testing.T) (*gorm.DB, *gin.Engine) {
 	ph := NewPreferencesHandler(service)
 	dh := NewDeviceTokensHandler(service)
 
-	r := gin.New()
-	protected := r.Group("/api/v1")
-	protected.Use(func(c *gin.Context) {
-		uid, _ := strconv.ParseInt(c.GetHeader("X-User-ID"), 10, 64)
-		c.Set("user_id", uid)
-		c.Next()
+	r := chi.NewRouter()
+	r.Route("/api/v1", func(protected chi.Router) {
+		protected.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				uid, _ := strconv.ParseInt(req.Header.Get("X-User-ID"), 10, 64)
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), uid)))
+			})
+		})
+		RegisterRoutes(protected, nh, ph, dh)
 	})
-	RegisterRoutes(protected, nh, ph, dh)
 
 	return db, r
 }

@@ -15,31 +15,907 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/admin/admins": {
+        "/admin/ads": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get list of administrators",
+                "description": "Get a list of ads for the platform",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Management"
+                    "Admin"
+                ],
+                "summary": "Get ads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ad placement",
+                        "name": "placement",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Show active only",
+                        "name": "active_only",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new ad on the platform",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Create ad",
+                "parameters": [
+                    {
+                        "description": "Ad fields",
+                        "name": "ad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.Ad"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/ads/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete an ad by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete ad",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Ad ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update an existing ad",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Update ad",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Ad ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updating fields",
+                        "name": "ad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/analytics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get analytical data for the platform",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get platform analytics",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Days back",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/login": {
+            "post": {
+                "description": "Authenticate as an administrator",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Admin login",
+                "parameters": [
+                    {
+                        "description": "Admin credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/auth/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get info about the currently logged in admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get current admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админский эндпоинт для просмотра заявок с возможностью фильтрации по статусу.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Список лидов",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Фильтр по статусу (new, contacted, qualified, converted, rejected)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит (дефолт: 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Отступ",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список заявок",
+                        "schema": {
+                            "$ref": "#/definitions/lead.swaggerLeadListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админский эндпоинт для просмотра воронки заявок (счетчики по статусам).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Статистика по лидам",
+                "responses": {
+                    "200": {
+                        "description": "Успех",
+                        "schema": {
+                            "$ref": "#/definitions/lead.swaggerLeadStatsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админский эндпоинт для получения заявки по её идентификатору.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Получить лид",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Данные заявки",
+                        "schema": {
+                            "$ref": "#/definitions/lead.swaggerLeadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/assign": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админ назначает заявку на определенного менеджера и задает приоритет.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Назначить лида",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные для назначения",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/lead.AssignLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Менеджер назначен",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/contacted": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Меняет статус заявки на contacted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Отметить лида как Contacted",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Заявка отмечена как Contacted",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/convert": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает пользователя-владельца (owner) из заявки (статус converted) и профиль компании.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Конвертировать лида",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Данные конвертации (Юр. адрес и тд)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/lead.ConvertLeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Лид успешно конвертирован в пользователя",
+                        "schema": {
+                            "$ref": "#/definitions/lead.swaggerConvertLeadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Нельзя конвертировать (например, некорректный статус) или неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email уже зарегистрирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админ отклоняет заявку (статус rejected) с указанием причины.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Отклонить лида",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Укажите reason (причину отказа)",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Заявка отклонена",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Заявка уже конвертирована или неверный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/leads/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Админский эндпоинт. Позволяет вручную указать статус, примечания и причину отказа.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin Leads"
+                ],
+                "summary": "Обновить статус лида",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID заявки",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Новый статус",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Статус обновлен",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Заявка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Заявка уже конвертирована",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка валидации",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/management/admins": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of administrators",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
                 ],
                 "summary": "List admins",
                 "parameters": [
                     {
                         "type": "integer",
+                        "default": 1,
                         "description": "Page number",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Items per page",
+                        "default": 20,
+                        "description": "Page size",
                         "name": "limit",
                         "in": "query"
                     }
@@ -48,13 +924,15 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
-                    "401": {
-                        "description": "Unauthorized",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -73,13 +951,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Management"
+                    "Admin"
                 ],
                 "summary": "Create admin",
                 "parameters": [
                     {
-                        "description": "Admin details",
-                        "name": "request",
+                        "description": "Admin fields",
+                        "name": "admin",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -91,26 +969,35 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
             }
         },
-        "/admin/admins/{id}": {
+        "/admin/management/admins/{id}": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update administrator details",
+                "description": "Update an existing administrator account",
                 "consumes": [
                     "application/json"
                 ],
@@ -118,20 +1005,20 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Management"
+                    "Admin"
                 ],
                 "summary": "Update admin",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Admin UUID",
+                        "type": "integer",
+                        "description": "Admin ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Update details",
-                        "name": "request",
+                        "description": "Admin fields",
+                        "name": "admin",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -143,804 +1030,22 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/ads": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает список баннеров и объявлений с фильтром по месту размещения и статусу активности. Используется для управления рекламными материалами на платформе.",
-                "tags": [
-                    "Admin - Объявления и реклама"
-                ],
-                "summary": "Получить список объявлений",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Место размещения объявления (homepage, booking_page, etc.)",
-                        "name": "placement",
-                        "in": "query"
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Показать только активные объявления (true/false)",
-                        "name": "active_only",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список объявлений",
-                        "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении объявлений",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Создаёт новый баннер/объявление для размещения на платформе. Объявление может быть размещено в различных местах: на главной странице, странице бронирования и т.д.",
-                "tags": [
-                    "Admin - Объявления и реклама"
-                ],
-                "summary": "Создать объявление",
-                "parameters": [
-                    {
-                        "description": "Данные объявления (placement, url, image_url, active, etc.)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.Ad"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Объявление успешно создано",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный запрос или отсутствуют необходимые поля",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при создании объявления",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/ads/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет и удаляет из БД баннер/объявление с платформы. После удаления объявление больше не будет отображаться.",
-                "tags": [
-                    "Admin - Объявления и реклама"
-                ],
-                "summary": "Удалить объявление",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID объявления",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Объявление успешно удалено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при удалении объявления",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет параметры существующего баннера/объявления: URL, изображение, место размещения, статус активности и другие поля.",
-                "tags": [
-                    "Admin - Объявления и реклама"
-                ],
-                "summary": "Обновить объявление",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID объявления",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Поля для обновления (placement, url, image_url, active, etc.)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Объявление успешно обновлено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный запрос",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении объявления",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/analytics": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает подробную аналитику активности платформы за указанный период: данные о пользователях, бронированиях, доходах, популярных студиях и другие метрики.",
-                "tags": [
-                    "Admin - Статистика и аналитика"
-                ],
-                "summary": "Получить аналитику платформы",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 30,
-                        "description": "Количество дней для аналитики (1-365, по умолчанию 30)",
-                        "name": "days",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Аналитические данные платформы",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении аналитики",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/auth/login": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Authenticate as admin and get JWT token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Auth"
-                ],
-                "summary": "Admin Login",
-                "parameters": [
-                    {
-                        "description": "Login credentials",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/auth/me": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get current authenticated admin profile",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Auth"
-                ],
-                "summary": "Get current admin",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Admin endpoint to list all leads with optional filtering",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "List leads",
-                "parameters": [
-                    {
-                        "enum": [
-                            "new",
-                            "contacted",
-                            "qualified",
-                            "converted",
-                            "rejected",
-                            "lost"
-                        ],
-                        "type": "string",
-                        "description": "Filter by status",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/lead.LeadListResponse"
-                                        }
-                                    }
-                                }
-                            ]
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Admin endpoint to get lead counts by status",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Get lead statistics",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Admin endpoint to view lead details",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Get lead by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/lead.OwnerLead"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}/assign": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Admin endpoint to assign lead to an admin user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Assign lead to admin",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Assignment data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/lead.AssignLeadRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}/contacted": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update lead status to contacted and increment follow-up count",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Mark lead as contacted",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}/convert": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create studio owner account from lead",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Convert lead to owner",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Conversion data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/lead.ConvertLeadRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}/reject": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Mark lead as rejected with reason",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Reject lead",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Reason",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/leads/{id}/status": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Admin endpoint to update lead status",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Admin Leads"
-                ],
-                "summary": "Update lead status",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Lead ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Status update",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/lead.UpdateLeadStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -953,1535 +1058,37 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает постраничный список всех отзывов на платформе с фильтром по скрытым/видимым отзывам и другим параметрам. Доступно только администраторам.",
-                "tags": [
-                    "Admin - Модерация отзывов"
+                "description": "Get a paginated list of reviews (for moderation)",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Получить список отзывов",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List reviews",
                 "parameters": [
                     {
                         "type": "integer",
                         "default": 1,
-                        "description": "Номер страницы (по умолчанию 1)",
+                        "description": "Page number",
                         "name": "page",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 20,
-                        "description": "Количество записей на странице (по умолчанию 20)",
+                        "description": "Page size",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Показать только скрытые отзывы",
+                        "description": "Filter by hidden status",
                         "name": "hidden",
                         "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список отзывов с общим количеством и параметрами страницы",
-                        "schema": {
-                            "$ref": "#/definitions/admin.ReviewListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации параметров запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении списка отзывов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/reviews/:id": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Полностью удаляет отзыв из базы данных. Это необратимое действие. Отзыв указанного автора удаляется вместе со всеми его данными.",
-                "tags": [
-                    "Admin - Модерация отзывов"
-                ],
-                "summary": "Удалить отзыв",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID отзыва",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Отзыв успешно удалён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при удалении отзыва",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/reviews/:id/hide": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Скрывает отзыв, чтобы он не отображался в списке отзывов студии. Отзыв остаётся в БД, но не видит пользователям.",
-                "tags": [
-                    "Admin - Модерация отзывов"
-                ],
-                "summary": "Скрыть отзыв",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID отзыва",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Информация об отзыве после скрытия",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID отзыва",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при скрытии отзыва",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/reviews/:id/show": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Восстанавливает видимость скрытого отзыва, чтобы он вновь отображался в списке отзывов студии.",
-                "tags": [
-                    "Admin - Модерация отзывов"
-                ],
-                "summary": "Показать отзыв",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID отзыва",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Информация об отзыве после восстановления",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID отзыва",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при восстановлении отзыва",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/statistics": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает детальную статистику платформы. Алиас для GetStats с альтернативным путём (для обратной совместимости).",
-                "tags": [
-                    "Admin - Статистика и аналитика"
-                ],
-                "summary": "Получить расширённую статистику",
-                "responses": {
-                    "200": {
-                        "description": "Объект со статистикой платформы",
-                        "schema": {}
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении статистики",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает ключевые показатели платформы: количество пользователей, студий, бронирований, доход и другие метрики. Доступно только администраторам.",
-                "tags": [
-                    "Admin - Статистика и аналитика"
-                ],
-                "summary": "Получить статистику платформы",
-                "responses": {
-                    "200": {
-                        "description": "Объект со статистикой платформы",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении статистики",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/approve": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Одобряет заявку на открытие студии от владельца. Запись указывает, что администратор подтвердил право владельца на управление студией. После одобрения студия появится в каталоге.",
-                "tags": [
-                    "Admin - Модерация студий"
-                ],
-                "summary": "Одобрить студию владельца",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID владельца студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Студия успешно одобрена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID владельца или студия уже одобрена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/gold": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Назначает или отменяет Gold статус студии. Gold студии получают улучшенный рейтинг и видимость в поиске.",
-                "tags": [
-                    "Admin - Управление студиями"
-                ],
-                "summary": "Установить Gold статус студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Значение Gold статуса (true/false)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "is_gold": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Gold статус успешно обновлён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный запрос",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении Gold статуса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/promo": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Добавляет студию в ротирующийся слайдер продвигаемых студий на главной странице или убирает её оттуда. Студии в слайдере получают дополнительную видимость.",
-                "tags": [
-                    "Admin - Управление студиями"
-                ],
-                "summary": "Установить промо статус студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Значение промо статуса (true/false)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "in_promo_slider": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Промо статус успешно обновлён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный запрос",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении промо статуса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/reject": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Отклоняет заявку на открытие студии от владельца с указанием причины. Владелец сможет подать новую заявку и исправить ошибки.",
-                "tags": [
-                    "Admin - Модерация студий"
-                ],
-                "summary": "Отклонить заявку студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID владельца студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Причина отклонения заявки",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.RejectStudioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Заявка успешно отклонена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID владельца или отсутствует причина",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/verify": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Проверяет и верифицирует студию с добавлением административных заметок. Альтернативный эндпоинт для одобрения студии с дополнительной информацией.",
-                "tags": [
-                    "Admin - Модерация студий"
-                ],
-                "summary": "Верифицировать студию",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные верификации (admin_notes)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.VerifyStudioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Студия успешно верифицирована",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при верификации студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/:id/vip": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Назначает или отменяет VIP статус студии. VIP студии получают приоритет в выдаче и специальные выделения в каталоге.",
-                "tags": [
-                    "Admin - Управление студиями"
-                ],
-                "summary": "Установить VIP статус студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Значение VIP статуса (true/false)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "is_vip": {
-                                    "type": "boolean"
-                                }
-                            }
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "VIP статус успешно обновлён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный запрос",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении VIP статуса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/studios/pending": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает постраничный список студий владельцев, которые ждут одобрения от администратора. Доступно только для администраторов.",
-                "tags": [
-                    "Admin - Модерация студий"
-                ],
-                "summary": "Получить список ожидающих студий",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Номер страницы (по умолчанию 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Количество записей на странице (по умолчанию 20)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список ожидающих студий",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении данных",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/users": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает постраничный список всех пользователей платформы с возможностью фильтрации по статусу и другим параметрам. Доступно только администраторам.",
-                "tags": [
-                    "Admin - Управление пользователями"
-                ],
-                "summary": "Получить список пользователей",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Номер страницы (по умолчанию 1)",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Количество записей на странице (по умолчанию 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Фильтр по статусу пользователя (active, banned, etc.)",
-                        "name": "status",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список пользователей с общим количеством и параметрами страницы",
-                        "schema": {
-                            "$ref": "#/definitions/admin.UserListResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации параметров запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при получении списка пользователей",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/users/:id/ban": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Блокирует пользователя с указанной причиной. Заблокированный пользователь не сможет использовать платформу, но его данные сохраняются.",
-                "tags": [
-                    "Admin - Управление пользователями"
-                ],
-                "summary": "Заблокировать пользователя",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Причина блокировки",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.BlockUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пользователь успешно заблокирован",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID пользователя или отсутствует причина",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при блокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/users/:id/block": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Блокирует пользователя с указанной причиной. Алиас для BanUser для обратной совместимости.",
-                "tags": [
-                    "Admin - Управление пользователями"
-                ],
-                "summary": "Заблокировать пользователя (алиас)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Причина блокировки",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/admin.BlockUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пользователь успешно заблокирован",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при блокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/users/:id/unban": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Восстанавливает доступ заблокированного пользователя к платформе.",
-                "tags": [
-                    "Admin - Управление пользователями"
-                ],
-                "summary": "Разблокировать пользователя",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пользователь успешно разблокирован",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при разблокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/users/:id/unblock": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Восстанавливает доступ заблокированного пользователя. Алиас для UnbanUser для обратной совместимости.",
-                "tags": [
-                    "Admin - Управление пользователями"
-                ],
-                "summary": "Разблокировать пользователя (алиас)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID пользователя",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пользователь успешно разблокирован",
-                        "schema": {}
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Доступ запрещён (требуются права администратора)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при разблокировке пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/room-types": {
-            "get": {
-                "description": "Возвращает список всех доступных типов комнат, которые могут быть использованы при создании или обновлении комнаты в студии. Например: Fashion, Portrait, Creative, Commercial.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Типы комнат"
-                ],
-                "summary": "Получить типы комнат",
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ со списком доступных типов комнат",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/rooms": {
-            "get": {
-                "description": "Получает список всех комнат конкретной студии или всех комнат во всех студиях. Может быть отфильтровано по ID студии через параметр запроса.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Получить комнаты студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "ID студии для фильтрации комнат. Если не указан, возвращает все комнаты",
-                        "name": "studio_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ со списком комнат",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/rooms/{id}": {
-            "get": {
-                "description": "Получает полную информацию о комнате, включая её характеристики, тип, оборудование и фотографии по уникальному идентификатору.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Получить комнату по ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с информацией о комнате",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Комната не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет информацию о комнате в студии (названия, тип комнаты, описание и другие параметры). Требует аутентификации.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Обновить комнату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для обновления комнаты",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.UpdateRoomRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Комната успешно обновлена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса или тип комнаты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет комнату из студии. Требует аутентификации. Только владелец студии может удалять комнаты.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Удалить комнату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Комната успешно удалена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/rooms/{id}/equipment": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Добавляет оборудование в комнату студии. Требует аутентификации. Только владелец студии может добавлять оборудование. Оборудование содержит названия и другую информацию о предметах в комнате.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Оборудование"
-                ],
-                "summary": "Добавить оборудование в комнату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные оборудования для добавления (названия, тип и т.д.)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateEquipmentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Оборудование успешно добавлено, возвращает объект добавленного оборудования",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для добавления оборудования в эту комнату",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Комната не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/attachments": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "List attachments for an entity",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Target type (studio_gallery, room_gallery, review_photos, chat_message)",
-                        "name": "target_type",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Target entity ID",
-                        "name": "target_id",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Links one or more existing upload IDs to a business entity (studio gallery, room gallery, chat message, etc.)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Attach uploads to an entity",
-                "parameters": [
-                    {
-                        "description": "Attach request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/attachment.attachRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/attachments/reorder": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Reorder attachments for an entity",
-                "parameters": [
-                    {
-                        "description": "Ordered list of attachment IDs",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/attachment.reorderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/attachments/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Removes the link but does NOT delete the underlying file. Use DELETE /uploads/{id} for that.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attachments"
-                ],
-                "summary": "Delete an attachment (unlink upload from entity)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Attachment ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -2499,8 +1106,46 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reviews/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently delete a review by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Delete review",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2516,16 +1161,1233 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/reviews/{id}/hide": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Hide a review from public view",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Hide review",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reviews/{id}/show": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Restore a previously hidden review",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Show review",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Review ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/statistics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get summary statistics for the admin dashboard",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get admin statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get platform statistics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get platform stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/pending": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of studio owners awaiting verification",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get pending studios",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve a studio owner",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Approve studio (Legacy)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/gold": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the Gold status of a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Set studio Gold status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status (is_gold: bool)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/promo": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the Promo status of a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Set studio Promo status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status (in_promo_slider: bool)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Reject the verification application for a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Reject a pending studio",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio Owner ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason for rejection",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.RejectStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/verify": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Accept the verification application for a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Verify a pending studio",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Notes for verification",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.VerifyStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/studios/{id}/vip": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update the VIP status of a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Set studio VIP status",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status (is_vip: bool)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a paginated list of users",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "List users",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by role",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search query",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/ban": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Ban a user from the platform permanently",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Ban a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason for banning",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.BlockUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/block": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Block a user from the platform",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Block a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason for blocking",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/admin.BlockUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/unban": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Unban a previously banned user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Unban a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/unblock": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Unblock a previously blocked user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Unblock a user",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments": {
+            "get": {
+                "description": "Возвращает все файлы (вложения), привязанные к определенной бизнес-сущности.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Список вложений сущности",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Тип сущности (studio_gallery, room_gallery, review_photos, chat_message)",
+                        "name": "target_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ID сущности",
+                        "name": "target_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список вложений",
+                        "schema": {
+                            "$ref": "#/definitions/attachment.swaggerAttachmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные параметры запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Некорректная цель",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Связывает один или несколько загруженных файлов (upload_ids) с бизнес-сущностью (например, галерея студии, комнаты и тд).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Привязать файлы (вложения)",
+                "parameters": [
+                    {
+                        "description": "Данные для привязки",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/attachment.attachRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешная привязка",
+                        "schema": {
+                            "$ref": "#/definitions/attachment.swaggerAttachmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Некорректная цель привязки",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments/reorder": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Изменяет порядок вложений для сущности. Отправьте массив ID вложений в нужном порядке.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Переупорядочить вложения",
+                "parameters": [
+                    {
+                        "description": "Новый порядок ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/attachment.reorderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Порядок обновлен",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/attachments/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет связь файла с сущностью (саму запись файла upload не удаляет).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Удалить вложение",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID вложения",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Вложение удалено",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав на удаление этого вложения",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Вложение не найдено",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
-                "description": "Авторизует пользователя (клиента или владельца студии) по email и паролю. Возвращает JWT токен для последующих запросов к защищённым эндпоинтам.",
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Войти в аккаунт",
                 "parameters": [
                     {
-                        "description": "Учётные данные (email, password)",
+                        "description": "Учётные данные",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -2536,28 +2398,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Успешная авторизация, возвращается JWT токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: неверный формат данных",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка: неверный email или пароль",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при авторизации",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2568,7 +2409,6 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
-                "description": "Invalidates the current session and clears the refresh token cookie.",
                 "tags": [
                     "Auth"
                 ],
@@ -2582,7 +2422,6 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "post": {
-                "description": "Refreshes the session using the refresh token stored in the cookie.",
                 "produces": [
                     "application/json"
                 ],
@@ -2603,7 +2442,6 @@ const docTemplate = `{
         },
         "/auth/register/client": {
             "post": {
-                "description": "Creates a new client account and returns registration payload with user data and verification flag.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2631,31 +2469,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/auth.RegisterClientResponseSwagger"
                         }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponseSwagger"
-                        }
                     }
                 }
             }
         },
         "/auth/verify/confirm": {
             "post": {
-                "description": "Verifies the email using the provided 6-digit code.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2690,7 +2509,6 @@ const docTemplate = `{
         },
         "/auth/verify/request": {
             "post": {
-                "description": "Sends a verification code to the specified email.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2723,22 +2541,28 @@ const docTemplate = `{
                 }
             }
         },
-        "/bookings": {
+        "/booking": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт новое бронирование на указанную дату и время в выбранной комнате. Проверяет доступность времени, наличие конфликтов с существующими бронированиями и валидность переданных данных. Пользователь идентифицируется по токену аутентификации. При успешном создании возвращается ID и статус новой брони.",
-                "tags": [
-                    "Бронирования"
+                "description": "Создает новое бронирование на указанный период времени.",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Создать новое бронирование",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Создать бронирование",
                 "parameters": [
                     {
-                        "description": "Данные для создания бронирования (room_id, user_id, start_time, end_time)",
-                        "name": "body",
+                        "description": "Данные для бронирования",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -2748,53 +2572,253 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Бронирование успешно создано",
+                        "description": "Создано",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerCreateBookingResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации или некорректные данные запроса",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации - отсутствует или невалидный токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Конфликт времени - комната занята в выбранный период",
+                        "description": "Конфликт времени бронирования",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/cancel": {
-            "patch": {
+        "/booking/my": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Отменяет указанное бронирование и устанавливает его статус в 'cancelled'. Требует обязательное указание причины отмены (минимум 10 символов). Бронирование может быть отменено клиентом (автором) или владельцем/менеджером студии. Невозможно отменить уже завершённое или уже отменённое бронирование. Причина отмены сохраняется в системе для аналитики.",
+                "description": "Возвращает список бронирований текущего авторизованного пользователя.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Бронирования"
+                    "Booking"
+                ],
+                "summary": "Мои бронирования",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Кол-во элементов (макс 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Смещение",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список бронирований",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerGetMyBookingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/booking/room/{id}/availability": {
+            "get": {
+                "description": "Получает доступные временные слоты для бронирования комнаты на выбранную дату.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Доступность комнаты",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID комнаты",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Доступные слоты",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerGetAvailabilityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации/формата",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/booking/room/{id}/busy-slots": {
+            "get": {
+                "description": "Возвращает список занятых временных интервалов для комнаты на указанную дату.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Получить занятые слоты",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID комнаты",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Дата (YYYY-MM-DD)",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Занятые слоты",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerGetBusySlotsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка валидации/формата",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/booking/studio/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех бронирований для конкретной студии. Требует права владельца студии или админа.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Бронирования студии (владелец/админ)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Спиок бронирований студии",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerGetStudioBookingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid studio ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/booking/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Отменяет активное бронирование с обязательным указанием причины.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
                 ],
                 "summary": "Отменить бронирование",
                 "parameters": [
@@ -2806,8 +2830,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Причина отмены бронирования (минимум 10 символов)",
-                        "name": "body",
+                        "description": "Причина отмены",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -2817,55 +2841,53 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Бронирование успешно отменено с указанной причиной",
+                        "description": "Отменено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerBookingResponseWrapper"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации или невозможно отменить статус (уже завершено или отменено)",
+                        "description": "Ошибка валидации/состояния",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - невозможно отменить это бронирование",
+                        "description": "Нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Бронирование не найдено",
+                        "description": "Бронь не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при отмене брони",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/complete": {
-            "patch": {
+        "/booking/{id}/complete": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Завершает указанное бронирование и устанавливает его статус в 'completed'. Доступно только владельцу студии. Бронирование можно завершить только если оно находится в статусе 'confirmed'. Завершение бронирования означает, что сессия в студии была проведена и завершена.",
-                "tags": [
-                    "Бронирования"
+                "description": "Отмечает подтвержденное бронирование как завершенное (Доступно владельцу).",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Завершить бронирование",
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Завершить бронь",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2877,55 +2899,47 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Бронирование успешно завершено",
+                        "description": "Успех",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации - невозможно завершить бронирование с текущим статусом (должно быть 'confirmed')",
+                        "description": "Ошибка состояния",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Доступ запрещен - только владелец студии может завершить бронирование",
+                    "401": {
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Бронирование не найдено",
+                        "description": "Бронь не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при завершении брони",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/confirm": {
-            "patch": {
+        "/booking/{id}/confirm": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Подтверждает указанное бронирование и устанавливает его статус в 'confirmed'. Эта операция доступна только владельцу студии, к которой относится бронирование. Подтверждение означает, что владелец студии согласился с условиями бронирования и готов к проведению сессии.",
-                "tags": [
-                    "Бронирования"
+                "description": "Подтверждает бронирование (доступно только владельцу студии).",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Подтвердить бронирование",
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Подтвердить бронь",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2937,48 +2951,50 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Бронирование успешно подтверждено",
+                        "description": "Подтверждено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка обновления",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - только владелец студии может подтвердить бронирование",
+                        "description": "Нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Бронирование не найдено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при подтверждении брони",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/deposit": {
+        "/booking/{id}/deposit": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет размер залога (предоплаты) для указанного бронирования. Эта операция доступна только администраторам и владельцам студий. Залог представляет собой предварительный платёж для гарантирования брони. Сумма залога может быть изменена в зависимости от политики студии.",
-                "tags": [
-                    "Бронирования"
+                "description": "Устанавливает сумму внесенного депозита за бронирование (Доступно админам/владельцам).",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Обновить размер залога",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Обновить депозит брони",
                 "parameters": [
                     {
                         "type": "integer",
@@ -2988,8 +3004,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Новая сумма залога (deposit_amount)",
-                        "name": "body",
+                        "description": "Сумма депозита",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -2999,48 +3015,41 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Размер залога успешно обновлен",
+                        "description": "Успех",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerBookingResponseWrapper"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации запроса или некорректная сумма залога",
+                        "description": "Ошибка валидации/состояния",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - только администраторы и владельцы студий могут обновлять залог",
+                        "description": "Нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при обновлении залога",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/mark-paid": {
-            "patch": {
+        "/booking/{id}/pay": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Отмечает указанное бронирование как оплаченное, изменяя статус платежа на 'paid'. Эта операция доступна только владельцу студии. Используется для подтверждения получения платежа за бронирование. После отметки как оплаченного бронирование учитывается в доходах студии.",
-                "tags": [
-                    "Бронирования"
+                "description": "Устанавливает статус оплаты в \"paid\".",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Отметить бронирование как оплаченное",
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Отметить бронь оплаченной",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3052,55 +3061,56 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Статус платежа успешно обновлен на 'paid'",
+                        "description": "Обновлено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerUpdatePaymentResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации - неверный ID бронирования",
+                        "description": "Неверный ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации - отсутствует токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - недостаточно прав для обновления статуса платежа",
+                        "description": "Нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера при обновлении статуса платежа",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/payment-status": {
-            "patch": {
+        "/booking/{id}/payment-status": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет информацию о статусе платежа для указанного бронирования. Только автор бронирования или администратор может обновлять статус платежа для бронирования. Статус может быть изменён с 'pending' на другие валидные значения в соответствии с логикой системы.",
-                "tags": [
-                    "Бронирования"
+                "description": "Изменяет статус оплаты бронирования (Требуются права владельца/админа).",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Обновить статус платежа",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Обновить статус оплаты",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3110,8 +3120,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Новый статус платежа (payment_status)",
-                        "name": "body",
+                        "description": "Новый статус оплаты",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3121,55 +3131,56 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Статус платежа успешно обновлен",
+                        "description": "Обновленный статус",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerUpdatePaymentResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации запроса",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации - отсутствует токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - недостаточно прав для обновления этой брони",
+                        "description": "Нет прав для действия",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера при обновлении статуса",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/bookings/{id}/status": {
+        "/booking/{id}/status": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет статус указанного бронирования. Только владелец студии, администратор или автор бронирования могут изменять статусы в соответствии с правилами переходов. Поддерживает валидацию переходов статусов для обеспечения целостности бизнес-логики. Дополнительно проверяется текущий статус для предотвращения невалидных переходов.",
-                "tags": [
-                    "Бронирования"
+                "description": "Позволяет изменить статус бронирования (включая owner's override).",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Обновить статус бронирования",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Booking"
+                ],
+                "summary": "Обновить статус брони",
                 "parameters": [
                     {
                         "type": "integer",
@@ -3179,8 +3190,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Новый статус бронирования (status)",
-                        "name": "body",
+                        "description": "Новый статус",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3190,82 +3201,89 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Статус бронирования успешно обновлен",
+                        "description": "Обновлено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/booking.swaggerCreateBookingResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации или невалидный переход статуса",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации - отсутствует или невалидный токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Доступ запрещен - только владелец студии может менять статус",
+                        "description": "Нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Бронирование не найдено",
+                        "description": "Бронь не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера при обновлении статуса",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats": {
+        "/chat/rooms": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает список всех чатов, в которых состоит пользователь.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "List my rooms",
+                "summary": "Список чатов",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Список чатов",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerListRoomsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/direct": {
+        "/chat/rooms/direct": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Создает или возвращает существующий личный чат с пользователем.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3275,11 +3293,11 @@ const docTemplate = `{
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Start or get a 1-on-1 room",
+                "summary": "Создать чат (direct)",
                 "parameters": [
                     {
-                        "description": "Recipient",
-                        "name": "body",
+                        "description": "ID получателя",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3289,22 +3307,46 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Чат",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerRoomResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка входных данных",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Пользователь заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/group": {
+        "/chat/rooms/group": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Создает групповой чат с названием и списком участников.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3314,11 +3356,11 @@ const docTemplate = `{
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Create a group room",
+                "summary": "Создать чат (group)",
                 "parameters": [
                     {
-                        "description": "Group details",
-                        "name": "body",
+                        "description": "Данные группы",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3328,95 +3370,51 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Групповой чат",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/unread": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Total unread messages count",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/ws": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "Chat"
-                ],
-                "summary": "Connect to WebSocket for real-time chat",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "JWT access token for browser WebSocket clients (alternative to Authorization header)",
-                        "name": "token",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "101": {
-                        "description": "Switching Protocols",
-                        "schema": {
-                            "type": "string"
+                            "$ref": "#/definitions/chat.swaggerRoomResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid WebSocket handshake",
+                        "description": "Ошибка входных данных",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
-                    "426": {
-                        "description": "Upgrade Required",
+                    "401": {
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/{id}/leave": {
+        "/chat/rooms/{id}/leave": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Текущий пользователь добровольно выходит из группового чата.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Leave a room",
+                "summary": "Покинуть чат",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -3424,30 +3422,57 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Вышел",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Не в чате",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/{id}/members": {
+        "/chat/rooms/{id}/members": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает список пользователей, состоящих в этом чате.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Get room members",
+                "summary": "Участники чата",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -3455,10 +3480,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Участники",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerListMembersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Не участник",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -3469,21 +3517,28 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Админ чата или глобальный админ добавляет пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Add member to group room (admin only)",
+                "summary": "Добавить участника",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "User to add",
-                        "name": "body",
+                        "description": "Пользователь",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3493,37 +3548,76 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Добавлен",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка: не группа и тд",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав (не админ)",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Уже участник",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/{id}/members/{user_id}": {
+        "/chat/rooms/{id}/members/{user_id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Админ чата или платформы удаляет пользователя.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Remove member from group room (admin only)",
+                "summary": "Удалить участника",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "User ID to remove",
+                        "description": "ID пользователя",
                         "name": "user_id",
                         "in": "path",
                         "required": true
@@ -3531,53 +3625,109 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Удален",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат или участник не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/{id}/messages": {
+        "/chat/rooms/{id}/messages": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает список сообщений в чате (с пагинацией).",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Get messages in a room",
+                "summary": "Сообщения чата",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "Limit (default 50)",
+                        "description": "Кол-во сообщений",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Offset",
+                        "description": "Отступ",
                         "name": "offset",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Список сообщений",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerListMessagesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Вы не являетесь участником чата",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -3588,6 +3738,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Отправляет текстовое сообщение (с возможным вложением) в чат.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3597,18 +3748,18 @@ const docTemplate = `{
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Send a message",
+                "summary": "Отправить сообщение",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Message",
-                        "name": "body",
+                        "description": "Сообщение",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -3618,30 +3769,63 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Сообщение отправлено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerMessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Нет прав отправлять в этот чат (пользователь заблокирован или вы не участник)",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Чат не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/chats/{id}/read": {
+        "/chat/rooms/{id}/read": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
+                ],
+                "description": "Помечает все сообщения в указанном чате как прочитанные для текущего юзера.",
+                "produces": [
+                    "application/json"
                 ],
                 "tags": [
                     "Chat"
                 ],
-                "summary": "Mark room as read",
+                "summary": "Отметить прочитанными",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Room ID",
+                        "description": "ID чата",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -3649,662 +3833,70 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Отмечено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/company/portfolio": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает полный список проектов портфолио студии с информацией о каждом проекте, включая изображения и описание.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner - Портфолио"
-                ],
-                "summary": "Получить портфолио",
-                "responses": {
-                    "200": {
-                        "description": "Список проектов портфолио",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Ошибка сервера при получении портфолио",
+                    "403": {
+                        "description": "Не участник",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Добавляет новый проект в портфолио с изображением, названием и категорией. Проект автоматически добавляется в конец портфолио. Проект можно переупорядочить в любой момент.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner - Портфолио"
-                ],
-                "summary": "Добавить проект в портфолио",
-                "parameters": [
-                    {
-                        "description": "Данные проекта (image_url, title, category)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/owner.AddPortfolioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Проект успешно добавлен в портфолио",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: отсутствует URL изображения",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при добавлении проекта",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/company/portfolio/:id": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет проект из портфолио по ID. После удаления проект больше не будет виден в портфолио студии. Остальные проекты сохраняют свой порядок.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner - Портфолио"
-                ],
-                "summary": "Удалить проект из портфолио",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID проекта портфолио",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Проект успешно удалён из портфолио",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID проекта",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Проект не найден",
+                        "description": "Чат не найден",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при удалении проекта",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/company/portfolio/reorder": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Переупорядочивает проекты портфолио согласно переданному порядку ID проектов. Новый порядок заменяет старый полностью.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner - Портфолио"
-                ],
-                "summary": "Переупорядочить портфолио",
-                "parameters": [
-                    {
-                        "description": "Новый порядок проектов (массив ID)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/owner.ReorderPortfolioRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Портфолио успешно переупорядочено",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка влидации: отсутствует или пустой массив ID проектов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при переупорядочении портфолио",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/company/profile": {
+        "/chat/unread": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает полные данные профиля компании/студии владельца, включая логотип, контактные данные, описание и специализацию",
+                "description": "Возвращает общее количество непрочитанных сообщений текущего пользователя во всех чатах.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Chat"
                 ],
-                "summary": "Получение профиля компании",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
+                "summary": "Счетчик непрочитанных",
                 "responses": {
                     "200": {
-                        "description": "Профиль компании/студии",
+                        "description": "Кол-во",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/chat.swaggerUnreadCountResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет все данные профиля компании/студии: логотип, контакты, описание, специализацию, социальные сети и другую информацию.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner - Профиль компании"
-                ],
-                "summary": "Обновить профиль компании",
-                "parameters": [
-                    {
-                        "description": "Данные для обновления профиля компании",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/owner.UpdateCompanyProfileRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Профиль компании успешно обновлён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: неверные данные",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении профиля",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/favorites": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Получает список объектов (студий, профилей и т.д.), добавленных в избранное",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Favorite"
-                ],
-                "summary": "Получить список избранного",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Фильтр по типу сущности (например, studio)",
-                        "name": "entity_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "Номер страницы",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Элементов на страницу",
-                        "name": "per_page",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список избранного",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.FavoriteListResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка при получении списка",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Добавляет объект в список избранного (студию, профиль и т.д.)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Favorite"
-                ],
-                "summary": "Добавить в избранное",
-                "parameters": [
-                    {
-                        "description": "Данные (entity_type, entity_id)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/favorite.AddFavoriteRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Сущность успешно добавлена в избранное",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.FavoriteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Сущность уже находится в избранном или некорректные данные",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/favorites/{studioId}": {
-            "post": {
-                "responses": {}
-            },
-            "delete": {
-                "responses": {}
-            }
-        },
-        "/favorites/{studioId}/check": {
-            "get": {
-                "responses": {}
-            }
-        },
-        "/favorites/{type}/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет объект из списка избранного",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Favorite"
-                ],
-                "summary": "Удалить из избранного",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Тип сущности",
-                        "name": "type",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID сущности",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "Успешно удалено из избранного"
-                    },
-                    "400": {
-                        "description": "Некорректный ID или тип",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Отсутствует в избранном",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/favorites/{type}/{id}/check": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Проверяет наличие объекта в избранном текущего пользователя",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Favorite"
-                ],
-                "summary": "Проверить наличие в избранном",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Тип сущности",
-                        "name": "type",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "format": "int64",
-                        "description": "ID сущности",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Результат проверки",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.CheckFavoriteResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный ID или тип",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Пользователь не авторизован",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/favorite.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/internal/mwork/users/sync": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Внутренний API endpoint для синхронизации пользователя из платформы Mwork. Создаёт или обновляет пользователя в PhotoStudio на основе данных из Mwork. Доступно только для внутренних сервисов.",
-                "tags": [
-                    "Интеграции - Mwork"
-                ],
-                "summary": "Синхронизация пользователя из Mwork",
-                "parameters": [
-                    {
-                        "description": "Данные пользователя из Mwork (mwork_user_id, email, full_name, role, phone)",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/mwork.SyncUserRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Пользователь синхронизирован успешно",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "201": {
-                        "description": "Новый пользователь создан",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: неверные данные (invalid UUID, invalid role, etc.)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Конфликт: пользователь с этим email уже существует",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при синхронизации пользователя",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -4312,7 +3904,7 @@ const docTemplate = `{
         },
         "/leads/submit": {
             "post": {
-                "description": "Public endpoint for potential studio owners to submit their application",
+                "description": "Публичный эндпоинт для отправки заявки на регистрацию студии.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4322,10 +3914,10 @@ const docTemplate = `{
                 "tags": [
                     "Leads"
                 ],
-                "summary": "Submit studio owner lead",
+                "summary": "Подать заявку лида",
                 "parameters": [
                     {
-                        "description": "Lead submission data",
+                        "description": "Данные заявки",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -4336,39 +3928,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Заявка создана",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/lead.OwnerLead"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/lead.swaggerLeadResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка входных данных",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email уже существует",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Ошибка валидации",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -4381,15 +3967,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Выводит список бронирований для всех студий владельца с деталями с возможностью фильтрирования по статусу, дате, клиенту.",
-                "tags": [
-                    "Менеджер - Управление бронированиями"
+                "description": "Возвращает список бронирований студий владельца по фильтрам.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Получить отфильтрованные бронирования",
+                "tags": [
+                    "Manager"
+                ],
+                "summary": "Получить бронирования (для менеджера)",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Фильтр по статусу (all, pending, confirmed, cancelled, completed)",
+                        "description": "Фильтр по статусу (например, completed, cancelled, all)",
                         "name": "status",
                         "in": "query"
                     },
@@ -4419,7 +4008,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Выконачая дата (YYYY-MM-DD)",
+                        "description": "Конечная дата (YYYY-MM-DD)",
                         "name": "date_to",
                         "in": "query"
                     },
@@ -4431,55 +4020,48 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Количество бронирований на странице (макс 100)",
+                        "description": "Количество элементов (макс 100)",
                         "name": "per_page",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список бронирований с пагинацией",
+                        "description": "Список бронирований",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка в параметрах",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/manager.swaggerManagerBookingsResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/manager/bookings/:id": {
+        "/manager/bookings/{id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает подробную информацию о бронировании (клиент, студия, настройки, цену, статус).",
-                "tags": [
-                    "Менеджер - Управление бронированиями"
+                "description": "Возвращает подробности конкретного бронирования.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Открыть детали бронирования",
+                "tags": [
+                    "Manager"
+                ],
+                "summary": "Детали бронирования",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4491,55 +4073,50 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Подробная информация о бронировании",
+                        "description": "Данные бронирования",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/manager.swaggerManagerBookingResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверный ID",
+                        "description": "Некорректный ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Бронирование не найдено или доступ запрещён",
+                        "description": "Бронирование не найдено или нет прав",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/manager/bookings/:id/deposit": {
+        "/manager/bookings/{id}/deposit": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет внесённые средства (залог или авансовые платежи) для бронирования.",
-                "tags": [
-                    "Менеджер - Управление бронированиями"
+                "description": "Менеджер обновляет расчет суммы залога за бронирование.",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Обновить рассчётные средства",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manager"
+                ],
+                "summary": "Обновить залог",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4549,7 +4126,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Новая сумма залога",
+                        "description": "Новая сумма",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -4560,55 +4137,56 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Намавка депозита обновлена",
+                        "description": "Залог обновлен",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверные данные",
+                        "description": "Ошибка входных данных",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Бронирование не найдено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/manager/bookings/:id/status": {
+        "/manager/bookings/{id}/status": {
             "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Меняет статус бронирования: pending -\u003e confirmed -\u003e completed или cancelled.",
-                "tags": [
-                    "Менеджер - Управление бронированиями"
+                "description": "Меняет статус бронирования (например, подтверждено, отменено).",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Обновить статус бронирования",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manager"
+                ],
+                "summary": "Обновить статус брони",
                 "parameters": [
                     {
                         "type": "integer",
@@ -4618,7 +4196,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Новый статус (pending, confirmed, cancelled, completed)",
+                        "description": "Новый статус",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -4629,38 +4207,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Статус бронирования обновлен",
+                        "description": "Статус обновлен",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверные данные",
+                        "description": "Ошибка входных данных",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Бронирование не найдено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера",
+                        "description": "Ошибка на сервере",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -4673,15 +4246,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Выводит список всех клиентов, которые бронировали студии владельца, с возможностью поиска по имени.",
-                "tags": [
-                    "Менеджер - Отношения с клиентами"
+                "description": "Возвращает список клиентов с пагинацией и поиском по имени.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Получить список клиентов",
+                "tags": [
+                    "Manager"
+                ],
+                "summary": "Список клиентов",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Поиск по имени клиента",
+                        "description": "Поиск по имени",
                         "name": "search",
                         "in": "query"
                     },
@@ -4693,38 +4269,28 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Количество клиентов на странице (макс 100)",
+                        "description": "Клиентов на странице (макс 100)",
                         "name": "per_page",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список клиентов с пагинацией",
+                        "description": "Список клиентов",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка в параметрах",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/manager.swaggerManagerClientsResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -4737,44 +4303,69 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает список последних уведомлений пользователя и количество непрочитанных. Поддерживает пагинацию через параметры limit и offset.",
-                "tags": [
-                    "Уведомления"
+                "description": "Возвращает страницу уведомлений пользователя.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Получить уведомления",
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Список уведомлений",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Максимальное количество уведомлений (по умолчанию 20, макс 100)",
+                        "description": "Кол-во на страницу",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Смещение для пагинации (по умолчанию 0)",
+                        "description": "Отступ",
                         "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Только непрочитанные",
+                        "name": "only_unread",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список уведомлений и количество непрочитанных",
+                        "description": "Уведомления",
                         "schema": {
-                            "$ref": "#/definitions/notification.NotificationListResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/notification.NotificationListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные параметры",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при получении уведомлений",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -4787,36 +4378,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает список всех активных device tokens для текущего пользователя.",
                 "tags": [
                     "Уведомления - Device Tokens"
                 ],
                 "summary": "Получить device tokens",
-                "responses": {
-                    "200": {
-                        "description": "Список device tokens",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/notification.DeviceTokenResponse"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             },
             "post": {
                 "security": [
@@ -4824,51 +4390,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Регистрирует новый device token (для мобильных или веб-приложений) для получения push-уведомлений.",
                 "tags": [
                     "Уведомления - Device Tokens"
                 ],
                 "summary": "Зарегистрировать device token",
-                "parameters": [
-                    {
-                        "description": "Device token информация",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/notification.RegisterDeviceTokenRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Device token зарегистрирован",
-                        "schema": {
-                            "$ref": "#/definitions/notification.DeviceTokenResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/notifications/device-tokens/{id}": {
@@ -4878,50 +4404,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Деактивирует device token, устройство больше не будет получать push-уведомления.",
                 "tags": [
                     "Уведомления - Device Tokens"
                 ],
                 "summary": "Деактивировать device token",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID device token",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Device token деактивирован",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: неверный ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/notifications/preferences": {
@@ -4931,33 +4418,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает текущие настройки уведомлений для пользователя.",
                 "tags": [
                     "Уведомления - Настройки"
                 ],
                 "summary": "Получить настройки уведомлений",
-                "responses": {
-                    "200": {
-                        "description": "Настройки уведомлений",
-                        "schema": {
-                            "$ref": "#/definitions/notification.PreferencesResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             },
             "patch": {
                 "security": [
@@ -4965,51 +4430,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет настройки уведомлений для текущего пользователя.",
                 "tags": [
                     "Уведомления - Настройки"
                 ],
                 "summary": "Обновить настройки уведомлений",
-                "parameters": [
-                    {
-                        "description": "Данные для обновления",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/notification.UpdatePreferencesRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Обновленные настройки",
-                        "schema": {
-                            "$ref": "#/definitions/notification.PreferencesResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
         "/notifications/preferences/reset": {
@@ -5019,104 +4444,123 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Сбрасывает все настройки уведомлений на значения по умолчанию.",
                 "tags": [
                     "Уведомления - Настройки"
                 ],
                 "summary": "Сбросить настройки",
-                "responses": {
-                    "200": {
-                        "description": "Восстановленные настройки",
-                        "schema": {
-                            "$ref": "#/definitions/notification.PreferencesResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
+                "responses": {}
             }
         },
-        "/notifications/read-all": {
+        "/notifications/read/all": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Отмечает все непрочитанные уведомления пользователя как прочитанные одним запросом.",
-                "tags": [
-                    "Уведомления"
+                "description": "Помечает все уведомления пользователя как прочитанные.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Отметить все уведомления как прочитанные",
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Прочитать всё",
                 "responses": {
                     "200": {
-                        "description": "Все уведомления отмечены как прочитанные",
+                        "description": "Готово",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при обновлении статуса",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/notifications/unread-count": {
+        "/notifications/unread": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает количество непрочитанных уведомлений для текущего пользователя.",
-                "tags": [
-                    "Уведомления"
+                "description": "Возвращает количество непрочитанных уведомлений пользователя.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Получить количество непрочитанных",
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Счетчик непрочитанных",
                 "responses": {
                     "200": {
-                        "description": "Количество непрочитанных уведомлений",
+                        "description": "Счетчик",
                         "schema": {
-                            "$ref": "#/definitions/notification.UnreadCountResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/notification.UnreadCountResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/notifications/ws": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Устанавливает WebSocket соединение для получения уведомлений в реальном времени.",
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Сессия WS",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    },
+                    "400": {
+                        "description": "Ошибка запроса"
+                    },
+                    "401": {
+                        "description": "Не авторизован"
+                    },
+                    "503": {
+                        "description": "Сервис недоступен"
                     }
                 }
             }
@@ -5128,9 +4572,12 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет конкретное уведомление пользователя.",
+                "description": "Удаляет конкретное уведомление.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Уведомления"
+                    "Notification"
                 ],
                 "summary": "Удалить уведомление",
                 "parameters": [
@@ -5144,48 +4591,53 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Уведомление удалено",
+                        "description": "Удалено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверный ID",
+                        "description": "Неверный ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Уведомление не найдено",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
         "/notifications/{id}/read": {
-            "patch": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Отмечает конкретное уведомление как прочитанное. После этого оно больше не будет учитываться в счётчике непрочитанных.",
-                "tags": [
-                    "Уведомления"
+                "description": "Помечает конкретное уведомление как прочитанное.",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Отметить уведомление как прочитанное",
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Пометить как прочитанное",
                 "parameters": [
                     {
                         "type": "integer",
@@ -5197,38 +4649,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Уведомление отмечено как прочитанное",
+                        "description": "Готово",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверный ID уведомления",
+                        "description": "Неверный ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Ошибка: уведомление не найдено",
+                        "description": "Уведомление не найдено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при обновлении статуса",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5241,92 +4688,31 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает аналитические данные о работе студии владельца, включая статистику бронирований, доходы и другие метрики",
+                "description": "Возвращает графики и метрики для дэшборда.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Owner"
                 ],
-                "summary": "Получение аналитики студии",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
+                "summary": "Аналитика",
                 "responses": {
                     "200": {
-                        "description": "Аналитические данные студии",
+                        "description": "Аналитика",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/owner.swaggerAnalyticsResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/owner/has-pin": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Проверяет, установлен ли PIN код для текущего владельца студии",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner"
-                ],
-                "summary": "Проверка наличия PIN кода",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Статус наличия PIN кода",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5339,49 +4725,39 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает список записей об обслуживании оборудования и помещений студии. Можно отфильтровать по статусу: all, pending, in_progress, completed",
+                "description": "CRM: Задачи обслуживания оборудования/студии (чистка матрицы и т.д.).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Maintenance"
                 ],
-                "summary": "Получение списка обслуживания",
+                "summary": "Список обслуживания",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Фильтр по статусу (all, pending, in_progress, completed) - по умолчанию all",
+                        "description": "Статус обслуживания",
                         "name": "status",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список записей об обслуживании и их количество",
+                        "description": "Список задач",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/owner.swaggerMaintenanceListResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5392,7 +4768,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт новую запись об обслуживании оборудования, помещений или инженерных систем студии. При отсутствии приоритета устанавливается значение medium. Статус по умолчанию - pending",
+                "description": "CRM: Добавляет задачу на обслуживание.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5400,19 +4776,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Maintenance"
                 ],
-                "summary": "Создание новой записи об обслуживании",
+                "summary": "Добавить задачу обслуживания",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для создания записи об обслуживании",
+                        "description": "Задача на обслуживание",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -5423,31 +4792,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Запись об обслуживании успешно создана",
+                        "description": "Создано",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/owner.swaggerMaintenanceItemResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректные данные запроса",
+                        "description": "Ошибка параметров",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5460,26 +4825,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет запись об обслуживании по ID. Может удалить только владелец студии",
+                "description": "CRM: Удаляет задачу из базы.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Maintenance"
                 ],
-                "summary": "Удаление записи об обслуживании",
+                "summary": "Удалить задачу",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
-                        "format": "int64",
-                        "description": "ID записи об обслуживании",
+                        "description": "ID задачи",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -5487,38 +4844,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Запись об обслуживании успешно удалена",
+                        "description": "Удалено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный ID записи об обслуживании",
+                        "description": "Ошибка ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Запись об обслуживании не найдена",
+                        "description": "Задача не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5529,7 +4881,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет данные существующей записи об обслуживании. Нельзя изменять ID, владельца и дату создания",
+                "description": "CRM: Частичное обновление задачи (статус, ответственный).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5537,27 +4889,19 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Maintenance"
                 ],
-                "summary": "Обновление записи об обслуживании",
+                "summary": "Обновить задачу обслуживания",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
-                        "format": "int64",
-                        "description": "ID записи об обслуживании",
+                        "description": "ID задачи",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Поля для обновления",
+                        "description": "Поля",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -5569,38 +4913,334 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Запись об обслуживании успешно обновлена",
+                        "description": "Обновлено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный ID записи об обслуживании",
+                        "description": "Ошибка параметров",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Запись об обслуживании не найдена",
+                        "description": "Задача не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/pin": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает boolean, установлен ли PIN у владельца.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner"
+                ],
+                "summary": "PIN установлен?",
+                "responses": {
+                    "200": {
+                        "description": "Результат",
+                        "schema": {
+                            "$ref": "#/definitions/owner.swaggerHasPINResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/pin/verify": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Разблокировать доступ на основе PIN-кода.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner"
+                ],
+                "summary": "Проверить PIN",
+                "parameters": [
+                    {
+                        "description": "Пин",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/owner.VerifyPINRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Проверено",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован или неверный PIN",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "PIN не установлен",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/portfolio": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает проекты/фотографии портфолио владельца.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Скачать портфолио",
+                "responses": {
+                    "200": {
+                        "description": "Портфолио",
+                        "schema": {
+                            "$ref": "#/definitions/owner.swaggerPortfolioListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет проект в портфолио владельца (используя загруженное фото).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Добавить работу в портфолио",
+                "parameters": [
+                    {
+                        "description": "Работа",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/owner.AddPortfolioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешно добавлено",
+                        "schema": {
+                            "$ref": "#/definitions/owner.swaggerPortfolioItemResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка параметров",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/portfolio/reorder": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Переупорядочить проекты в портфолио.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Порядок портфолио",
+                "parameters": [
+                    {
+                        "description": "IDs в новом порядке",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/owner.ReorderPortfolioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Обновлено",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/owner/portfolio/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет проект/фото из портфолио.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Удалить из портфолио",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID проекта",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Удалено",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Проект не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5613,49 +5253,39 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Получает список закупок для студии владельца с опциональной фильтрацией по статусу завершённости",
+                "description": "CRM: Список элементов оборудования/реквизита для планируемых закупок.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Procurement"
                 ],
-                "summary": "Получение списка закупок",
+                "summary": "Список закупок",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "boolean",
-                        "description": "Показывать ли завершённые закупки (по умолчанию false)",
+                        "description": "Показывать ли завершенные",
                         "name": "show_completed",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Список закупок и их количество",
+                        "description": "Список закупок",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/owner.swaggerProcurementListResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5666,7 +5296,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создаёт новую запись о закупке оборудования или материалов для студии. Приоритет по умолчанию - medium, количество - 1",
+                "description": "CRM: Создание новой заявки на закупку (например, новая камера).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5674,19 +5304,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Procurement"
                 ],
-                "summary": "Создание новой закупки",
+                "summary": "Добавить закупку",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для создания закупки",
+                        "description": "Данные закупки",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -5697,31 +5320,27 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Закупка успешно создана",
+                        "description": "Закупка добавлена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/owner.swaggerProcurementItemResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректные данные запроса",
+                        "description": "Ошибка запроса",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5734,25 +5353,17 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет закупку по ID. Может удалить только владелец студии",
+                "description": "CRM: Удаление заявки на закупку.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Procurement"
                 ],
-                "summary": "Удаление закупки",
+                "summary": "Удалить закупку",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
-                        "format": "int64",
                         "description": "ID закупки",
                         "name": "id",
                         "in": "path",
@@ -5761,38 +5372,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Закупка успешно удалена",
+                        "description": "Закупка удалена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный ID закупки",
+                        "description": "Ошибка ID",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Закупка не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5803,7 +5409,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет данные существующей закупки. Нельзя изменять ID, владельца и дату создания",
+                "description": "CRM: Частичное обновление закупки (например, изменение статуса).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5811,20 +5417,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner CRM - Procurement"
                 ],
-                "summary": "Обновление закупки",
+                "summary": "Обновить закупку",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "type": "integer",
-                        "format": "int64",
                         "description": "ID закупки",
                         "name": "id",
                         "in": "path",
@@ -5843,51 +5441,81 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Закупка успешно обновлена",
+                        "description": "Закупка обновлена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный ID закупки",
+                        "description": "Ошибка запроса",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Закупка не найдена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/owner/set-pin": {
-            "post": {
+        "/owner/profile": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Устанавливает PIN код из 4-6 цифр для защиты CRM функций владельца студии",
+                "description": "Возвращает информацию о компании (юр. лицо) для B2B профиля.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Owner Profile"
+                ],
+                "summary": "Профиль компании",
+                "responses": {
+                    "200": {
+                        "description": "Профиль",
+                        "schema": {
+                            "$ref": "#/definitions/owner.swaggerCompanyProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Сохраняет обновленные данные B2B профиля.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5895,54 +5523,43 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner"
+                    "Owner Profile"
                 ],
-                "summary": "Установка PIN кода",
+                "summary": "Обновить профиль",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "PIN request body",
+                        "description": "Профиль",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/owner.SetPINRequest"
+                            "$ref": "#/definitions/owner.UpdateCompanyProfileRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "PIN успешно установлен",
+                        "description": "Обновлено",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
                         }
                     },
                     "400": {
-                        "description": "Некорректный формат PIN (должен быть 4-6 цифр)",
+                        "description": "Ошибки параметров",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5955,18 +5572,31 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает активную подписку владельца студии со всеми лимитами и фичами тарифа.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Get current subscription for the authenticated Studio Owner",
+                "summary": "Текущая подписка",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Подписка",
                         "schema": {
-                            "$ref": "#/definitions/subscription.SubscriptionResponse"
+                            "$ref": "#/definitions/subscription.swaggerSubscriptionResponseWrapper"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -5977,6 +5607,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Владелец переходит на указанный план. Если план платный - создается подписка (возможно, потребуется оплата).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5986,11 +5617,11 @@ const docTemplate = `{
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Subscribe or upgrade to a plan",
+                "summary": "Оформить или изменить подписку",
                 "parameters": [
                     {
-                        "description": "Plan and billing period",
-                        "name": "body",
+                        "description": "Данные (ID тарифа и период)",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -6000,9 +5631,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Подписка оформлена",
                         "schema": {
-                            "$ref": "#/definitions/subscription.SubscriptionResponse"
+                            "$ref": "#/definitions/subscription.swaggerSubscriptionResponseWrapper"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Тариф не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Уже подписан на этот тариф",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6015,6 +5676,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Отменяет текущую платную подписку владельца (автоматическое продление).",
                 "consumes": [
                     "application/json"
                 ],
@@ -6024,11 +5686,11 @@ const docTemplate = `{
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Cancel current subscription",
+                "summary": "Отменить подписку",
                 "parameters": [
                     {
-                        "description": "Optional cancel reason",
-                        "name": "body",
+                        "description": "Причина отмены (необязательно)",
+                        "name": "request",
                         "in": "body",
                         "schema": {
                             "$ref": "#/definitions/subscription.CancelRequest"
@@ -6037,10 +5699,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Подписка отменена",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный запрос (например, нельзя отменить бесплатный тариф)",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Подписка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6053,106 +5738,44 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает текущее количество комнат, фото и мест в команде в сравнении с лимитами тарифа.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Subscriptions"
                 ],
-                "summary": "Get current usage vs plan limits for the Studio Owner",
+                "summary": "Использование тарифа",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Текущее использование ресурсов",
                         "schema": {
-                            "$ref": "#/definitions/subscription.UsageResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/owner/verify-pin": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Проверяет корректность введённого PIN кода владельцем студии",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Owner"
-                ],
-                "summary": "Проверка PIN кода",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "PIN request body",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/owner.VerifyPINRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "PIN успешно проверен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/subscription.swaggerUsageResponseWrapper"
                         }
                     },
                     "401": {
-                        "description": "PIN неверен или требуется аутентификация",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "PIN не установлен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/payments/robokassa/create": {
+        "/payments": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates Robokassa payment link and signature for a booking",
+                "description": "Инициирует процесс оплаты (бронирование, услуга).",
                 "consumes": [
                     "application/json"
                 ],
@@ -6160,13 +5783,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Payments"
+                    "Payment"
                 ],
-                "summary": "Create Robokassa payment",
+                "summary": "Создать платеж",
                 "parameters": [
                     {
-                        "description": "Payment init payload",
-                        "name": "body",
+                        "description": "Данные платежа",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -6176,21 +5799,305 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Ссылка на оплату",
                         "schema": {
-                            "$ref": "#/definitions/payment.InitPaymentResponse"
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/payment.InitPaymentResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Неверные параметры",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/payment.ErrorResponse"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/callback/fail": {
+            "get": {
+                "description": "Обрабатывает пользователя, вернувшегося после неудачной оплаты.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment Webhooks"
+                ],
+                "summary": "Robokassa Fail Redirect",
+                "responses": {}
+            }
+        },
+        "/payments/callback/result": {
+            "post": {
+                "description": "Обрабатывает успешный платеж от Robokassa в фоне. Специфический контент-тип application/x-www-form-urlencoded.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Payment Webhooks"
+                ],
+                "summary": "Robokassa Result Webhook",
+                "responses": {}
+            }
+        },
+        "/payments/callback/success": {
+            "get": {
+                "description": "Обрабатывает пользователя, вернувшегося после успешной оплаты.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment Webhooks"
+                ],
+                "summary": "Robokassa Success Redirect",
+                "responses": {}
+            }
+        },
+        "/payments/init": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает платеж в БД и возвращает ссылку.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Инициализировать платеж",
+                "parameters": [
+                    {
+                        "description": "Данные платежа",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/payment.InitPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Платеж",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/payment.InitPaymentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/subscriptions": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Инициирует платеж для рекуррентной подписки.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Создать подписку",
+                "parameters": [
+                    {
+                        "description": "Сумма",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/payment.CreateSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ссылка на оплату",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.SuccessResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/payment.InitPaymentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/subscriptions/my": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает текущую подписку пользователя.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Моя подписка",
+                "responses": {
+                    "200": {
+                        "description": "Подписка",
+                        "schema": {
+                            "$ref": "#/definitions/payment.swaggerPaymentSubscriptionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Подписка не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/payments/subscriptions/my/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Отменяет активную подписку пользователя (отмена рекуррента).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Отменить подписку",
+                "responses": {
+                    "200": {
+                        "description": "Готово",
+                        "schema": {
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка отмены",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6203,54 +6110,48 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get authenticated admin's profile",
+                "description": "Возвращает данные профиля текущего администратора.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Profile"
+                    "Profile"
                 ],
-                "summary": "Get admin profile",
+                "summary": "Профиль админа",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.AdminProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerAdminProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Профиль не найден",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update authenticated admin's profile (admin only)",
+                "description": "Обновляет профиль администратора.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6258,12 +6159,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Admin Profile"
+                    "Profile"
                 ],
-                "summary": "Update admin profile",
+                "summary": "Обновить профиль",
                 "parameters": [
                     {
-                        "description": "Profile update",
+                        "description": "Данные",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -6274,45 +6175,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль обновлен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.AdminProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerAdminProfileResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Профиль не найден",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Unprocessable entity",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6325,54 +6220,42 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get authenticated client's profile",
+                "description": "Возвращает данные профиля текущего клиента. Если не существует, создает пустой.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Client Profile"
+                    "Profile"
                 ],
-                "summary": "Get client profile",
+                "summary": "Профиль клиента",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.ClientProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerClientProfileResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "401": {
+                        "description": "Не авторизован",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             },
-            "put": {
+            "patch": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update authenticated client's profile",
+                "description": "Обновляет профиль клиента.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6380,12 +6263,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Client Profile"
+                    "Profile"
                 ],
-                "summary": "Update client profile",
+                "summary": "Обновить профиль",
                 "parameters": [
                     {
-                        "description": "Profile update",
+                        "description": "Данные",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -6396,45 +6279,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль обновлен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.ClientProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerClientProfileResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Профиль не найден",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Unprocessable entity",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6447,43 +6324,37 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get authenticated owner's profile",
+                "description": "Возвращает данные профиля текущего владельца фотостудии.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Owner Profile"
+                    "Profile"
                 ],
-                "summary": "Get owner profile",
+                "summary": "Профиль владельца",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.OwnerProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerOwnerProfileResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Профиль не найден",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6494,7 +6365,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update authenticated owner's profile",
+                "description": "Обновляет профиль владельца студии.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6502,12 +6373,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Owner Profile"
+                    "Profile"
                 ],
-                "summary": "Update owner profile",
+                "summary": "Обновить профиль",
                 "parameters": [
                     {
-                        "description": "Profile update",
+                        "description": "Данные",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -6518,45 +6389,39 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Профиль обновлен",
                         "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/profile.OwnerProfile"
-                                        }
-                                    }
-                                }
-                            ]
+                            "$ref": "#/definitions/profile.swaggerOwnerProfileResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Ошибка валидации/формата",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Профиль не найден",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "Unprocessable entity",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Ошибка сервера",
                         "schema": {
-                            "$ref": "#/definitions/response.Response"
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6569,6 +6434,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Добавляет указанного пользователя в черный список текущего авторизованного пользователя. Блокированный пользователь не сможет писать сообщения или совершать другие взаимодействия.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6578,11 +6444,11 @@ const docTemplate = `{
                 "tags": [
                     "Relationships"
                 ],
-                "summary": "Block a user",
+                "summary": "Заблокировать пользователя",
                 "parameters": [
                     {
-                        "description": "User to block",
-                        "name": "body",
+                        "description": "ID пользователя для блокировки",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -6592,10 +6458,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Пользователь заблокирован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса или попытка заблокировать себя",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Пользователь уже заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6608,14 +6497,18 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Удаляет пользователя из черного списка.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Relationships"
                 ],
-                "summary": "Unblock a user",
+                "summary": "Разблокировать пользователя",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "User ID to unblock",
+                        "description": "ID пользователя",
                         "name": "user_id",
                         "in": "path",
                         "required": true
@@ -6623,10 +6516,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Пользователь разблокирован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не был заблокирован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6639,19 +6555,31 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Возвращает список ID пользователей, которых заблокировал текущий пользователь, и время блокировки.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Relationships"
                 ],
-                "summary": "List blocked users",
+                "summary": "Список заблокированных пользователей",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Успех",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/relationship.swaggerListBlockedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6659,11 +6587,14 @@ const docTemplate = `{
         },
         "/reviews": {
             "get": {
-                "description": "Возвращает постраничный список отзывов о сущности.",
-                "tags": [
-                    "Отзывы"
+                "description": "Возвращает список отзывов для определенной сущности (например, студии).",
+                "produces": [
+                    "application/json"
                 ],
-                "summary": "Получить отзывы сущности",
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Получить отзывы",
                 "parameters": [
                     {
                         "type": "string",
@@ -6681,13 +6612,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Максимум количество отзывов (дефолт: 20)",
+                        "description": "Лимит (дефолт: 20)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Офсет с какого рекорда начинать",
+                        "description": "Отступ (дефолт: 0)",
                         "name": "offset",
                         "in": "query"
                     }
@@ -6696,22 +6627,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Список отзывов",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/review.swaggerListReviewResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка: неверный ID или тип",
+                        "description": "Неверные параметры запроса",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -6723,13 +6651,19 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Пользователь может написать отзыв о сущности (студия, профиль). Для студий требуется завершенное бронирование.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Отзывы"
+                    "Reviews"
                 ],
                 "summary": "Написать отзыв",
                 "parameters": [
                     {
-                        "description": "Данные отзыва (target_type, target_id, rating, context_type, context_id)",
+                        "description": "Данные отзыва",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -6740,60 +6674,60 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Отзыв успешно сохранён",
+                        "description": "Отыв создан",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/review.swaggerReviewResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации данных",
+                        "description": "Ошибка входных данных",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Запрещено писать отзыв",
+                        "description": "Оставление отзыва запрещено (нет брони и т.д.)",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Ошибка: отзыв уже существует",
+                        "description": "Отзыв от этого пользователя уже существует",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при сохранении отзыва",
+                        "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/reviews/:id/response": {
+        "/reviews/{id}/response": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Владелец сущности может добавить ответ на отзыв.",
+                "description": "Владелец сущности может оставить официальный ответ на отзыв.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
-                    "Отзывы"
+                    "Reviews"
                 ],
                 "summary": "Ответить на отзыв",
                 "parameters": [
@@ -6816,254 +6750,47 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Ответ успешно добавлен",
+                        "description": "Ответ добавлен",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/review.swaggerReviewResponse"
                         }
                     },
                     "400": {
-                        "description": "Ошибка валидации данных",
+                        "description": "Некорректный запрос",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации",
+                        "description": "Не авторизован",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "403": {
-                        "description": "Запрещено: вы не овнер сущности",
+                        "description": "Вложено запрещено оставлять ответ",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Отзыв не найден",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при добавлении ответа",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/availability": {
-            "get": {
-                "description": "Возвращает детальную информацию о доступности указанной комнаты на определённую дату, включая забронированные временные слоты. Помогает пользователю выбрать свободное время для создания новой брони. Ответ включает информацию о всех занятых и свободных промежутках времени.",
-                "tags": [
-                    "Бронирования"
-                ],
-                "summary": "Проверить доступность комнаты на дату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Дата в формате YYYY-MM-DD (обязательный параметр)",
-                        "name": "date",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Информация о доступности комнаты, включая забронированные слоты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации - неверный ID, отсутствует дата или неправильный формат",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при получении информации о доступности",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/rooms/{id}/busy-slots": {
-            "get": {
-                "description": "Возвращает список всех занятых временных промежутков (слотов) для указанной комнаты на определённую дату. Также включает информацию о времени открытия и закрытия студии. Используется при выборе времени для новой брони. Каждый слот содержит время начала и окончания в формате HH:MM.",
-                "tags": [
-                    "Бронирования"
-                ],
-                "summary": "Получить занятые временные слоты",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID комнаты",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Дата в формате YYYY-MM-DD (обязательный параметр)",
-                        "name": "date",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список занятых временных слотов на указанную дату",
-                        "schema": {
-                            "$ref": "#/definitions/booking.BusySlotsResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации - неверный ID комнаты или формат даты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при получении занятых слотов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios": {
-            "get": {
-                "description": "Получает список всех студий с возможностью фильтрации по городу, типу комнаты, цене и поиску по названию. Поддерживает сортировку и пагинацию.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Студии"
-                ],
-                "summary": "Получить список студий",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "example": "\"Moscow\"",
-                        "description": "Фильтр по городу",
-                        "name": "city",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"Fashion\"",
-                        "description": "Фильтр по типу комнаты (Fashion, Portrait, Creative, Commercial)",
-                        "name": "room_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"My Studio\"",
-                        "description": "Поиск по названию студии",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "example": 100,
-                        "description": "Минимальная цена в час",
-                        "name": "min_price",
-                        "in": "query"
-                    },
-                    {
-                        "type": "number",
-                        "example": 1000,
-                        "description": "Максимальная цена в час",
-                        "name": "max_price",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"rating\"",
-                        "description": "Поле для сортировки (rating, price, created_at)",
-                        "name": "sort_by",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "example": "\"desc\"",
-                        "description": "Порядок сортировки (asc, desc)",
-                        "name": "sort_order",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Номер страницы",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "example": 20,
-                        "description": "Количество студий на странице (максимум 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ со списком студий и информацией о пагинации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректные параметры запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Внутренняя ошибка сервера",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Создает новую студию в каталоге. Требует аутентификации и верификации пользователя как владельца студии. Пользователь должен иметь роль студии-владельца и пройти верификацию.",
+            }
+        },
+        "/rooms": {
+            "get": {
+                "description": "Get a list of rooms, optionally filtered by studio ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -7071,51 +6798,34 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Catalog - Студии"
+                    "Catalog"
                 ],
-                "summary": "Создать новую студию",
+                "summary": "List rooms",
                 "parameters": [
                     {
-                        "description": "Данные для создания студии (название, описание, адрес, город, цена и т.д.)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateStudioRequest"
-                        }
+                        "type": "integer",
+                        "description": "Studio ID filter",
+                        "name": "studio_id",
+                        "in": "query"
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Студия успешно создана, возвращает объект созданной студии",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Пользователь не является верифицированным владельцем студии",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7124,20 +6834,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/studios/:id/reviews": {
+        "/rooms/types": {
             "get": {
-                "summary": "Получить отзывы студии (Legacy)",
-                "responses": {}
-            }
-        },
-        "/studios/my": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Получает список всех студий, принадлежащих текущему авторизованному владельцу студии. Требует валидного JWT токена в заголовке Authorization.",
+                "description": "Get a list of available predefined room types",
                 "consumes": [
                     "application/json"
                 ],
@@ -7145,26 +6844,12 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Catalog - Студии"
+                    "Catalog"
                 ],
-                "summary": "Получить мои студии",
+                "summary": "Get room types",
                 "responses": {
                     "200": {
-                        "description": "Успешный ответ со списком студий владельца",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7173,9 +6858,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/studios/{id}": {
+        "/rooms/{id}": {
             "get": {
-                "description": "Получает полную информацию о студии, включая все комнаты, оборудование и фотографии по уникальному идентификатору.",
+                "description": "Get detailed information about a specific room",
                 "consumes": [
                     "application/json"
                 ],
@@ -7183,14 +6868,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Catalog - Студии"
+                    "Catalog"
                 ],
-                "summary": "Получить студию по ID",
+                "summary": "Get room by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
+                        "description": "Room ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -7198,28 +6882,28 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Успешный ответ с информацией о студии",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Некорректный формат ID",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Студия не найдена",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Внутренняя ошибка сервера",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7233,7 +6917,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет информацию о студии (названия, описание, адрес, город, цена в час и другие параметры). Требует аутентификации. Только владелец студии может её обновлять.",
+                "description": "Update an existing room's details (Owner only)",
                 "consumes": [
                     "application/json"
                 ],
@@ -7241,530 +6925,30 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Catalog - Студии"
+                    "Catalog"
                 ],
-                "summary": "Обновить студию",
+                "summary": "Update room",
                 "parameters": [
                     {
                         "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
+                        "description": "Room ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Данные для обновления студии",
-                        "name": "body",
+                        "description": "Room details",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
+                            "$ref": "#/definitions/catalog.UpdateRoomRequest"
                         }
                     }
                 ],
-                "responses": {
-                    "200": {
-                        "description": "Студия успешно обновлена, возвращает обновленный объект",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для обновления этой студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/bookings": {
-            "get": {
-                "description": "Возвращает полный список всех бронирований, связанных с указанной студией. Используется владельцами студий или администраторами для управления и мониторинга бронирований. Включает информацию о клиентах, времени, статусах и платежах.",
-                "tags": [
-                    "Бронирования"
-                ],
-                "summary": "Получить бронирования студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список всех бронирований студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации - неверный ID студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при получении бронирований",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/photos": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Загружает фотографии студии. Поддерживает загрузку до 10 файлов одновременно. Допустимые форматы: JPEG, PNG, WebP. Максимальный размер файла: 5 МБ. Требует аутентификации. Только владелец студии может загружать фотографии.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Фотографии"
-                ],
-                "summary": "Загрузить фотографии студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "array",
-                        "items": {
-                            "type": "file"
-                        },
-                        "collectionFormat": "multi",
-                        "description": "Файлы изображений для загрузки (до 10 файлов)",
-                        "name": "photos",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Фотографии успешно загружены, возвращает список URL загруженных файлов",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса, файл слишком большой или недопустимый формат",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/rooms": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Создает новую комнату в студии. Требует аутентификации. Только владелец студии может создавать комнаты. Поддерживаемые типы комнат: Fashion, Portrait, Creative, Commercial.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Комнаты"
-                ],
-                "summary": "Создать новую комнату",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Данные для создания комнаты (названия, тип, описание и т.д.)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/catalog.CreateRoomRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Комната успешно создана, возвращает объект созданной комнаты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса или тип комнаты",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для добавления комнат в эту студию",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/working-hours": {
-            "get": {
-                "description": "Получает информацию о часах работы студии и её текущем статусе (открыта/закрыта) в устаревшем формате. Рекомендуется использовать v2 endpoint.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Получить часы работы студии (v1)",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с часами работы и статусом",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет расписание работы студии. Требует аутентификации. Только владелец студии может обновлять её часы работы. Принимает массив объектов с информацией о рабочих днях и часах.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Обновить часы работы студии",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Массив объектов WorkingHours с расписанием работы по дням недели",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "array"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешное обновление часов работы",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Недостаточно прав для обновления этой студии",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/studios/{id}/working-hours/v2": {
-            "get": {
-                "description": "Получает информацию о часах работы студии в новом формате с подробной информацией о текущем статусе (открыта/закрыта), времени открытия/закрытия и полном расписании по дням недели.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Catalog - Часы работы"
-                ],
-                "summary": "Получить часы работы студии (v2)",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "example": 1,
-                        "description": "Уникальный идентификатор студии",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный ответ с информацией о часах работы и текущем статусе",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Некорректный формат ID",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Студия не найдена",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/subscriptions/plans": {
-            "get": {
-                "description": "Returns all available plans. Public endpoint — no auth required.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Subscriptions"
-                ],
-                "summary": "List all subscription plans",
                 "responses": {
                     "200": {
                         "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/subscription.PlanResponse"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/uploads": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Uploads"
-                ],
-                "summary": "List my uploads",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Upload any file (image, video, PDF). Returns file ID and public URL.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Uploads"
-                ],
-                "summary": "Upload a file",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "File to upload",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7784,8 +6968,15 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
-                    "413": {
-                        "description": "Request Entity Too Large",
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7799,26 +6990,28 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/uploads/{id}": {
-            "get": {
+            },
+            "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
+                "description": "Delete a room by ID (Owner only)",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "Uploads"
+                    "Catalog"
                 ],
-                "summary": "Get upload metadata by ID",
+                "summary": "Delete room",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Upload ID",
+                        "type": "integer",
+                        "description": "Room ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -7832,40 +7025,15 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Uploads"
-                ],
-                "summary": "Delete an upload (file + record)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Upload ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7895,50 +7063,341 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/me": {
-            "get": {
+        "/rooms/{id}/equipment": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает полный профиль текущего авторизованного пользователя (клиента или владельца). Может включать статистику бронирований и недавние брони. При include_stats=true добавляет количество бронирований.",
-                "tags": [
-                    "Auth"
+                "description": "Add new equipment to a room (Owner only)",
+                "consumes": [
+                    "application/json"
                 ],
-                "summary": "Получить профиль пользователя",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Add equipment",
                 "parameters": [
                     {
-                        "type": "boolean",
-                        "description": "Включить статистику бронирований (true/false)",
-                        "name": "include_stats",
-                        "in": "query"
+                        "type": "integer",
+                        "description": "Room ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Equipment details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateEquipmentRequest"
+                        }
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Профиль пользователя с информацией и статистикой",
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "401": {
-                        "description": "Ошибка аутентификации: токен не предоставлен или истёк",
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "404": {
-                        "description": "Ошибка: пользователь не найден",
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Ошибка сервера при получении профиля",
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios": {
+            "get": {
+                "description": "Get a list of studios with filtering and pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "List studios",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "City name",
+                        "name": "city",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Room type",
+                        "name": "room_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "rating",
+                        "description": "Sort field (rating, price)",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "desc",
+                        "description": "Sort order (asc, desc)",
+                        "name": "sort_order",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Minimum price",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Maximum price",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new studio (Owner only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Create studio",
+                "parameters": [
+                    {
+                        "description": "Studio details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/my": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a list of studios owned by the authenticated user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Get my studios",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}": {
+            "get": {
+                "description": "Get detailed information about a specific studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Get studio by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -7952,14 +7411,737 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет информацию о профиле: имя, телефон и другие поля. Email не может быть изменён через этот эндпоинт. Требуется аутентификация.",
+                "description": "Update an existing studio's details (Owner only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Update studio",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Studio details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.UpdateStudioRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/photos": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload multiple photos for a studio (Legacy)",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Upload studio photos",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Photos to upload (max 10 allowed, jpeg/png/webp, ≤5MB each)",
+                        "name": "photos",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/reviews": {
+            "get": {
+                "description": "Legacy эндпоинт для получения отзывов студии.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Получить отзывы студии",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Лимит",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Отступ",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список отзывов",
+                        "schema": {
+                            "$ref": "#/definitions/review.swaggerListReviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный ID",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/rooms": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add a new room to a studio (Owner only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Create room",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Room details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/catalog.CreateRoomRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/working-hours": {
+            "get": {
+                "description": "Get today's working hours for a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Get studio working hours (Legacy)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set the 7-day schedule for a studio (Owner only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Update studio working hours",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Working hours schedule",
+                        "name": "hours",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/catalog.WorkingHours"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/working-hours/v2": {
+            "get": {
+                "description": "Get comprehensive 7-day schedule for a studio",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Get studio full working hours",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Studio ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/subscriptions/plans": {
+            "get": {
+                "description": "Возвращает все доступные планы подписки. Эндпоинт публичный, не требует авторизации.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Subscriptions"
+                ],
+                "summary": "Список тарифов",
+                "responses": {
+                    "200": {
+                        "description": "Список тарифов",
+                        "schema": {
+                            "$ref": "#/definitions/subscription.swaggerListPlansResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/uploads": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает список всех файлов, загруженных текущим авторизованным пользователем.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Мои файлы",
+                "responses": {
+                    "200": {
+                        "description": "Успех",
+                        "schema": {
+                            "$ref": "#/definitions/upload.swaggerListUploadResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Принимает multipart/form-data с полем \"file\". Возвращает метаданные загруженного файла.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Загрузка файла",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Файл для загрузки",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Успешная загрузка",
+                        "schema": {
+                            "$ref": "#/definitions/upload.swaggerUploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Ошибка запроса",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/uploads/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает информацию о ранее загруженном файле по его идентификатору.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Получить метаданные файла",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID файла",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успех",
+                        "schema": {
+                            "$ref": "#/definitions/upload.swaggerUploadResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Не авторизован",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Файл не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет файл и его метаданные. Доступно только владельцу файла.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Uploads"
+                ],
+                "summary": "Удалить файл",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID файла",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное удаление",
+                        "schema": {
+                            "$ref": "#/definitions/upload.swaggerDeleteResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Ошибка прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Ошибка прав доступа",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Файл не найден",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Получить профиль пользователя",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "tags": [
                     "Auth"
                 ],
                 "summary": "Обновить профиль пользователя",
                 "parameters": [
                     {
-                        "description": "Данные для обновления (name, phone, avatar_url, etc.)",
+                        "description": "Данные для обновления",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -7970,79 +8152,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Профиль успешно обновлён",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка валидации: неверный формат данных",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при обновлении профиля",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/bookings": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает полный список бронирований, сделанных текущим пользователем, отфильтрованный по ID из токена аутентификации. Поддерживает пагинацию через параметры limit и offset для управления объёмом данных. Максимальное значение limit составляет 100 записей.",
-                "tags": [
-                    "Бронирования"
-                ],
-                "summary": "Получить мои бронирования",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Максимальное количество записей (по умолчанию 20, максимум 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Смещение для пагинации, начиная с 0 (по умолчанию 0)",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Список бронирований текущего пользователя с информацией о пагинации",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации - отсутствует или невалидный токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера при получении бронирований",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -8058,7 +8168,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Загружает документы (паспорт, свидетельство о регистрации, и т.д.) для верификации владельца студии. Документы необходимы для одобрения заявки администратором. Максимальный размер файла 10MB.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -8069,7 +8178,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Файлы документов для загрузки (несколько файлов допускаются)",
+                        "description": "Файлы документов",
                         "name": "documents",
                         "in": "formData",
                         "required": true
@@ -8077,35 +8186,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Документы загружены успешно, возвращены URL для доступа",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Ошибка: отсутствуют файлы или неверный формат запроса",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Ошибка аутентификации: требуется токен",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "413": {
-                        "description": "Ошибка: файл слишком большой (макс 10MB)",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка сервера при загрузке документов",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -8170,12 +8251,6 @@ const docTemplate = `{
         },
         "admin.CreateAdminRequest": {
             "type": "object",
-            "required": [
-                "email",
-                "name",
-                "password",
-                "role"
-            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -8184,8 +8259,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
-                    "type": "string",
-                    "minLength": 6
+                    "type": "string"
                 },
                 "role": {
                     "description": "super_admin, support, moderator",
@@ -8195,10 +8269,6 @@ const docTemplate = `{
         },
         "admin.LoginRequest": {
             "type": "object",
-            "required": [
-                "email",
-                "password"
-            ],
             "properties": {
                 "email": {
                     "type": "string"
@@ -8216,26 +8286,6 @@ const docTemplate = `{
             "properties": {
                 "reason": {
                     "type": "string"
-                }
-            }
-        },
-        "admin.ReviewListResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/review.Review"
-                    }
-                },
-                "total": {
-                    "type": "integer"
                 }
             }
         },
@@ -8257,26 +8307,6 @@ const docTemplate = `{
                 }
             }
         },
-        "admin.UserListResponse": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "users": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/auth.User"
-                    }
-                }
-            }
-        },
         "admin.VerifyStudioRequest": {
             "type": "object",
             "properties": {
@@ -8285,13 +8315,60 @@ const docTemplate = `{
                 }
             }
         },
+        "attachment.Attachment": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/attachment.Metadata"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "target_id": {
+                    "type": "integer"
+                },
+                "target_type": {
+                    "$ref": "#/definitions/attachment.TargetType"
+                },
+                "upload_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "attachment.Metadata": {
+            "type": "object",
+            "properties": {
+                "alt_text": {
+                    "type": "string"
+                },
+                "caption": {
+                    "type": "string"
+                }
+            }
+        },
+        "attachment.TargetType": {
+            "type": "string",
+            "enum": [
+                "studio_gallery",
+                "room_gallery",
+                "review_photos",
+                "chat_message"
+            ],
+            "x-enum-varnames": [
+                "TargetStudioGallery",
+                "TargetRoomGallery",
+                "TargetReviewPhotos",
+                "TargetChatMessage"
+            ]
+        },
         "attachment.attachRequest": {
             "type": "object",
-            "required": [
-                "target_id",
-                "target_type",
-                "upload_ids"
-            ],
             "properties": {
                 "caption": {
                     "type": "string"
@@ -8312,9 +8389,6 @@ const docTemplate = `{
         },
         "attachment.reorderRequest": {
             "type": "object",
-            "required": [
-                "ids"
-            ],
             "properties": {
                 "ids": {
                     "type": "array",
@@ -8324,22 +8398,14 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.ErrorDetailsSwagger": {
+        "attachment.swaggerAttachmentResponse": {
             "type": "object",
             "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "auth.ErrorResponseSwagger": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/auth.ErrorDetailsSwagger"
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/attachment.Attachment"
+                    }
                 },
                 "success": {
                     "type": "boolean"
@@ -8552,15 +8618,150 @@ const docTemplate = `{
                 }
             }
         },
+        "booking.Booking": {
+            "type": "object",
+            "required": [
+                "end_time",
+                "room_id",
+                "start_time",
+                "studio_id",
+                "total_price",
+                "user_id"
+            ],
+            "properties": {
+                "cancellation_reason": {
+                    "description": "Block 9: Причина отмены (заполняется при cancel)",
+                    "type": "string"
+                },
+                "cancelled_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deposit_amount": {
+                    "description": "Block 10: Предоплата (для менеджеров)",
+                    "type": "number"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "$ref": "#/definitions/booking.PaymentStatus"
+                },
+                "room": {
+                    "$ref": "#/definitions/catalog.Room"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/booking.BookingStatus"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "total_price": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "description": "Связи",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/auth.User"
+                        }
+                    ]
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "booking.BookingResponse": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "description": "TotalPrice - DepositAmount",
+                    "type": "number"
+                },
+                "cancellation_reason": {
+                    "description": "Block 9: Только если отменено",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deposit_amount": {
+                    "description": "Block 10: Для менеджеров",
+                    "type": "number"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "room_id": {
+                    "type": "integer"
+                },
+                "room_name": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "studio_name": {
+                    "type": "string"
+                },
+                "total_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "booking.BookingStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "confirmed",
+                "cancelled",
+                "completed"
+            ],
+            "x-enum-varnames": [
+                "BookingPending",
+                "BookingConfirmed",
+                "BookingCancelled",
+                "BookingCompleted"
+            ]
+        },
         "booking.BusySlotDTO": {
             "type": "object",
             "properties": {
                 "end": {
-                    "description": "\"12:00\"",
                     "type": "string"
                 },
                 "start": {
-                    "description": "\"10:00\"",
                     "type": "string"
                 }
             }
@@ -8643,6 +8844,17 @@ const docTemplate = `{
                 "PaymentRefunded"
             ]
         },
+        "booking.TimeSlot": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
         "booking.UpdateBookingStatusRequest": {
             "type": "object",
             "properties": {
@@ -8680,6 +8892,148 @@ const docTemplate = `{
                             "$ref": "#/definitions/booking.PaymentStatus"
                         }
                     ]
+                }
+            }
+        },
+        "booking.swaggerBookingData": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "booking.swaggerBookingResponseWrapper": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/booking.BookingResponse"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerCreateBookingResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "booking": {
+                            "$ref": "#/definitions/booking.swaggerBookingData"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerGetAvailabilityResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Assuming returns slice of TimeSlot",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/booking.TimeSlot"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerGetBusySlotsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/booking.BusySlotsResponse"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerGetMyBookingsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/booking.Booking"
+                            }
+                        },
+                        "limit": {
+                            "type": "integer"
+                        },
+                        "offset": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerGetStudioBookingsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "bookings": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/booking.Booking"
+                            }
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerUpdatePaymentResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/booking.Booking"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "catalog.AttachmentURL": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "original_name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },
@@ -8739,6 +9093,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "photos": {
+                    "description": "Deprecated: use upload_ids",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -8753,6 +9108,13 @@ const docTemplate = `{
                 },
                 "room_type": {
                     "type": "string"
+                },
+                "upload_ids": {
+                    "description": "UUID refs from POST /uploads",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -8785,6 +9147,13 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
+                "upload_ids": {
+                    "description": "UUID refs from POST /uploads",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "website": {
                     "type": "string"
                 },
@@ -8805,6 +9174,133 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "catalog.Equipment": {
+            "type": "object",
+            "required": [
+                "name",
+                "quantity"
+            ],
+            "properties": {
+                "brand": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "rental_price": {
+                    "type": "number"
+                },
+                "room_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "catalog.Room": {
+            "type": "object",
+            "required": [
+                "area_sqm",
+                "capacity",
+                "name",
+                "price_per_hour_min",
+                "room_type"
+            ],
+            "properties": {
+                "amenities": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "area_sqm": {
+                    "type": "integer"
+                },
+                "attachments": {
+                    "description": "Gallery loaded via attachment service",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.AttachmentURL"
+                    }
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "equipment": {
+                    "description": "Relations",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/catalog.Equipment"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "photos": {
+                    "description": "DEPRECATED: use Attachments",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "price_per_hour_max": {
+                    "type": "number"
+                },
+                "price_per_hour_min": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "room_type": {
+                    "$ref": "#/definitions/catalog.RoomType"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "catalog.RoomType": {
+            "type": "string",
+            "enum": [
+                "Fashion",
+                "Portrait",
+                "Creative",
+                "Commercial"
+            ],
+            "x-enum-varnames": [
+                "RoomFashion",
+                "RoomPortrait",
+                "RoomCreative",
+                "RoomCommercial"
+            ]
         },
         "catalog.UpdateRoomRequest": {
             "type": "object",
@@ -8828,6 +9324,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "photos": {
+                    "description": "Deprecated: use upload_ids",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -8841,6 +9338,13 @@ const docTemplate = `{
                 },
                 "room_type": {
                     "type": "string"
+                },
+                "upload_ids": {
+                    "description": "IDs to append; delete via DELETE /attachments/:id",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -8873,11 +9377,39 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
+                "upload_ids": {
+                    "description": "IDs to append; delete via DELETE /attachments/:id",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "website": {
                     "type": "string"
                 },
                 "working_hours": {
                     "$ref": "#/definitions/catalog.WorkingHoursMap"
+                }
+            }
+        },
+        "catalog.WorkingHours": {
+            "type": "object",
+            "properties": {
+                "close_time": {
+                    "description": "\"21:00\"",
+                    "type": "string"
+                },
+                "day_of_week": {
+                    "description": "0=Вс, 1=Пн, ..., 6=Сб",
+                    "type": "integer"
+                },
+                "is_closed": {
+                    "description": "true = выходной",
+                    "type": "boolean"
+                },
+                "open_time": {
+                    "description": "\"09:00\"",
+                    "type": "string"
                 }
             }
         },
@@ -8889,9 +9421,6 @@ const docTemplate = `{
         },
         "chat.addMemberRequest": {
             "type": "object",
-            "required": [
-                "user_id"
-            ],
             "properties": {
                 "user_id": {
                     "type": "integer"
@@ -8900,9 +9429,6 @@ const docTemplate = `{
         },
         "chat.createDirectRequest": {
             "type": "object",
-            "required": [
-                "recipient_id"
-            ],
             "properties": {
                 "recipient_id": {
                     "type": "integer"
@@ -8911,9 +9437,6 @@ const docTemplate = `{
         },
         "chat.createGroupRequest": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "member_ids": {
                     "type": "array",
@@ -8933,79 +9456,162 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "upload_id": {
-                    "description": "optional",
                     "type": "string"
                 }
             }
         },
-        "favorite.AddFavoriteRequest": {
+        "chat.swaggerListMembersResponse": {
             "type": "object",
-            "required": [
-                "entity_id",
-                "entity_type"
-            ],
             "properties": {
-                "entity_id": {
-                    "type": "integer"
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.swaggerMemberData"
+                    }
                 },
-                "entity_type": {
-                    "type": "string"
-                }
-            }
-        },
-        "favorite.CheckFavoriteResponse": {
-            "type": "object",
-            "properties": {
-                "is_favorite": {
+                "success": {
                     "type": "boolean"
                 }
             }
         },
-        "favorite.ErrorResponse": {
+        "chat.swaggerListMessagesResponse": {
             "type": "object",
             "properties": {
-                "error": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.swaggerMessageData"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.swaggerListRoomsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.swaggerRoomData"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.swaggerMemberData": {
+            "type": "object",
+            "properties": {
+                "joined_at": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "chat.swaggerMessageData": {
+            "type": "object",
+            "properties": {
+                "attachment_mime": {
+                    "type": "string"
+                },
+                "attachment_name": {
+                    "type": "string"
+                },
+                "attachment_url": {
+                    "type": "string"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_read": {
+                    "type": "boolean"
+                },
+                "room_id": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "integer"
+                },
+                "upload_id": {
                     "type": "string"
                 }
             }
         },
-        "favorite.FavoriteListResponse": {
+        "chat.swaggerMessageResponse": {
             "type": "object",
             "properties": {
-                "favorites": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/favorite.FavoriteResponse"
-                    }
+                "data": {
+                    "$ref": "#/definitions/chat.swaggerMessageData"
                 },
-                "page": {
-                    "type": "integer"
-                },
-                "per_page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "total_pages": {
-                    "type": "integer"
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
-        "favorite.FavoriteResponse": {
+        "chat.swaggerRoomData": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
                 },
-                "entity_id": {
+                "creator_id": {
                     "type": "integer"
-                },
-                "entity_type": {
-                    "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "member_count": {
                     "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "chat.swaggerRoomResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/chat.swaggerRoomData"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.swaggerUnreadCountResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "unread_count": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -9271,94 +9877,135 @@ const docTemplate = `{
                 }
             }
         },
+        "lead.swaggerConvertLeadResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "lead.swaggerLeadListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/lead.LeadListResponse"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "lead.swaggerLeadResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/lead.OwnerLead"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "lead.swaggerLeadStatsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "manager.UpdateDepositRequest": {
             "type": "object",
-            "required": [
-                "deposit_amount"
-            ],
             "properties": {
                 "deposit_amount": {
-                    "type": "number",
-                    "minimum": 0
+                    "type": "number"
                 }
             }
         },
         "manager.UpdateStatusRequest": {
             "type": "object",
-            "required": [
-                "status"
-            ],
             "properties": {
                 "status": {
-                    "type": "string",
-                    "enum": [
-                        "pending",
-                        "confirmed",
-                        "cancelled",
-                        "completed"
-                    ]
-                }
-            }
-        },
-        "mwork.SyncUserRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "mwork_user_id",
-                "role"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "mwork_user_id": {
-                    "type": "string"
-                },
-                "role": {
                     "type": "string"
                 }
             }
         },
-        "notification.ChannelSettings": {
+        "manager.swaggerManagerBookingResponse": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "boolean"
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "booking": {}
+                    }
                 },
-                "in_app": {
-                    "type": "boolean"
-                },
-                "push": {
+                "success": {
                     "type": "boolean"
                 }
             }
         },
-        "notification.DeviceTokenResponse": {
+        "manager.swaggerManagerBookingsResponse": {
             "type": "object",
             "properties": {
-                "created_at": {
-                    "type": "string"
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "bookings": {
+                            "description": "booking.Booking type",
+                            "type": "array",
+                            "items": {}
+                        },
+                        "page": {
+                            "type": "integer"
+                        },
+                        "per_page": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
                 },
-                "device_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "is_active": {
+                "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "manager.swaggerManagerClientsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "clients": {
+                            "description": "owner.Client type",
+                            "type": "array",
+                            "items": {}
+                        },
+                        "page": {
+                            "type": "integer"
+                        },
+                        "per_page": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
                 },
-                "last_used_at": {
-                    "type": "string"
-                },
-                "platform": {
-                    "type": "string"
-                },
-                "token": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -9460,67 +10107,6 @@ const docTemplate = `{
                 }
             }
         },
-        "notification.PreferencesResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "digest_enabled": {
-                    "type": "boolean"
-                },
-                "digest_frequency": {
-                    "type": "string"
-                },
-                "email_enabled": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "in_app_enabled": {
-                    "type": "boolean"
-                },
-                "per_type_settings": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/notification.ChannelSettings"
-                    }
-                },
-                "push_enabled": {
-                    "type": "boolean"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "notification.RegisterDeviceTokenRequest": {
-            "type": "object",
-            "required": [
-                "platform",
-                "token"
-            ],
-            "properties": {
-                "device_name": {
-                    "type": "string"
-                },
-                "platform": {
-                    "type": "string",
-                    "enum": [
-                        "web",
-                        "ios",
-                        "android"
-                    ]
-                },
-                "token": {
-                    "type": "string"
-                }
-            }
-        },
         "notification.UnreadCountResponse": {
             "type": "object",
             "properties": {
@@ -9529,37 +10115,8 @@ const docTemplate = `{
                 }
             }
         },
-        "notification.UpdatePreferencesRequest": {
-            "type": "object",
-            "properties": {
-                "digest_enabled": {
-                    "type": "boolean"
-                },
-                "digest_frequency": {
-                    "type": "string"
-                },
-                "email_enabled": {
-                    "type": "boolean"
-                },
-                "in_app_enabled": {
-                    "type": "boolean"
-                },
-                "per_type_settings": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/definitions/notification.ChannelSettings"
-                    }
-                },
-                "push_enabled": {
-                    "type": "boolean"
-                }
-            }
-        },
         "owner.AddPortfolioRequest": {
             "type": "object",
-            "required": [
-                "image_url"
-            ],
             "properties": {
                 "category": {
                     "type": "string"
@@ -9574,9 +10131,6 @@ const docTemplate = `{
         },
         "owner.CreateMaintenanceRequest": {
             "type": "object",
-            "required": [
-                "title"
-            ],
             "properties": {
                 "assigned_to": {
                     "type": "string"
@@ -9597,22 +10151,17 @@ const docTemplate = `{
         },
         "owner.CreateProcurementRequest": {
             "type": "object",
-            "required": [
-                "title"
-            ],
             "properties": {
                 "description": {
                     "type": "string"
                 },
                 "due_date": {
-                    "description": "RFC3339",
                     "type": "string"
                 },
                 "est_cost": {
                     "type": "number"
                 },
                 "priority": {
-                    "description": "low, medium, high",
                     "type": "string"
                 },
                 "quantity": {
@@ -9625,28 +10174,12 @@ const docTemplate = `{
         },
         "owner.ReorderPortfolioRequest": {
             "type": "object",
-            "required": [
-                "project_ids"
-            ],
             "properties": {
                 "project_ids": {
                     "type": "array",
                     "items": {
                         "type": "integer"
                     }
-                }
-            }
-        },
-        "owner.SetPINRequest": {
-            "type": "object",
-            "required": [
-                "pin"
-            ],
-            "properties": {
-                "pin": {
-                    "type": "string",
-                    "maxLength": 6,
-                    "minLength": 4
                 }
             }
         },
@@ -9708,12 +10241,168 @@ const docTemplate = `{
         },
         "owner.VerifyPINRequest": {
             "type": "object",
-            "required": [
-                "pin"
-            ],
             "properties": {
                 "pin": {
                     "type": "string"
+                }
+            }
+        },
+        "owner.swaggerAnalyticsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "analytics": {
+                            "description": "OwnerAnalytics"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerCompanyProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "profile": {
+                            "description": "CompanyProfile"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerHasPINResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "has_pin": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerMaintenanceItemResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {
+                            "description": "MaintenanceItem"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerMaintenanceListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer"
+                        },
+                        "items": {
+                            "description": "MaintenanceItem",
+                            "type": "array",
+                            "items": {}
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerPortfolioItemResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "project": {
+                            "description": "PortfolioProject"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerPortfolioListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer"
+                        },
+                        "projects": {
+                            "description": "PortfolioProject",
+                            "type": "array",
+                            "items": {}
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerProcurementItemResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "item": {
+                            "description": "ProcurementItem"
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "owner.swaggerProcurementListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer"
+                        },
+                        "items": {
+                            "description": "ProcurementItem",
+                            "type": "array",
+                            "items": {}
+                        }
+                    }
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -9758,11 +10447,38 @@ const docTemplate = `{
                 }
             }
         },
-        "payment.ErrorResponse": {
+        "payment.CreateSubscriptionRequest": {
             "type": "object",
+            "required": [
+                "amount"
+            ],
             "properties": {
-                "error": {
+                "amount": {
                     "type": "string"
+                }
+            }
+        },
+        "payment.InitPaymentRequest": {
+            "type": "object",
+            "required": [
+                "booking_id",
+                "out_sum"
+            ],
+            "properties": {
+                "booking_id": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "out_sum": {
+                    "type": "string"
+                },
+                "shp_params": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -9780,6 +10496,17 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "payment.swaggerPaymentSubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "subscription.SubscriptionResponse"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -9978,14 +10705,70 @@ const docTemplate = `{
                 }
             }
         },
+        "profile.swaggerAdminProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/profile.AdminProfile"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "profile.swaggerClientProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/profile.ClientProfile"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "profile.swaggerOwnerProfileResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/profile.OwnerProfile"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "relationship.blockRequest": {
             "type": "object",
-            "required": [
-                "user_id"
-            ],
             "properties": {
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "relationship.swaggerBlockedUser": {
+            "type": "object",
+            "properties": {
+                "blocked_at": {
+                    "description": "using string for time representation",
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "relationship.swaggerListBlockedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/relationship.swaggerBlockedUser"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -10005,15 +10788,28 @@ const docTemplate = `{
                 }
             }
         },
-        "response.Response": {
+        "response.ErrorResponse": {
             "type": "object",
             "properties": {
-                "data": {},
                 "error": {
                     "$ref": "#/definitions/response.ErrorData"
                 },
                 "success": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "example": false
+                }
+            }
+        },
+        "response.SuccessResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Success"
+                },
+                "success": {
+                    "type": "boolean",
+                    "example": true
                 }
             }
         },
@@ -10145,6 +10941,31 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "TargetTypeStudio"
             ]
+        },
+        "review.swaggerListReviewResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/review.Review"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "review.swaggerReviewResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/review.Review"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
         },
         "subscription.CancelRequest": {
             "type": "object",
@@ -10298,6 +11119,101 @@ const docTemplate = `{
                 },
                 "usage": {
                     "$ref": "#/definitions/subscription.CurrentUsage"
+                }
+            }
+        },
+        "subscription.swaggerListPlansResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/subscription.PlanResponse"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "subscription.swaggerSubscriptionResponseWrapper": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/subscription.SubscriptionResponse"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "subscription.swaggerUsageResponseWrapper": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/subscription.UsageResponse"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "upload.swaggerDeleteResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "upload.swaggerListUploadResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/upload.swaggerUploadData"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "upload.swaggerUploadData": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "mime_type": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "upload.swaggerUploadResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/upload.swaggerUploadData"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         }

@@ -3,10 +3,12 @@ package owner
 import (
 	"errors"
 	"net/http"
-	"photostudio/internal/pkg/response"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-chi/chi/v5"
+
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 type Handler struct {
@@ -17,185 +19,230 @@ func NewHandler(repo *OwnerCRMRepository) *Handler {
 	return &Handler{repo: repo}
 }
 
-// RegisterRoutes регистрирует маршруты Owner CRM
+// swaggerHasPINResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerHasPINResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		HasPIN bool `json:"has_pin"`
+	} `json:"data"`
+}
 
-// RegisterCompanyRoutes регистрирует маршруты Company Profile
+// swaggerProcurementListResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerProcurementListResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Items []any `json:"items"` // ProcurementItem
+		Count int   `json:"count"`
+	} `json:"data"`
+}
+
+// swaggerProcurementItemResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerProcurementItemResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Item any `json:"item"` // ProcurementItem
+	} `json:"data"`
+}
+
+// swaggerMaintenanceListResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerMaintenanceListResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Items []any `json:"items"` // MaintenanceItem
+		Count int   `json:"count"`
+	} `json:"data"`
+}
+
+// swaggerMaintenanceItemResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerMaintenanceItemResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Item any `json:"item"` // MaintenanceItem
+	} `json:"data"`
+}
+
+// swaggerCompanyProfileResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerCompanyProfileResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Profile any `json:"profile"` // CompanyProfile
+	} `json:"data"`
+}
+
+// swaggerPortfolioListResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerPortfolioListResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Projects []any `json:"projects"` // PortfolioProject
+		Count    int   `json:"count"`
+	} `json:"data"`
+}
+
+// swaggerPortfolioItemResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerPortfolioItemResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Project any `json:"project"` // PortfolioProject
+	} `json:"data"`
+}
+
+// swaggerAnalyticsResponse is a wrapper strictly for generating Swagger documentation.
+type swaggerAnalyticsResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		Analytics any `json:"analytics"` // OwnerAnalytics
+	} `json:"data"`
+}
 
 // ==================== PIN Handlers ====================
 
 type SetPINRequest struct {
-	PIN string `json:"pin" binding:"required,min=4,max=6,numeric"`
+	PIN string `json:"pin"`
 }
 
-// @Summary Установка PIN кода
-// @Description Устанавливает PIN код из 4-6 цифр для защиты CRM функций владельца студии
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param request body SetPINRequest true "PIN request body"
-// @Success 200 {object} map[string]interface{} "PIN успешно установлен"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат PIN (должен быть 4-6 цифр)"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/set-pin [post]
-// @Security BearerAuth
-func (h *Handler) SetPIN(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+func (h *Handler) SetPIN(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	if ownerID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
-
 	var req SetPINRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
-	if err := h.repo.SetPIN(c.Request.Context(), ownerID, req.PIN); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "SET_PIN_FAILED", err)
+	if err := h.repo.SetPIN(r.Context(), ownerID, req.PIN); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "SET_PIN_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "PIN set successfully"})
+	response.Success(w, http.StatusOK, response.H{"message": "PIN set successfully"})
 }
 
 type VerifyPINRequest struct {
-	PIN string `json:"pin" binding:"required"`
+	PIN string `json:"pin"`
 }
 
-// @Summary Проверка PIN кода
-// @Description Проверяет корректность введённого PIN кода владельцем студии
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param request body VerifyPINRequest true "PIN request body"
-// @Success 200 {object} map[string]interface{} "PIN успешно проверен"
-// @Failure 400 {object} map[string]interface{} "Некорректный формат запроса"
-// @Failure 401 {object} map[string]interface{} "PIN неверен или требуется аутентификация"
-// @Failure 404 {object} map[string]interface{} "PIN не установлен"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/verify-pin [post]
-// @Security BearerAuth
-func (h *Handler) VerifyPIN(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// VerifyPIN проверить PIN-код владельца.
+//
+//	@Summary		Проверить PIN
+//	@Description	Разблокировать доступ на основе PIN-кода.
+//	@Tags			Owner
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		VerifyPINRequest			true	"Пин"
+//	@Success		200		{object}	response.SuccessResponse	"Проверено"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован или неверный PIN"
+//	@Failure		404		{object}	response.ErrorResponse		"PIN не установлен"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/pin/verify [post]
+func (h *Handler) VerifyPIN(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	if ownerID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
-
 	var req VerifyPINRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
-	err := h.repo.VerifyPIN(c.Request.Context(), ownerID, req.PIN)
+	err := h.repo.VerifyPIN(r.Context(), ownerID, req.PIN)
 	if err != nil {
 		if errors.Is(err, ErrInvalidPIN) {
-			response.CustomError(c, http.StatusUnauthorized, "INVALID_PIN", "PIN is incorrect")
+			response.CustomError(w, r, http.StatusUnauthorized, "INVALID_PIN", "PIN is incorrect")
 			return
 		}
 		if errors.Is(err, ErrPINNotSet) {
-			response.CustomError(c, http.StatusNotFound, "PIN_NOT_SET", "PIN has not been set")
+			response.CustomError(w, r, http.StatusNotFound, "PIN_NOT_SET", "PIN has not been set")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "VERIFY_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "VERIFY_FAILED", err)
 		return
 	}
-
-	// Можно вернуть временный токен для CRM сессии
-	response.Success(c, http.StatusOK, gin.H{
-		"verified": true,
-		"message":  "PIN verified successfully",
-	})
+	response.Success(w, http.StatusOK, response.H{"verified": true, "message": "PIN verified successfully"})
 }
 
-// @Summary Проверка наличия PIN кода
-// @Description Проверяет, установлен ли PIN код для текущего владельца студии
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Success 200 {object} map[string]interface{} "Статус наличия PIN кода"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/has-pin [get]
-// @Security BearerAuth
-func (h *Handler) HasPIN(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
+// HasPIN проверить, установлен ли PIN-код.
+//
+//	@Summary		PIN установлен?
+//	@Description	Возвращает boolean, установлен ли PIN у владельца.
+//	@Tags			Owner
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerHasPINResponse	"Результат"
+//	@Failure		401	{object}	response.ErrorResponse	"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse	"Ошибка сервера"
+//	@Router			/owner/pin [get]
+func (h *Handler) HasPIN(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	if ownerID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
-
-	hasPIN, err := h.repo.HasPIN(c.Request.Context(), ownerID)
+	hasPIN, err := h.repo.HasPIN(r.Context(), ownerID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "CHECK_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "CHECK_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"has_pin": hasPIN})
+	response.Success(w, http.StatusOK, response.H{"has_pin": hasPIN})
 }
 
 // ==================== Procurement Handlers ====================
 
-// @Summary Получение списка закупок
-// @Description Получает список закупок для студии владельца с опциональной фильтрацией по статусу завершённости
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param show_completed query bool false "Показывать ли завершённые закупки (по умолчанию false)"
-// @Success 200 {object} map[string]interface{} "Список закупок и их количество"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/procurement [get]
-// @Security BearerAuth
-func (h *Handler) GetProcurement(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	showCompleted := c.Query("show_completed") == "true"
-
-	items, err := h.repo.GetProcurementItems(c.Request.Context(), ownerID, showCompleted)
+// GetProcurement получить закупки.
+//
+//	@Summary		Список закупок
+//	@Description	CRM: Список элементов оборудования/реквизита для планируемых закупок.
+//	@Tags			Owner CRM - Procurement
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			show_completed	query		bool							false	"Показывать ли завершенные"
+//	@Success		200				{object}	swaggerProcurementListResponse	"Список закупок"
+//	@Failure		401				{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500				{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/procurement [get]
+func (h *Handler) GetProcurement(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	showCompleted := r.URL.Query().Get("show_completed") == "true"
+	items, err := h.repo.GetProcurementItems(r.Context(), ownerID, showCompleted)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"items": items, "count": len(items)})
+	response.Success(w, http.StatusOK, response.H{"items": items, "count": len(items)})
 }
 
 type CreateProcurementRequest struct {
-	Title       string  `json:"title" binding:"required"`
-	Description string  `json:"description,omitempty"`
-	Quantity    int     `json:"quantity,omitempty"`
-	EstCost     float64 `json:"est_cost,omitempty"`
-	Priority    string  `json:"priority,omitempty"` // low, medium, high
-	DueDate     string  `json:"due_date,omitempty"` // RFC3339
+	Title       string  `json:"title"`
+	Description string  `json:"description"`
+	Quantity    int     `json:"quantity"`
+	EstCost     float64 `json:"est_cost"`
+	Priority    string  `json:"priority"`
+	DueDate     string  `json:"due_date"`
 }
 
-// @Summary Создание новой закупки
-// @Description Создаёт новую запись о закупке оборудования или материалов для студии. Приоритет по умолчанию - medium, количество - 1
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param request body CreateProcurementRequest true "Данные для создания закупки"
-// @Success 201 {object} map[string]interface{} "Закупка успешно создана"
-// @Failure 400 {object} map[string]interface{} "Некорректные данные запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/procurement [post]
-// @Security BearerAuth
-func (h *Handler) CreateProcurement(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
+// CreateProcurement создать заявку на закупку.
+//
+//	@Summary		Добавить закупку
+//	@Description	CRM: Создание новой заявки на закупку (например, новая камера).
+//	@Tags			Owner CRM - Procurement
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		CreateProcurementRequest		true	"Данные закупки"
+//	@Success		201		{object}	swaggerProcurementItemResponse	"Закупка добавлена"
+//	@Failure		400		{object}	response.ErrorResponse			"Ошибка запроса"
+//	@Failure		401		{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/procurement [post]
+func (h *Handler) CreateProcurement(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	var req CreateProcurementRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
 	item := &ProcurementItem{
 		OwnerID:     ownerID,
 		Title:       req.Title,
@@ -204,157 +251,150 @@ func (h *Handler) CreateProcurement(c *gin.Context) {
 		EstCost:     req.EstCost,
 		Priority:    req.Priority,
 	}
-
 	if item.Quantity == 0 {
 		item.Quantity = 1
 	}
 	if item.Priority == "" {
 		item.Priority = "medium"
 	}
-
-	if err := h.repo.CreateProcurementItem(c.Request.Context(), item); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "CREATE_FAILED", err)
+	if err := h.repo.CreateProcurementItem(r.Context(), item); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "CREATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusCreated, gin.H{"item": item})
+	response.Success(w, http.StatusCreated, response.H{"item": item})
 }
 
-// @Summary Обновление закупки
-// @Description Обновляет данные существующей закупки. Нельзя изменять ID, владельца и дату создания
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param id path int64 true "ID закупки"
-// @Param request body map[string]interface{} true "Поля для обновления"
-// @Success 200 {object} map[string]interface{} "Закупка успешно обновлена"
-// @Failure 400 {object} map[string]interface{} "Некорректный ID закупки"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 404 {object} map[string]interface{} "Закупка не найдена"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/procurement/{id} [patch]
-// @Security BearerAuth
-func (h *Handler) UpdateProcurement(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// UpdateProcurement обновить закупку.
+//
+//	@Summary		Обновить закупку
+//	@Description	CRM: Частичное обновление закупки (например, изменение статуса).
+//	@Tags			Owner CRM - Procurement
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID закупки"
+//	@Param			request	body		map[string]any				true	"Поля для обновления"
+//	@Success		200		{object}	response.SuccessResponse	"Закупка обновлена"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка запроса"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Закупка не найдена"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/procurement/{id} [patch]
+func (h *Handler) UpdateProcurement(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	itemID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
 		return
 	}
-
 	var updates map[string]interface{}
-	if err := c.ShouldBindJSON(&updates); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &updates); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
-	// Удаляем поля, которые нельзя обновлять
 	delete(updates, "id")
 	delete(updates, "owner_id")
 	delete(updates, "created_at")
-
-	if err := h.repo.UpdateProcurementItem(c.Request.Context(), ownerID, itemID, updates); err != nil {
+	if err := h.repo.UpdateProcurementItem(r.Context(), ownerID, itemID, updates); err != nil {
 		if errors.Is(err, ErrItemNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Item not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Item not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Item updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Item updated"})
 }
 
-// @Summary Удаление закупки
-// @Description Удаляет закупку по ID. Может удалить только владелец студии
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param id path int64 true "ID закупки"
-// @Success 200 {object} map[string]interface{} "Закупка успешно удалена"
-// @Failure 400 {object} map[string]interface{} "Некорректный ID закупки"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 404 {object} map[string]interface{} "Закупка не найдена"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/procurement/{id} [delete]
-// @Security BearerAuth
-func (h *Handler) DeleteProcurement(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// DeleteProcurement удалить закупку.
+//
+//	@Summary		Удалить закупку
+//	@Description	CRM: Удаление заявки на закупку.
+//	@Tags			Owner CRM - Procurement
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID закупки"
+//	@Success		200	{object}	response.SuccessResponse	"Закупка удалена"
+//	@Failure		400	{object}	response.ErrorResponse		"Ошибка ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Закупка не найдена"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/procurement/{id} [delete]
+func (h *Handler) DeleteProcurement(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	itemID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
 		return
 	}
-
-	if err := h.repo.DeleteProcurementItem(c.Request.Context(), ownerID, itemID); err != nil {
+	if err := h.repo.DeleteProcurementItem(r.Context(), ownerID, itemID); err != nil {
 		if errors.Is(err, ErrItemNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Item not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Item not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "DELETE_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "DELETE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Item deleted"})
+	response.Success(w, http.StatusOK, response.H{"message": "Item deleted"})
 }
 
 // ==================== Maintenance Handlers ====================
 
-// @Summary Получение списка обслуживания
-// @Description Получает список записей об обслуживании оборудования и помещений студии. Можно отфильтровать по статусу: all, pending, in_progress, completed
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param status query string false "Фильтр по статусу (all, pending, in_progress, completed) - по умолчанию all"
-// @Success 200 {object} map[string]interface{} "Список записей об обслуживании и их количество"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/maintenance [get]
-// @Security BearerAuth
-func (h *Handler) GetMaintenance(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	status := c.DefaultQuery("status", "all") // all, pending, in_progress, completed
-
-	items, err := h.repo.GetMaintenanceItems(c.Request.Context(), ownerID, status)
+// GetMaintenance получить задачи обслуживания.
+//
+//	@Summary		Список обслуживания
+//	@Description	CRM: Задачи обслуживания оборудования/студии (чистка матрицы и т.д.).
+//	@Tags			Owner CRM - Maintenance
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			status	query		string							false	"Статус обслуживания"
+//	@Success		200		{object}	swaggerMaintenanceListResponse	"Список задач"
+//	@Failure		401		{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/maintenance [get]
+func (h *Handler) GetMaintenance(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	status := r.URL.Query().Get("status")
+	if status == "" {
+		status = "all"
+	}
+	items, err := h.repo.GetMaintenanceItems(r.Context(), ownerID, status)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"items": items, "count": len(items)})
+	response.Success(w, http.StatusOK, response.H{"items": items, "count": len(items)})
 }
 
 type CreateMaintenanceRequest struct {
-	Title       string `json:"title" binding:"required"`
-	Description string `json:"description,omitempty"`
-	Priority    string `json:"priority,omitempty"`
-	AssignedTo  string `json:"assigned_to,omitempty"`
-	DueDate     string `json:"due_date,omitempty"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Priority    string `json:"priority"`
+	AssignedTo  string `json:"assigned_to"`
+	DueDate     string `json:"due_date"`
 }
 
-// @Summary Создание новой записи об обслуживании
-// @Description Создаёт новую запись об обслуживании оборудования, помещений или инженерных систем студии. При отсутствии приоритета устанавливается значение medium. Статус по умолчанию - pending
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param request body CreateMaintenanceRequest true "Данные для создания записи об обслуживании"
-// @Success 201 {object} map[string]interface{} "Запись об обслуживании успешно создана"
-// @Failure 400 {object} map[string]interface{} "Некорректные данные запроса"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/maintenance [post]
-// @Security BearerAuth
-func (h *Handler) CreateMaintenance(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
+// CreateMaintenance создать задачу обслуживания.
+//
+//	@Summary		Добавить задачу обслуживания
+//	@Description	CRM: Добавляет задачу на обслуживание.
+//	@Tags			Owner CRM - Maintenance
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		CreateMaintenanceRequest		true	"Задача на обслуживание"
+//	@Success		201		{object}	swaggerMaintenanceItemResponse	"Создано"
+//	@Failure		400		{object}	response.ErrorResponse			"Ошибка параметров"
+//	@Failure		401		{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/maintenance [post]
+func (h *Handler) CreateMaintenance(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	var req CreateMaintenanceRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
 	item := &MaintenanceItem{
 		OwnerID:     ownerID,
 		Title:       req.Title,
@@ -363,185 +403,175 @@ func (h *Handler) CreateMaintenance(c *gin.Context) {
 		AssignedTo:  req.AssignedTo,
 		Status:      "pending",
 	}
-
 	if item.Priority == "" {
 		item.Priority = "medium"
 	}
-
-	if err := h.repo.CreateMaintenanceItem(c.Request.Context(), item); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "CREATE_FAILED", err)
+	if err := h.repo.CreateMaintenanceItem(r.Context(), item); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "CREATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusCreated, gin.H{"item": item})
+	response.Success(w, http.StatusCreated, response.H{"item": item})
 }
 
-// @Summary Обновление записи об обслуживании
-// @Description Обновляет данные существующей записи об обслуживании. Нельзя изменять ID, владельца и дату создания
-// @Tags Owner
-// @Accept json
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param id path int64 true "ID записи об обслуживании"
-// @Param request body map[string]interface{} true "Поля для обновления"
-// @Success 200 {object} map[string]interface{} "Запись об обслуживании успешно обновлена"
-// @Failure 400 {object} map[string]interface{} "Некорректный ID записи об обслуживании"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/maintenance/{id} [patch]
-// @Security BearerAuth
-func (h *Handler) UpdateMaintenance(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// UpdateMaintenance обновить задачу обслуживания.
+//
+//	@Summary		Обновить задачу обслуживания
+//	@Description	CRM: Частичное обновление задачи (статус, ответственный).
+//	@Tags			Owner CRM - Maintenance
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		int							true	"ID задачи"
+//	@Param			request	body		map[string]any				true	"Поля"
+//	@Success		200		{object}	response.SuccessResponse	"Обновлено"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка параметров"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Задача не найдена"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/maintenance/{id} [patch]
+func (h *Handler) UpdateMaintenance(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	itemID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
 		return
 	}
-
 	var updates map[string]interface{}
-	if err := c.ShouldBindJSON(&updates); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &updates); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
 	delete(updates, "id")
 	delete(updates, "owner_id")
 	delete(updates, "created_at")
-
-	if err := h.repo.UpdateMaintenanceItem(c.Request.Context(), ownerID, itemID, updates); err != nil {
+	if err := h.repo.UpdateMaintenanceItem(r.Context(), ownerID, itemID, updates); err != nil {
 		if errors.Is(err, ErrItemNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Item not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Item not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Item updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Item updated"})
 }
 
-// @Summary Удаление записи об обслуживании
-// @Description Удаляет запись об обслуживании по ID. Может удалить только владелец студии
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Param id path int64 true "ID записи об обслуживании"
-// @Success 200 {object} map[string]interface{} "Запись об обслуживании успешно удалена"
-// @Failure 400 {object} map[string]interface{} "Некорректный ID записи об обслуживании"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 404 {object} map[string]interface{} "Запись об обслуживании не найдена"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/maintenance/{id} [delete]
-// @Security BearerAuth
-func (h *Handler) DeleteMaintenance(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	itemID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// DeleteMaintenance удалить задачу обслуживания.
+//
+//	@Summary		Удалить задачу
+//	@Description	CRM: Удаляет задачу из базы.
+//	@Tags			Owner CRM - Maintenance
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID задачи"
+//	@Success		200	{object}	response.SuccessResponse	"Удалено"
+//	@Failure		400	{object}	response.ErrorResponse		"Ошибка ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Задача не найдена"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/maintenance/{id} [delete]
+func (h *Handler) DeleteMaintenance(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	itemID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid item ID")
 		return
 	}
-
-	if err := h.repo.DeleteMaintenanceItem(c.Request.Context(), ownerID, itemID); err != nil {
+	if err := h.repo.DeleteMaintenanceItem(r.Context(), ownerID, itemID); err != nil {
 		if errors.Is(err, ErrItemNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Item not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Item not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "DELETE_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "DELETE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Item deleted"})
+	response.Success(w, http.StatusOK, response.H{"message": "Item deleted"})
 }
 
 // ==================== Analytics Handler ====================
 
-// @Summary Получение аналитики студии
-// @Description Получает аналитические данные о работе студии владельца, включая статистику бронирований, доходы и другие метрики
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Success 200 {object} map[string]interface{} "Аналитические данные студии"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /owner/analytics [get]
-// @Security BearerAuth
-func (h *Handler) GetAnalytics(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
-	analytics, err := h.repo.GetOwnerAnalytics(c.Request.Context(), ownerID)
+// GetAnalytics статистика владельца студии.
+//
+//	@Summary		Аналитика
+//	@Description	Возвращает графики и метрики для дэшборда.
+//	@Tags			Owner
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerAnalyticsResponse	"Аналитика"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/analytics [get]
+func (h *Handler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	analytics, err := h.repo.GetOwnerAnalytics(r.Context(), ownerID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "ANALYTICS_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "ANALYTICS_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"analytics": analytics})
+	response.Success(w, http.StatusOK, response.H{"analytics": analytics})
 }
 
 // ==================== Company Profile Handlers ====================
 
-// @Summary Получение профиля компании
-// @Description Получает полные данные профиля компании/студии владельца, включая логотип, контактные данные, описание и специализацию
-// @Tags Owner
-// @Produce json
-// @Param authorization header string true "Bearer token"
-// @Success 200 {object} map[string]interface{} "Профиль компании/студии"
-// @Failure 401 {object} map[string]interface{} "Требуется аутентификация"
-// @Failure 500 {object} map[string]interface{} "Ошибка сервера"
-// @Router /company/profile [get]
-// @Security BearerAuth
-func (h *Handler) GetCompanyProfile(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
-	profile, err := h.repo.GetCompanyProfile(c.Request.Context(), ownerID)
+// GetCompanyProfile профиль компании владельца.
+//
+//	@Summary		Профиль компании
+//	@Description	Возвращает информацию о компании (юр. лицо) для B2B профиля.
+//	@Tags			Owner Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerCompanyProfileResponse	"Профиль"
+//	@Failure		401	{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/profile [get]
+func (h *Handler) GetCompanyProfile(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	profile, err := h.repo.GetCompanyProfile(r.Context(), ownerID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"profile": profile})
+	response.Success(w, http.StatusOK, response.H{"profile": profile})
 }
 
 type UpdateCompanyProfileRequest struct {
-	Logo            string            `json:"logo,omitempty"`
-	CompanyName     string            `json:"company_name,omitempty"`
-	ContactPerson   string            `json:"contact_person,omitempty"`
-	Email           string            `json:"email,omitempty"`
-	Phone           string            `json:"phone,omitempty"`
-	Website         string            `json:"website,omitempty"`
-	City            string            `json:"city,omitempty"`
-	CompanyType     string            `json:"company_type,omitempty"`
-	Description     string            `json:"description,omitempty"`
-	Specialization  string            `json:"specialization,omitempty"`
-	YearsExperience int               `json:"years_experience,omitempty"`
-	TeamSize        int               `json:"team_size,omitempty"`
-	WorkHours       string            `json:"work_hours,omitempty"`
-	Services        []string          `json:"services,omitempty"`
-	Socials         map[string]string `json:"socials,omitempty"`
+	Logo            string            `json:"logo"`
+	CompanyName     string            `json:"company_name"`
+	ContactPerson   string            `json:"contact_person"`
+	Email           string            `json:"email"`
+	Phone           string            `json:"phone"`
+	Website         string            `json:"website"`
+	City            string            `json:"city"`
+	CompanyType     string            `json:"company_type"`
+	Description     string            `json:"description"`
+	Specialization  string            `json:"specialization"`
+	YearsExperience int               `json:"years_experience"`
+	TeamSize        int               `json:"team_size"`
+	WorkHours       string            `json:"work_hours"`
+	Services        []string          `json:"services"`
+	Socials         map[string]string `json:"socials"`
 }
 
-// UpdateCompanyProfile обновляет профиль компании владельца.
-// @Summary		Обновить профиль компании
-// @Description	Обновляет все данные профиля компании/студии: логотип, контакты, описание, специализацию, социальные сети и другую информацию.
-// @Tags		Owner - Профиль компании
-// @Security	BearerAuth
-// @Accept		json
-// @Produce	json
-// @Param		request	body	UpdateCompanyProfileRequest	true	"Данные для обновления профиля компании"
-// @Success		200	{object}		map[string]interface{} "Профиль компании успешно обновлён"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: неверные данные"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении профиля"
-// @Router		/company/profile [PUT]
-func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
+// UpdateCompanyProfile обновить профиль компании.
+//
+//	@Summary		Обновить профиль
+//	@Description	Сохраняет обновленные данные B2B профиля.
+//	@Tags			Owner Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		UpdateCompanyProfileRequest	true	"Профиль"
+//	@Success		200		{object}	response.SuccessResponse	"Обновлено"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибки параметров"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/profile [patch]
+func (h *Handler) UpdateCompanyProfile(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	var req UpdateCompanyProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
 	profile := &CompanyProfile{
 		Logo:            req.Logo,
 		CompanyName:     req.CompanyName,
@@ -559,145 +589,136 @@ func (h *Handler) UpdateCompanyProfile(c *gin.Context) {
 		Services:        req.Services,
 		Socials:         req.Socials,
 	}
-
-	if err := h.repo.UpdateCompanyProfile(c.Request.Context(), ownerID, profile); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "UPDATE_FAILED", err)
+	if err := h.repo.UpdateCompanyProfile(r.Context(), ownerID, profile); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "UPDATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Profile updated"})
+	response.Success(w, http.StatusOK, response.H{"message": "Profile updated"})
 }
 
 // ==================== Portfolio Handlers ====================
 
-// GetPortfolio получает портфолио студии владельца.
-// @Summary		Получить портфолио
-// @Description	Возвращает полный список проектов портфолио студии с информацией о каждом проекте, включая изображения и описание.
-// @Tags		Owner - Портфолио
-// @Security	BearerAuth
-// @Produce	json
-// @Success		200	{object}		map[string]interface{} "Список проектов портфолио"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении портфолио"
-// @Router		/company/portfolio [GET]
-func (h *Handler) GetPortfolio(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
-	projects, err := h.repo.GetPortfolio(c.Request.Context(), ownerID)
+// GetPortfolio портфолио владельца.
+//
+//	@Summary		Скачать портфолио
+//	@Description	Возвращает проекты/фотографии портфолио владельца.
+//	@Tags			Owner Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerPortfolioListResponse	"Портфолио"
+//	@Failure		401	{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/portfolio [get]
+func (h *Handler) GetPortfolio(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	projects, err := h.repo.GetPortfolio(r.Context(), ownerID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "FETCH_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "FETCH_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"projects": projects, "count": len(projects)})
+	response.Success(w, http.StatusOK, response.H{"projects": projects, "count": len(projects)})
 }
 
 type AddPortfolioRequest struct {
-	ImageURL string `json:"image_url" binding:"required"`
-	Title    string `json:"title,omitempty"`
-	Category string `json:"category,omitempty"`
+	ImageURL string `json:"image_url"`
+	Title    string `json:"title"`
+	Category string `json:"category"`
 }
 
-// AddPortfolioProject добавляет новый проект в портфолио студии.
-// @Summary		Добавить проект в портфолио
-// @Description	Добавляет новый проект в портфолио с изображением, названием и категорией. Проект автоматически добавляется в конец портфолио. Проект можно переупорядочить в любой момент.
-// @Tags		Owner - Портфолио
-// @Security	BearerAuth
-// @Accept		json
-// @Produce	json
-// @Param		request	body	AddPortfolioRequest	true	"Данные проекта (image_url, title, category)"
-// @Success		201	{object}		map[string]interface{} "Проект успешно добавлен в портфолио"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации: отсутствует URL изображения"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при добавлении проекта"
-// @Router		/company/portfolio [POST]
-func (h *Handler) AddPortfolioProject(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
+// AddPortfolioProject добавить работу в портфолио.
+//
+//	@Summary		Добавить работу в портфолио
+//	@Description	Добавляет проект в портфолио владельца (используя загруженное фото).
+//	@Tags			Owner Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		AddPortfolioRequest				true	"Работа"
+//	@Success		201		{object}	swaggerPortfolioItemResponse	"Успешно добавлено"
+//	@Failure		400		{object}	response.ErrorResponse			"Ошибка параметров"
+//	@Failure		401		{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/owner/portfolio [post]
+func (h *Handler) AddPortfolioProject(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	var req AddPortfolioRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
 	project := &PortfolioProject{
 		OwnerID:  ownerID,
 		ImageURL: req.ImageURL,
 		Title:    req.Title,
 		Category: req.Category,
 	}
-
-	if err := h.repo.AddPortfolioProject(c.Request.Context(), project); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "CREATE_FAILED", err)
+	if err := h.repo.AddPortfolioProject(r.Context(), project); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "CREATE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusCreated, gin.H{"project": project})
+	response.Success(w, http.StatusCreated, response.H{"project": project})
 }
 
-// DeletePortfolioProject удаляет проект из портфолио.
-// @Summary		Удалить проект из портфолио
-// @Description	Удаляет проект из портфолио по ID. После удаления проект больше не будет виден в портфолио студии. Остальные проекты сохраняют свой порядок.
-// @Tags		Owner - Портфолио
-// @Security	BearerAuth
-// @Produce	json
-// @Param		id	path	int	true	"ID проекта портфолио"
-// @Success		200	{object}		map[string]interface{} "Проект успешно удалён из портфолио"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID проекта"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		404	{object}		map[string]interface{} "Проект не найден"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при удалении проекта"
-// @Router		/company/portfolio/:id [DELETE]
-func (h *Handler) DeletePortfolioProject(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-	projectID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+// DeletePortfolioProject удалить работу из портфолио.
+//
+//	@Summary		Удалить из портфолио
+//	@Description	Удаляет проект/фото из портфолио.
+//	@Tags			Owner Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID проекта"
+//	@Success		200	{object}	response.SuccessResponse	"Удалено"
+//	@Failure		400	{object}	response.ErrorResponse		"Ошибка ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Проект не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/portfolio/{id} [delete]
+func (h *Handler) DeletePortfolioProject(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	projectID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid project ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid project ID")
 		return
 	}
-
-	if err := h.repo.DeletePortfolioProject(c.Request.Context(), ownerID, projectID); err != nil {
+	if err := h.repo.DeletePortfolioProject(r.Context(), ownerID, projectID); err != nil {
 		if errors.Is(err, ErrItemNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Project not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Project not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "DELETE_FAILED", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "DELETE_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Project deleted"})
+	response.Success(w, http.StatusOK, response.H{"message": "Project deleted"})
 }
 
 type ReorderPortfolioRequest struct {
-	ProjectIDs []int64 `json:"project_ids" binding:"required"`
+	ProjectIDs []int64 `json:"project_ids"`
 }
 
-// ReorderPortfolio переупорядочивает проекты в портфолио.
-// @Summary		Переупорядочить портфолио
-// @Description	Переупорядочивает проекты портфолио согласно переданному порядку ID проектов. Новый порядок заменяет старый полностью.
-// @Tags		Owner - Портфолио
-// @Security	BearerAuth
-// @Accept		json
-// @Produce	json
-// @Param		request	body	ReorderPortfolioRequest	true	"Новый порядок проектов (массив ID)"
-// @Success		200	{object}		map[string]interface{} "Портфолио успешно переупорядочено"
-// @Failure		400	{object}		map[string]interface{} "Ошибка влидации: отсутствует или пустой массив ID проектов"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при переупорядочении портфолио"
-// @Router		/company/portfolio/reorder [PUT]
-func (h *Handler) ReorderPortfolio(c *gin.Context) {
-	ownerID := c.GetInt64("user_id")
-
+// ReorderPortfolio сохранить новый порядок портфолио.
+//
+//	@Summary		Порядок портфолио
+//	@Description	Переупорядочить проекты в портфолио.
+//	@Tags			Owner Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		ReorderPortfolioRequest		true	"IDs в новом порядке"
+//	@Success		200		{object}	response.SuccessResponse	"Обновлено"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка запроса"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/owner/portfolio/reorder [patch]
+func (h *Handler) ReorderPortfolio(w http.ResponseWriter, r *http.Request) {
+	ownerID := chicontext.UserIDFromCtx(r.Context())
 	var req ReorderPortfolioRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err)
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err)
 		return
 	}
-
-	if err := h.repo.ReorderPortfolio(c.Request.Context(), ownerID, req.ProjectIDs); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "REORDER_FAILED", err)
+	if err := h.repo.ReorderPortfolio(r.Context(), ownerID, req.ProjectIDs); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "REORDER_FAILED", err)
 		return
 	}
-
-	response.Success(c, http.StatusOK, gin.H{"message": "Portfolio reordered"})
+	response.Success(w, http.StatusOK, response.H{"message": "Portfolio reordered"})
 }

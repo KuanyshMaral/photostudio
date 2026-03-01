@@ -8,16 +8,22 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"photostudio/internal/pkg/chicontext"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func TestSuccessAndFailEndpoints(t *testing.T) {
 	s, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 	h.RegisterPublicWebhookRoutes(r)
 
 	createBody, _ := json.Marshal(CreatePaymentRequest{BookingID: 10, Amount: "100.00", Description: "x"})
@@ -48,11 +54,15 @@ func TestSuccessAndFailEndpoints(t *testing.T) {
 
 func TestSuccessEndpointAcceptsLegacyInitPayment(t *testing.T) {
 	s, h, _ := setupPaymentTest(t)
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	g := r.Group("/")
-	g.Use(func(c *gin.Context) { c.Set("user_id", int64(1)); c.Next() })
-	h.RegisterProtectedRoutes(g)
+	r := chi.NewRouter()
+	r.Group(func(g chi.Router) {
+		g.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				next.ServeHTTP(w, req.WithContext(chicontext.SetUserID(req.Context(), int64(1))))
+			})
+		})
+		h.RegisterProtectedRoutes(g)
+	})
 	h.RegisterPublicWebhookRoutes(r)
 
 	initBody, _ := json.Marshal(InitPaymentRequest{BookingID: 10, OutSum: "100.00", Description: "legacy"})

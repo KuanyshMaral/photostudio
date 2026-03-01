@@ -2,13 +2,16 @@ package notification
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
+	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
-	"net/http"
+
 	"photostudio/internal/domain/chat"
+	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
-	"strconv"
 )
 
 type Handler struct {
@@ -31,48 +34,62 @@ var notificationsUpgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-// WebSocket serves user-scoped websocket connection for notification events.
-func (h *Handler) WebSocket(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// WebSocket WS соединение для уведомлений.
+//
+//	@Summary		Сессия WS
+//	@Description	Устанавливает WebSocket соединение для получения уведомлений в реальном времени.
+//	@Tags			Notification
+//	@Security		BearerAuth
+//	@Success		101	"Switching Protocols"
+//	@Failure		400	"Ошибка запроса"
+//	@Failure		401	"Не авторизован"
+//	@Failure		503	"Сервис недоступен"
+//	@Router			/notifications/ws [get]
+func (h *Handler) WebSocket(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 	if h.hub == nil {
-		response.CustomError(c, http.StatusServiceUnavailable, "INTERNAL_ERROR", "WebSocket hub unavailable")
+		response.CustomError(w, r, http.StatusServiceUnavailable, "INTERNAL_ERROR", "WebSocket hub unavailable")
 		return
 	}
 
-	conn, err := notificationsUpgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := notificationsUpgrader.Upgrade(w, r, nil)
 	if err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "Failed to upgrade websocket")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "Failed to upgrade websocket")
 		return
 	}
 
-	// Reuse existing hub infrastructure; empty room list = user channel only.
 	h.hub.ServeWS(conn, userID, nil)
 }
 
-// GetNotifications получает список уведомлений текущего пользователя.
-// @Summary		Получить уведомления
-// @Description	Возвращает список последних уведомлений пользователя и количество непрочитанных. Поддерживает пагинацию через параметры limit и offset.
-// @Tags		Уведомления
-// @Security	BearerAuth
-// @Param		limit	query	int	false	"Максимальное количество уведомлений (по умолчанию 20, макс 100)"
-// @Param		offset	query	int	false	"Смещение для пагинации (по умолчанию 0)"
-// @Success		200	{object}		NotificationListResponse "Список уведомлений и количество непрочитанных"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при получении уведомлений"
-// @Router		/notifications [GET]
-func (h *Handler) GetNotifications(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// GetNotifications список уведомлений.
+//
+//	@Summary		Список уведомлений
+//	@Description	Возвращает страницу уведомлений пользователя.
+//	@Tags			Notification
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			limit		query		int														false	"Кол-во на страницу"
+//	@Param			offset		query		int														false	"Отступ"
+//	@Param			only_unread	query		bool													false	"Только непрочитанные"
+//	@Success		200			{object}	response.SuccessResponse{data=NotificationListResponse}	"Уведомления"
+//	@Failure		400			{object}	response.ErrorResponse									"Неверные параметры"
+//	@Failure		401			{object}	response.ErrorResponse									"Не авторизован"
+//	@Failure		500			{object}	response.ErrorResponse									"Ошибка сервера"
+//	@Router			/notifications [get]
+func (h *Handler) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
 	limit := 20
-	if s := c.Query("limit"); s != "" {
+	q := r.URL.Query()
+	if s := q.Get("limit"); s != "" {
 		if v, err := strconv.Atoi(s); err == nil && v > 0 {
 			limit = v
 			if limit > 100 {
@@ -82,160 +99,169 @@ func (h *Handler) GetNotifications(c *gin.Context) {
 	}
 
 	offset := 0
-	if s := c.Query("offset"); s != "" {
+	if s := q.Get("offset"); s != "" {
 		if v, err := strconv.Atoi(s); err == nil && v >= 0 {
 			offset = v
 		}
 	}
 
 	onlyUnread := false
-	if s := c.Query("only_unread"); s != "" {
+	if s := q.Get("only_unread"); s != "" {
 		v, err := strconv.ParseBool(s)
 		if err != nil {
-			response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", "invalid only_unread value")
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", "invalid only_unread value")
 			return
 		}
 		onlyUnread = v
 	}
 
-	notifications, unread, total, err := h.service.List(c.Request.Context(), userID, limit, offset, onlyUnread)
+	notifications, unread, total, err := h.service.List(r.Context(), userID, limit, offset, onlyUnread)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get notifications")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get notifications")
 		return
 	}
 
-	// Convert to response DTOs
 	items := make([]*NotificationResponse, len(notifications))
 	for i, n := range notifications {
 		items[i] = NotificationResponseFromEntity(n)
 	}
 
-	response.Success(c, http.StatusOK, NotificationListResponse{
+	response.Success(w, http.StatusOK, NotificationListResponse{
 		Notifications: items,
 		UnreadCount:   unread,
 		Total:         total,
 	})
 }
 
-// GetUnreadCount получает количество непрочитанных уведомлений.
-// @Summary		Получить количество непрочитанных
-// @Description	Возвращает количество непрочитанных уведомлений для текущего пользователя.
-// @Tags		Уведомления
-// @Security	BearerAuth
-// @Success		200	{object}		UnreadCountResponse "Количество непрочитанных уведомлений"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/unread-count [GET]
-func (h *Handler) GetUnreadCount(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// GetUnreadCount возвращает количество непрочитанных уведомлений.
+//
+//	@Summary		Счетчик непрочитанных
+//	@Description	Возвращает количество непрочитанных уведомлений пользователя.
+//	@Tags			Notification
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.SuccessResponse{data=UnreadCountResponse}	"Счетчик"
+//	@Failure		401	{object}	response.ErrorResponse								"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse								"Ошибка сервера"
+//	@Router			/notifications/unread [get]
+func (h *Handler) GetUnreadCount(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	unread, err := h.service.GetUnreadCount(c.Request.Context(), userID)
+	unread, err := h.service.GetUnreadCount(r.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get unread count")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to get unread count")
 		return
 	}
 
-	response.Success(c, http.StatusOK, UnreadCountResponse{UnreadCount: unread})
+	response.Success(w, http.StatusOK, UnreadCountResponse{UnreadCount: unread})
 }
 
-// MarkAsRead отмечает уведомление как прочитанное.
-// @Summary		Отметить уведомление как прочитанное
-// @Description	Отмечает конкретное уведомление как прочитанное. После этого оно больше не будет учитываться в счётчике непрочитанных.
-// @Tags		Уведомления
-// @Security	BearerAuth
-// @Param		id	path	int	true	"ID уведомления"
-// @Success		200	{object}		map[string]interface{} "Уведомление отмечено как прочитанное"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID уведомления"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		404	{object}		map[string]interface{} "Ошибка: уведомление не найдено"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении статуса"
-// @Router		/notifications/{id}/read [PATCH]
-func (h *Handler) MarkAsRead(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// MarkAsRead помечает уведомление прочитанным.
+//
+//	@Summary		Пометить как прочитанное
+//	@Description	Помечает конкретное уведомление как прочитанное.
+//	@Tags			Notification
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID уведомления"
+//	@Success		200	{object}	response.SuccessResponse	"Готово"
+//	@Failure		400	{object}	response.ErrorResponse		"Неверный ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Уведомление не найдено"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/notifications/{id}/read [post]
+func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid notification ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid notification ID")
 		return
 	}
 
-	if err := h.service.MarkAsRead(c.Request.Context(), id, userID); err != nil {
+	if err := h.service.MarkAsRead(r.Context(), id, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Notification not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Notification not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"status": "read"})
+	response.Success(w, http.StatusOK, response.H{"status": "read"})
 }
 
-// MarkAllAsRead отмечает все уведомления пользователя как прочитанные.
-// @Summary		Отметить все уведомления как прочитанные
-// @Description	Отмечает все непрочитанные уведомления пользователя как прочитанные одним запросом.
-// @Tags		Уведомления
-// @Security	BearerAuth
-// @Success		200	{object}		map[string]interface{} "Все уведомления отмечены как прочитанные"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации: требуется токен"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера при обновлении статуса"
-// @Router		/notifications/read-all [POST]
-func (h *Handler) MarkAllAsRead(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// MarkAllAsRead помечает все уведомления прочитанными.
+//
+//	@Summary		Прочитать всё
+//	@Description	Помечает все уведомления пользователя как прочитанные.
+//	@Tags			Notification
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.SuccessResponse	"Готово"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/notifications/read/all [post]
+func (h *Handler) MarkAllAsRead(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	if err := h.service.MarkAllAsRead(c.Request.Context(), userID); err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
+	if err := h.service.MarkAllAsRead(r.Context(), userID); err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to mark as read")
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"status": "all_read"})
+	response.Success(w, http.StatusOK, response.H{"status": "all_read"})
 }
 
-// DeleteNotification удаляет конкретное уведомление.
-// @Summary		Удалить уведомление
-// @Description	Удаляет конкретное уведомление пользователя.
-// @Tags		Уведомления
-// @Security	BearerAuth
-// @Param		id	path	int	true	"ID уведомления"
-// @Success		200	{object}		map[string]interface{} "Уведомление удалено"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/{id} [DELETE]
-func (h *Handler) DeleteNotification(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// DeleteNotification удаляет уведомление.
+//
+//	@Summary		Удалить уведомление
+//	@Description	Удаляет конкретное уведомление.
+//	@Tags			Notification
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int							true	"ID уведомления"
+//	@Success		200	{object}	response.SuccessResponse	"Удалено"
+//	@Failure		400	{object}	response.ErrorResponse		"Неверный ID"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Уведомление не найдено"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/notifications/{id} [delete]
+func (h *Handler) DeleteNotification(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid notification ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid notification ID")
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), id, userID); err != nil {
+	if err := h.service.Delete(r.Context(), id, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Notification not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Notification not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete notification")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to delete notification")
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"status": "deleted"})
-
+	response.Success(w, http.StatusOK, response.H{"status": "deleted"})
 }

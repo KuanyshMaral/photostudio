@@ -2,12 +2,15 @@ package notification
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"net/http"
-	"photostudio/internal/pkg/response"
 	"strconv"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
+
+	"photostudio/internal/pkg/chicontext"
+	"photostudio/internal/pkg/response"
 )
 
 // DeviceTokensHandler handles device tokens API endpoints
@@ -21,58 +24,49 @@ func NewDeviceTokensHandler(service *Service) *DeviceTokensHandler {
 }
 
 // RegisterDeviceToken регистрирует новый device token для push-уведомлений.
-// @Summary		Зарегистрировать device token
-// @Description	Регистрирует новый device token (для мобильных или веб-приложений) для получения push-уведомлений.
-// @Tags		Уведомления - Device Tokens
-// @Security	BearerAuth
-// @Param		body	body		RegisterDeviceTokenRequest	true	"Device token информация"
-// @Success		201	{object}		DeviceTokenResponse "Device token зарегистрирован"
-// @Failure		400	{object}		map[string]interface{} "Ошибка валидации"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/device-tokens [POST]
-func (h *DeviceTokensHandler) RegisterDeviceToken(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Зарегистрировать device token
+//	@Tags		Уведомления - Device Tokens
+//	@Security	BearerAuth
+//	@Router		/notifications/device-tokens [POST]
+func (h *DeviceTokensHandler) RegisterDeviceToken(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
 	var req RegisterDeviceTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
 		return
 	}
 
-	dt, err := h.service.RegisterDeviceToken(c.Request.Context(), userID, req.Token, req.Platform, req.DeviceName)
+	dt, err := h.service.RegisterDeviceToken(r.Context(), userID, req.Token, req.Platform, req.DeviceName)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to register device token")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to register device token")
 		return
 	}
 
-	respToken := h.deviceTokenToResponse(dt)
-	response.Success(c, http.StatusCreated, respToken)
+	response.Success(w, http.StatusCreated, h.deviceTokenToResponse(dt))
 }
 
 // ListDeviceTokens возвращает список активных device tokens.
-// @Summary		Получить device tokens
-// @Description	Возвращает список всех активных device tokens для текущего пользователя.
-// @Tags		Уведомления - Device Tokens
-// @Security	BearerAuth
-// @Success		200	{object}		[]DeviceTokenResponse "Список device tokens"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/device-tokens [GET]
-func (h *DeviceTokensHandler) ListDeviceTokens(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Получить device tokens
+//	@Tags		Уведомления - Device Tokens
+//	@Security	BearerAuth
+//	@Router		/notifications/device-tokens [GET]
+func (h *DeviceTokensHandler) ListDeviceTokens(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	tokens, err := h.service.ListDeviceTokens(c.Request.Context(), userID)
+	tokens, err := h.service.ListDeviceTokens(r.Context(), userID)
 	if err != nil {
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list device tokens")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to list device tokens")
 		return
 	}
 
@@ -81,46 +75,41 @@ func (h *DeviceTokensHandler) ListDeviceTokens(c *gin.Context) {
 		respTokens[i] = h.deviceTokenToResponse(dt)
 	}
 
-	response.Success(c, http.StatusOK, respTokens)
+	response.Success(w, http.StatusOK, respTokens)
 }
 
 // DeactivateDeviceToken деактивирует device token.
-// @Summary		Деактивировать device token
-// @Description	Деактивирует device token, устройство больше не будет получать push-уведомления.
-// @Tags		Уведомления - Device Tokens
-// @Security	BearerAuth
-// @Param		id	path	int	true	"ID device token"
-// @Success		200	{object}		map[string]interface{} "Device token деактивирован"
-// @Failure		400	{object}		map[string]interface{} "Ошибка: неверный ID"
-// @Failure		401	{object}		map[string]interface{} "Ошибка аутентификации"
-// @Failure		500	{object}		map[string]interface{} "Ошибка сервера"
-// @Router		/notifications/device-tokens/{id} [DELETE]
-func (h *DeviceTokensHandler) DeactivateDeviceToken(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary	Деактивировать device token
+//	@Tags		Уведомления - Device Tokens
+//	@Security	BearerAuth
+//	@Router		/notifications/device-tokens/{id} [DELETE]
+func (h *DeviceTokensHandler) DeactivateDeviceToken(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 	if userID == 0 {
-		response.CustomError(c, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "User not authenticated")
 		return
 	}
 
-	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_ID", "Invalid device token ID")
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid device token ID")
 		return
 	}
 
-	if err := h.service.DeactivateDeviceToken(c.Request.Context(), id, userID); err != nil {
+	if err := h.service.DeactivateDeviceToken(r.Context(), id, userID); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			response.CustomError(c, http.StatusNotFound, "NOT_FOUND", "Device token not found")
+			response.CustomError(w, r, http.StatusNotFound, "NOT_FOUND", "Device token not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to deactivate device token")
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to deactivate device token")
 		return
 	}
 
-	response.Success(c, http.StatusOK, gin.H{"status": "deactivated"})
+	response.Success(w, http.StatusOK, response.H{"status": "deactivated"})
 }
 
-// deviceTokenToResponse converts DeviceToken to DeviceTokenResponse
 func (h *DeviceTokensHandler) deviceTokenToResponse(dt *DeviceToken) *DeviceTokenResponse {
 	resp := &DeviceTokenResponse{
 		ID:         dt.ID,
@@ -131,10 +120,8 @@ func (h *DeviceTokensHandler) deviceTokenToResponse(dt *DeviceToken) *DeviceToke
 		IsActive:   dt.IsActive,
 		CreatedAt:  dt.CreatedAt.Format(time.RFC3339),
 	}
-
 	if !dt.LastUsedAt.IsZero() {
 		resp.LastUsedAt = dt.LastUsedAt.Format(time.RFC3339)
 	}
-
 	return resp
 }

@@ -3,8 +3,7 @@ package profile
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
 	"photostudio/internal/pkg/validator"
 )
@@ -19,74 +18,82 @@ func NewClientHandler(service *Service) *ClientHandler {
 	return &ClientHandler{service: service}
 }
 
-// GetProfile handles GET /api/v1/profile/client
-// @Summary Get client profile
-// @Description Get authenticated client's profile
-// @Tags Client Profile
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} response.Response{data=ClientProfile}
-// @Failure 404 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/client [get]
-func (h *ClientHandler) GetProfile(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// swaggerClientProfileResponse wrapper
+type swaggerClientProfileResponse struct {
+	Success bool           `json:"success"`
+	Data    *ClientProfile `json:"data"`
+}
 
-	profile, err := h.service.GetClientProfile(c.Request.Context(), userID)
+// GetProfile возвращает профиль клиента.
+//
+//	@Summary		Профиль клиента
+//	@Description	Возвращает данные профиля текущего клиента. Если не существует, создает пустой.
+//	@Tags			Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerClientProfileResponse	"Профиль"
+//	@Failure		401	{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		500	{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/profile/client [get]
+func (h *ClientHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
+
+	profile, err := h.service.GetClientProfile(r.Context(), userID)
 	if err != nil {
 		if err == ErrProfileNotFound {
-			// Auto-create if not exists (should happen on email verification)
-			profile, err = h.service.EnsureClientProfile(c.Request.Context(), userID)
+			profile, err = h.service.EnsureClientProfile(r.Context(), userID)
 			if err != nil {
-				response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+				response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 				return
 			}
 		} else {
-			response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 			return
 		}
 	}
 
-	response.Success(c, http.StatusOK, profile)
+	response.Success(w, http.StatusOK, profile)
 }
 
-// UpdateProfile handles PUT /api/v1/profile/client
-// @Summary Update client profile
-// @Description Update authenticated client's profile
-// @Tags Client Profile
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param request body UpdateClientProfileRequest true "Profile update"
-// @Success 200 {object} response.Response{data=ClientProfile}
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/client [put]
-func (h *ClientHandler) UpdateProfile(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// UpdateProfile редактирует профиль клиента.
+//
+//	@Summary		Обновить профиль
+//	@Description	Обновляет профиль клиента.
+//	@Tags			Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		UpdateClientProfileRequest		true	"Данные"
+//	@Success		200		{object}	swaggerClientProfileResponse	"Профиль обновлен"
+//	@Failure		400		{object}	response.ErrorResponse			"Ошибка валидации/формата"
+//	@Failure		401		{object}	response.ErrorResponse			"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse			"Профиль не найден"
+//	@Failure		422		{object}	response.ErrorResponse			"Unprocessable entity"
+//	@Failure		500		{object}	response.ErrorResponse			"Ошибка сервера"
+//	@Router			/profile/client [patch]
+func (h *ClientHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 
 	var req UpdateClientProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	profile, err := h.service.UpdateClientProfile(c.Request.Context(), userID, &req)
+	profile, err := h.service.UpdateClientProfile(r.Context(), userID, &req)
 	if err != nil {
 		if err == ErrProfileNotFound {
-			response.CustomError(c, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
+			response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, profile)
+	response.Success(w, http.StatusOK, profile)
 }

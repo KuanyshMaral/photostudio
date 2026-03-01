@@ -3,8 +3,7 @@ package profile
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
-
+	"photostudio/internal/pkg/chicontext"
 	"photostudio/internal/pkg/response"
 	"photostudio/internal/pkg/validator"
 )
@@ -14,74 +13,83 @@ type OwnerHandler struct {
 	service *Service
 }
 
-// NewOwnerHandler creates owner profile handler
 func NewOwnerHandler(service *Service) *OwnerHandler {
 	return &OwnerHandler{service: service}
 }
 
-// GetProfile handles GET /api/v1/profile/owner
-// @Summary Get owner profile
-// @Description Get authenticated owner's profile
-// @Tags Owner Profile
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} response.Response{data=OwnerProfile}
-// @Failure 404 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/owner [get]
-func (h *OwnerHandler) GetProfile(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+// swaggerOwnerProfileResponse wrapper for documentation
+type swaggerOwnerProfileResponse struct {
+	Success bool          `json:"success"`
+	Data    *OwnerProfile `json:"data"`
+}
 
-	profile, err := h.service.GetOwnerProfile(c.Request.Context(), userID)
+// GetProfile handles GET /api/v1/profile/owner
+//
+//	@Summary		Профиль владельца
+//	@Description	Возвращает данные профиля текущего владельца фотостудии.
+//	@Tags			Profile
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerOwnerProfileResponse	"Профиль"
+//	@Failure		401	{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404	{object}	response.ErrorResponse		"Профиль не найден"
+//	@Failure		500	{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/profile/owner [get]
+func (h *OwnerHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
+
+	profile, err := h.service.GetOwnerProfile(r.Context(), userID)
 	if err != nil {
 		if err == ErrProfileNotFound {
-			response.CustomError(c, http.StatusNotFound, "PROFILE_NOT_FOUND", "Owner profile not found")
+			response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Owner profile not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, profile)
+	response.Success(w, http.StatusOK, profile)
 }
 
 // UpdateProfile handles PUT /api/v1/profile/owner
-// @Summary Update owner profile
-// @Description Update authenticated owner's profile
-// @Tags Owner Profile
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param request body UpdateOwnerProfileRequest true "Profile update"
-// @Success 200 {object} response.Response{data=OwnerProfile}
-// @Failure 400 {object} response.Response
-// @Failure 404 {object} response.Response
-// @Failure 422 {object} response.Response
-// @Failure 500 {object} response.Response
-// @Router /profile/owner [put]
-func (h *OwnerHandler) UpdateProfile(c *gin.Context) {
-	userID := c.GetInt64("user_id")
+//
+//	@Summary		Обновить профиль
+//	@Description	Обновляет профиль владельца студии.
+//	@Tags			Profile
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		UpdateOwnerProfileRequest	true	"Данные"
+//	@Success		200		{object}	swaggerOwnerProfileResponse	"Профиль обновлен"
+//	@Failure		400		{object}	response.ErrorResponse		"Ошибка валидации/формата"
+//	@Failure		401		{object}	response.ErrorResponse		"Не авторизован"
+//	@Failure		404		{object}	response.ErrorResponse		"Профиль не найден"
+//	@Failure		422		{object}	response.ErrorResponse		"Unprocessable entity"
+//	@Failure		500		{object}	response.ErrorResponse		"Ошибка сервера"
+//	@Router			/profile/owner [put]
+func (h *OwnerHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
 
 	var req UpdateOwnerProfileRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.CustomError(c, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
+	if err := response.BindJSON(r, &req); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON body")
 		return
 	}
 
-	if errors := validator.Validate(&req); errors != nil {
-		response.CustomError(c, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errors)
+	if errs := validator.Validate(&req); errs != nil {
+		response.CustomError(w, r, http.StatusUnprocessableEntity, "VALIDATION_ERROR", errs)
 		return
 	}
 
-	profile, err := h.service.UpdateOwnerProfile(c.Request.Context(), userID, &req)
+	profile, err := h.service.UpdateOwnerProfile(r.Context(), userID, &req)
 	if err != nil {
 		if err == ErrProfileNotFound {
-			response.CustomError(c, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
+			response.CustomError(w, r, http.StatusNotFound, "PROFILE_NOT_FOUND", "Profile not found")
 			return
 		}
-		response.CustomError(c, http.StatusInternalServerError, "INTERNAL_ERROR", err)
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		return
 	}
 
-	response.Success(c, http.StatusOK, profile)
+	response.Success(w, http.StatusOK, profile)
 }
