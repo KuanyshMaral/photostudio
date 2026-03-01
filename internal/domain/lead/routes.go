@@ -4,7 +4,7 @@ import "github.com/go-chi/chi/v5"
 
 // RegisterPublicRoutes registers public lead routes
 func RegisterPublicRoutes(r chi.Router, handler *Handler) {
-	r.Post("/leads/submit", handler.SubmitLead)
+	r.Post("/submit", handler.SubmitLead)
 }
 
 // RegisterAdminRoutes registers admin lead routes

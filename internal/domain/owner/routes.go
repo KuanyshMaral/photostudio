@@ -5,9 +5,9 @@ import "github.com/go-chi/chi/v5"
 func (h *Handler) RegisterRoutes(r chi.Router) {
 
 	// PIN
-	r.Post("/set-pin", h.SetPIN)
-	r.Post("/verify-pin", h.VerifyPIN)
-	r.Get("/has-pin", h.HasPIN)
+	r.Post("/pin/verify", h.VerifyPIN) // POST /owner/pin/verify
+	r.Post("/pin/set", h.SetPIN)
+	r.Get("/pin", h.HasPIN) // GET /owner/pin
 
 	// Procurement
 	r.Get("/procurement", h.GetProcurement)

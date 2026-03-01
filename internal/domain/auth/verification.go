@@ -188,16 +188,6 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, email, code stri
 		return err
 	}
 
-	// Auto-create client profile if role is Client
-	if user.Role == RoleClient {
-		if _, err := s.profileService.EnsureClientProfile(ctx, user.ID); err != nil {
-			// Log error for debugging
-			log.Printf("Failed to create client profile for user %d: %v", user.ID, err)
-		} else {
-			log.Printf("Successfully created client profile for user %d", user.ID)
-		}
-	}
-
 	return nil
 }
 

@@ -5,7 +5,7 @@ import "github.com/go-chi/chi/v5"
 // RegisterPublicRoutes registers routes that don't require authentication
 // (e.g., listing available plans for the pricing page)
 func RegisterPublicRoutes(r chi.Router, h *Handler) {
-	r.Get("/subscriptions/plans", h.GetPlans)
+	r.Get("/plans", h.GetPlans)
 }
 
 // RegisterOwnerRoutes registers routes that require role='owner'.
