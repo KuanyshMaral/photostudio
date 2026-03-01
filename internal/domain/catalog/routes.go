@@ -6,50 +6,55 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// OwnershipMiddleware for chi — provides chi-native middleware for studio/room ownership checks.
+// OwnershipMiddleware for chi.
 type OwnershipMiddleware interface {
 	CheckStudioOwnership() func(http.Handler) http.Handler
 	CheckRoomOwnership() func(http.Handler) http.Handler
 }
 
-// RegisterRoutes registers public catalog routes (no auth required).
-func (h *Handler) RegisterRoutes(r chi.Router) {
-	// Public studio routes
-	r.Route("/studios", func(r chi.Router) {
-		r.Get("/", h.GetStudios)
-		r.Get("/{id}", h.GetStudioByID)
-		r.Get("/{id}/working-hours", h.GetStudioWorkingHours)
-		r.Get("/{id}/working-hours/v2", h.GetStudioWorkingHoursV2)
-	})
+// ---------------- Public Routes ----------------
 
-	r.Get("/room-types", h.GetRoomTypes)
-	r.Get("/rooms", h.GetRooms)
-	r.Get("/rooms/{id}", h.GetRoomByID)
+// RegisterPublicStudioRoutes mounts GET /studios
+func (h *Handler) RegisterPublicStudioRoutes(r chi.Router) {
+	r.Get("/", h.GetStudios)
+	r.Get("/{id}", h.GetStudioByID)
+	r.Get("/{id}/working-hours", h.GetStudioWorkingHours)
+	r.Get("/{id}/working-hours/v2", h.GetStudioWorkingHoursV2)
 }
 
-// RegisterProtectedRoutes registers authenticated catalog routes (JWT required).
-func (h *Handler) RegisterProtectedRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
-	// Studio management (Owner only)
-	r.Route("/studios", func(r chi.Router) {
-		r.Post("/", h.CreateStudio)
+// RegisterPublicRoomRoutes mounts GET /rooms
+func (h *Handler) RegisterPublicRoomRoutes(r chi.Router) {
+	r.Get("/", h.GetRooms)
+	r.Get("/{id}", h.GetRoomByID)
+}
 
-		r.Group(func(r chi.Router) {
-			r.Use(ownershipChecker.CheckStudioOwnership())
-			r.Put("/{id}", h.UpdateStudio)
-			r.Put("/{id}/working-hours", h.UpdateStudioWorkingHours)
-			r.Post("/{id}/rooms", h.CreateRoom)
-			r.Post("/{id}/photos", h.UploadStudioPhotos)
-		})
+// RegisterPublicRoomTypes mounts GET /room-types
+func (h *Handler) RegisterPublicRoomTypes(r chi.Router) {
+	r.Get("/", h.GetRoomTypes)
+}
+
+// ---------------- Protected Routes ----------------
+
+// RegisterProtectedStudioRoutes mounts POST/PUT /studios
+func (h *Handler) RegisterProtectedStudioRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
+	r.Post("/", h.CreateStudio)
+	r.Get("/my", h.GetMyStudios)
+
+	r.Group(func(r chi.Router) {
+		r.Use(ownershipChecker.CheckStudioOwnership())
+		r.Put("/{id}", h.UpdateStudio)
+		r.Put("/{id}/working-hours", h.UpdateStudioWorkingHours)
+		r.Post("/{id}/rooms", h.CreateRoom)
+		r.Post("/{id}/photos", h.UploadStudioPhotos)
 	})
+}
 
-	// Direct room management
+// RegisterProtectedRoomRoutes mounts PUT/DELETE /rooms
+func (h *Handler) RegisterProtectedRoomRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
 	r.Group(func(r chi.Router) {
 		r.Use(ownershipChecker.CheckRoomOwnership())
-		r.Put("/rooms/{id}", h.UpdateRoom)
-		r.Delete("/rooms/{id}", h.DeleteRoom)
-		r.Post("/rooms/{id}/equipment", h.AddEquipment)
+		r.Put("/{id}", h.UpdateRoom)
+		r.Delete("/{id}", h.DeleteRoom)
+		r.Post("/{id}/equipment", h.AddEquipment)
 	})
-
-	// User's studios
-	r.Get("/studios/my", h.GetMyStudios)
 }

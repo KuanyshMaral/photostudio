@@ -208,45 +208,80 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	r.Use(chimw.Recoverer)
 
 	r.Route("/api/v1", func(v1 chi.Router) {
-		// Public routes
-		authHandler.RegisterPublicRoutes(v1)
-		catalogHandler.RegisterRoutes(v1)
-		reviewHandler.RegisterRoutes(v1, nil)
+		// ---------------------------------------------------------
+		// Namespaces without overlaps
+		// ---------------------------------------------------------
 
-		// Protected routes
-		v1.Group(func(protected chi.Router) {
-			protected.Use(middleware.ChiJWTAuth(jwtService))
+		v1.Route("/admin", func(r chi.Router) {
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiRequireRole("admin"))
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				adminHandler.RegisterProtectedRoutes(r, jwtService)
+			})
+		})
 
-			authHandler.RegisterProtectedRoutes(protected)
-			bookingHandler.RegisterRoutes(protected)
-			reviewHandler.RegisterRoutes(nil, protected)
+		v1.Route("/auth", func(r chi.Router) {
+			authHandler.RegisterPublicRoutes(r)
+		})
 
-			// Notification handler
+		v1.Route("/reviews", func(r chi.Router) {
+			reviewHandler.RegisterRoutes(r, nil) // public
+			r.Group(func(r chi.Router) {         // protected
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				reviewHandler.RegisterRoutes(nil, r)
+			})
+		})
+
+		// ---------------------------------------------------------
+		// Namespaces WITH overlaps and heavy protected sections
+		// ---------------------------------------------------------
+
+		v1.Route("/studios", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicStudioRoutes(r) })
+
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+
+				r.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Get("/my", catalogHandler.GetMyStudios)
+				r.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Post("/", catalogHandler.CreateStudio)
+				r.With(ownershipChecker.CheckStudioOwnership()).Put("/{id}", catalogHandler.UpdateStudio)
+				r.With(ownershipChecker.CheckStudioOwnership()).Post("/{id}/rooms", catalogHandler.CreateRoom)
+				r.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership()).Get("/{id}/bookings", bookingHandler.GetStudioBookings)
+			})
+		})
+
+		v1.Route("/rooms", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicRoomRoutes(r) })
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				r.Post("/{id}/equipment", catalogHandler.AddEquipment)
+			})
+		})
+
+		v1.Route("/room-types", func(r chi.Router) {
+			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicRoomTypes(r) })
+		})
+
+		v1.Route("/users", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			authHandler.RegisterProtectedRoutes(r)
+		})
+
+		v1.Route("/bookings", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			bookingHandler.RegisterRoutes(r)
+			r.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Patch("/{id}/payment", bookingHandler.UpdatePaymentStatus)
+		})
+
+		// Notification handler uses its own Routes which we didn't fully unwrap (only top-level notifications)
+		// Wait, let's just stick to the main pattern.
+		v1.Group(func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
 			notificationHandler := notification.NewHandler(notificationService)
 			prefsHandler := notification.NewPreferencesHandler(notificationService)
 			devicesHandler := notification.NewDeviceTokensHandler(notificationService)
-			notification.RegisterRoutes(protected, notificationHandler, prefsHandler, devicesHandler)
-
-			protected.Route("/studios", func(studios chi.Router) {
-				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Get("/my", catalogHandler.GetMyStudios)
-				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Post("/", catalogHandler.CreateStudio)
-				studios.With(ownershipChecker.CheckStudioOwnership()).Put("/{id}", catalogHandler.UpdateStudio)
-				studios.With(ownershipChecker.CheckStudioOwnership()).Post("/{id}/rooms", catalogHandler.CreateRoom)
-				studios.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner)), ownershipChecker.CheckStudioOwnership()).Get("/{id}/bookings", bookingHandler.GetStudioBookings)
-			})
-
-			// Equipment route (only AddEquipment exists)
-			protected.Route("/rooms", func(rooms chi.Router) {
-				rooms.Post("/{id}/equipment", catalogHandler.AddEquipment)
-			})
-
-			protected.Route("/admin", func(adminGroup chi.Router) {
-				adminGroup.Use(middleware.ChiRequireRole("admin"))
-				adminHandler.RegisterProtectedRoutes(adminGroup, jwtService)
-			})
-
-			protected.Route("/bookings", func(bookings chi.Router) {
-				bookings.With(middleware.ChiRequireRole(string(auth.RoleStudioOwner))).Patch("/{id}/payment", bookingHandler.UpdatePaymentStatus)
+			r.Route("/notifications", func(r chi.Router) {
+				notification.RegisterRoutes(r, notificationHandler, prefsHandler, devicesHandler)
 			})
 		})
 	})
