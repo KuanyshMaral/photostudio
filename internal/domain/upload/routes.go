@@ -6,8 +6,8 @@ import "github.com/go-chi/chi/v5"
 // All routes require authentication (any role — client, owner, admin).
 func RegisterRoutes(r chi.Router, h *Handler) {
 	r.Route("/uploads", func(r chi.Router) {
-		r.Post("", h.Upload)
-		r.Get("", h.ListMy)
+		r.Post("/", h.Upload)
+		r.Get("/", h.ListMy)
 		r.Get("/{id}", h.GetByID)
 		r.Delete("/{id}", h.Delete)
 	})

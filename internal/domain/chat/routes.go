@@ -10,7 +10,7 @@ func RegisterRoutes(r chi.Router, h *Handler) {
 		r.Post("/group", h.CreateGroupRoom)
 
 		// Room listing & unread
-		r.Get("", h.ListRooms)
+		r.Get("/", h.ListRooms)
 		r.Get("/unread", h.GetUnreadCount)
 
 		// WebSocket
