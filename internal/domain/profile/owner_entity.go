@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
 
@@ -31,6 +32,10 @@ type OwnerProfile struct {
 	VerifiedBy         sql.NullInt64  `db:"verified_by" json:"verified_by,omitempty" swaggertype:"integer"`
 	RejectedReason     sql.NullString `db:"rejected_reason" json:"rejected_reason,omitempty" swaggertype:"string"`
 	AdminNotes         sql.NullString `db:"admin_notes" json:"admin_notes,omitempty" swaggertype:"string"`
+
+	// Avatar
+	AvatarURL      sql.NullString `db:"avatar_url" json:"avatar_url,omitempty" swaggertype:"string"`
+	AvatarUploadID uuid.NullUUID  `db:"avatar_upload_id" json:"avatar_upload_id,omitempty" swaggertype:"string"`
 
 	CreatedAt time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`

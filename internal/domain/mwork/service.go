@@ -110,7 +110,6 @@ func (s *Service) SyncUser(ctx context.Context, req SyncUserRequest) (*auth.User
 		Email:         normalizedEmail,
 		PasswordHash:  string(password),
 		Role:          auth.RoleClient,
-		Name:          normalizedEmail,
 		EmailVerified: false,
 		MworkUserID:   req.MworkUserID,
 		MworkRole:     req.Role,

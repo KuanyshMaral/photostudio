@@ -175,7 +175,6 @@ func (s *Service) ConvertLead(ctx context.Context, leadID int64, req *ConvertLea
 		Role:            auth.RoleStudioOwner,
 		EmailVerified:   true,
 		EmailVerifiedAt: timePtr(time.Now()),
-		Name:            req.LegalName,       // Use LegalName as initial user name
 		StudioStatus:    auth.StatusVerified, // Auto-verify since admin converted
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),

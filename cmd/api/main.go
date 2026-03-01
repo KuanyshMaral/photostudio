@@ -318,7 +318,7 @@ func main() {
 			authHandler.RegisterProtectedRoutes(r)
 		})
 
-		r.Route("/bookings", func(r chi.Router) {
+		r.Route("/booking", func(r chi.Router) {
 			r.Use(middleware.ChiJWTAuth(jwtService))
 			bookingHandler.RegisterRoutes(r)
 		})
@@ -370,7 +370,11 @@ func main() {
 			r.Route("/profile", func(r chi.Router) {
 				profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
 			})
-			r.Route("/chats", func(r chi.Router) { chat.RegisterRoutes(r, chatHandler) })
+			r.Route("/chat", func(r chi.Router) { chat.RegisterRoutes(r, chatHandler) })
+			r.Route("/notifications/read", func(r chi.Router) {
+				// Special root alias to handle /notifications/read/all according to Swagger
+				r.Post("/all", notificationHandler.MarkAllAsRead)
+			})
 			r.Route("/notifications", func(r chi.Router) {
 				notification.RegisterRoutes(r, notificationHandler, preferencesHandler, deviceTokensHandler)
 			})

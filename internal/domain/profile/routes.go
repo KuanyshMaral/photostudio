@@ -5,6 +5,9 @@ import "github.com/go-chi/chi/v5"
 // RegisterRoutes registers all profile routes
 func RegisterRoutes(r chi.Router, clientHandler *ClientHandler, ownerHandler *OwnerHandler, adminHandler *AdminHandler) {
 
+	// Unified profile endpoint (reads role from JWT context)
+	r.Get("/me", clientHandler.GetMe)
+
 	// Client profile (role: client)
 	r.Get("/client", clientHandler.GetProfile)
 	r.Put("/client", clientHandler.UpdateProfile)
