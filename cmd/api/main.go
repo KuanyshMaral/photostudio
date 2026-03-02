@@ -255,6 +255,9 @@ func main() {
 	// Public payment webhooks
 	paymentHandler.RegisterPublicWebhookRoutes(chiRouter)
 
+	// WebSocket route
+	chiRouter.With(middleware.ChiJWTAuth(jwtService)).Get("/ws/chat", chatHandler.WebSocket)
+
 	chiRouter.Route("/api/v1", func(r chi.Router) {
 
 		// ---------------------------------------------------------

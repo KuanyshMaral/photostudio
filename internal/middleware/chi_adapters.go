@@ -29,7 +29,7 @@ func ChiJWTAuth(jwtService *jwtpkg.Service) func(http.Handler) http.Handler {
 				upgrade := strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
 				connUpgrade := strings.Contains(strings.ToLower(r.Header.Get("Connection")), "upgrade")
 				path := r.URL.Path
-				isWS := strings.HasSuffix(path, "/notifications/ws") || strings.HasSuffix(path, "/chats/ws")
+				isWS := strings.HasSuffix(path, "/notifications/ws") || strings.HasSuffix(path, "/chats/ws") || strings.HasSuffix(path, "/ws/chat")
 
 				if upgrade && connUpgrade && isWS {
 					qToken := r.URL.Query().Get("token")
