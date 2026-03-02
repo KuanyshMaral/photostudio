@@ -264,6 +264,13 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			adminHandler.RegisterPublicRoutes(r)
 			adminHandler.RegisterProtectedRoutes(r, jwtService)
+
+			r.Group(func(r chi.Router) {
+				r.Use(admin.ChiAdminJWTAuth(jwtService))
+				r.Route("/leads", func(r chi.Router) {
+					lead.RegisterAdminRoutes(r, leadHandler)
+				})
+			})
 		})
 
 		r.Route("/auth", func(r chi.Router) {
