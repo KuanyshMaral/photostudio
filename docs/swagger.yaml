@@ -163,16 +163,11 @@ definitions:
     properties:
       email:
         type: string
-      name:
-        type: string
       password:
         minLength: 6
         type: string
-      phone:
-        type: string
     required:
     - email
-    - name
     - password
     type: object
   auth.StudioStatus:
@@ -1583,6 +1578,11 @@ definitions:
     type: object
   profile.AdminProfile:
     properties:
+      avatar_upload_id:
+        type: string
+      avatar_url:
+        description: Avatar
+        type: string
       created_at:
         type: string
       created_by:
@@ -1610,6 +1610,8 @@ definitions:
     type: object
   profile.ClientProfile:
     properties:
+      avatar_upload_id:
+        type: string
       avatar_url:
         type: string
       created_at:
@@ -3702,7 +3704,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: payload
+      - description: payload (email, password)
         in: body
         name: body
         required: true
