@@ -382,9 +382,9 @@ func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, sear
 		Table("users u").
 		Select(`
 			u.id,
-			COALESCE(cp.full_name, u.email) as name,
+			MAX(COALESCE(cp.full_name, u.email)) as name,
 			u.email,
-			COALESCE(cp.phone, '') as phone,
+			MAX(COALESCE(cp.phone, '')) as phone,
 			COUNT(b.id) as total_bookings,
 			COALESCE(SUM(b.total_price), 0) as total_spent,
 			MAX(b.created_at) as last_booking_at
@@ -392,7 +392,7 @@ func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, sear
 		Joins("JOIN bookings b ON b.user_id = u.id").
 		Joins("LEFT JOIN client_profiles cp ON cp.user_id = u.id").
 		Where("b.studio_id IN ?", studioIDs).
-		Group("u.id, cp.full_name, u.email, cp.phone")
+		Group("u.id, u.email")
 
 	// ⚠️ SQLite+PG совместимый поиск
 	if search != "" {
