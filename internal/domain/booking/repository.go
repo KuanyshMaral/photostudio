@@ -251,8 +251,7 @@ func (r *bookingRepository) IsBookingOwnedByUser(ctx context.Context, bookingID,
 	var count int64
 	err := r.db.WithContext(ctx).
 		Table("bookings").
-		Joins("JOIN studios ON studios.id = bookings.studio_id").
-		Where("bookings.id = ? AND studios.owner_id = ? AND studios.deleted_at IS NULL", bookingID, ownerID).
+		Where("bookings.id = ? AND bookings.studio_id IN (SELECT id FROM studios WHERE owner_id = ? AND deleted_at IS NULL)", bookingID, ownerID).
 		Count(&count).Error
 	return count > 0, err
 }
@@ -428,13 +427,13 @@ func (r *bookingRepository) GetManagerBookings(
 		Select(`
 			b.id,
 			b.room_id,
-			r.name as room_name,
+			MAX(r.name) as room_name,
 			b.studio_id,
-			s.name as studio_name,
+			MAX(s.name) as studio_name,
 			b.user_id as client_id,
-			COALESCE(cp.full_name, u.email) as client_name,
-			COALESCE(cp.phone, '') as client_phone,
-			u.email as client_email,
+			MAX(COALESCE(cp.full_name, u.email)) as client_name,
+			MAX(COALESCE(cp.phone, '')) as client_phone,
+			MAX(u.email) as client_email,
 			b.start_time,
 			b.end_time,
 			b.status,
@@ -449,7 +448,8 @@ func (r *bookingRepository) GetManagerBookings(
 		Joins("JOIN studios s ON s.id = b.studio_id").
 		Joins("JOIN users u ON u.id = b.user_id").
 		Joins("LEFT JOIN client_profiles cp ON cp.user_id = u.id").
-		Where("b.studio_id IN ?", studioIDs)
+		Where("b.studio_id IN ?", studioIDs).
+		Group("b.id")
 
 	// 3) фильтры
 	if filters.StudioID > 0 {
@@ -505,6 +505,17 @@ func (r *bookingRepository) GetManagerBookings(
 func (r *bookingRepository) GetBookingForManager(ctx context.Context, ownerID, bookingID int64) (*ManagerBookingRow, error) {
 	var row ManagerBookingRow
 
+	var studioIDs []int64
+	if err := r.db.WithContext(ctx).
+		Table("studios").
+		Where("owner_id = ?", ownerID).
+		Pluck("id", &studioIDs).Error; err != nil {
+		return nil, err
+	}
+	if len(studioIDs) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+
 	err := r.db.WithContext(ctx).
 		Table("bookings b").
 		Select(`
@@ -532,7 +543,7 @@ func (r *bookingRepository) GetBookingForManager(ctx context.Context, ownerID, b
 		Joins("JOIN users u ON u.id = b.user_id").
 		Joins("LEFT JOIN client_profiles cp ON cp.user_id = u.id").
 		Where("b.id = ?", bookingID).
-		Where("s.owner_id = ?", ownerID).
+		Where("b.studio_id IN ?", studioIDs).
 		First(&row).Error
 
 	if err != nil {

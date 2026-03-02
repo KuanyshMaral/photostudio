@@ -283,6 +283,10 @@ func main() {
 			})
 		})
 
+		r.Route("/attachments", func(r chi.Router) {
+			attachment.RegisterPublicRoutes(r, attachmentHandler)
+		})
+
 		// ---------------------------------------------------------
 		// Namespaces WITH overlaps and heavy protected sections
 		// ---------------------------------------------------------
@@ -367,7 +371,7 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.ChiJWTAuth(jwtService))
 
-			r.Route("/profile", func(r chi.Router) {
+			r.Route("/profiles", func(r chi.Router) {
 				profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
 			})
 			r.Route("/chat", func(r chi.Router) { chat.RegisterRoutes(r, chatHandler) })
@@ -381,7 +385,7 @@ func main() {
 			r.Route("/favorites", func(r chi.Router) { favoriteHandler.RegisterRoutes(r) })
 			r.Route("/uploads", func(r chi.Router) { upload.RegisterRoutes(r, uploadHandler) })
 			r.Route("/relationships", func(r chi.Router) { relationship.RegisterRoutes(r, relationshipHandler) })
-			r.Route("/attachments", func(r chi.Router) { attachment.RegisterRoutes(r, attachmentHandler) })
+			r.Route("/attachments", func(r chi.Router) { attachment.RegisterProtectedRoutes(r, attachmentHandler) })
 		})
 	})
 

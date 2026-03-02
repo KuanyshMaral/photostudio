@@ -2,11 +2,14 @@ package attachment
 
 import "github.com/go-chi/chi/v5"
 
-// RegisterRoutes registers the attachment domain routes.
-// All routes require authentication (handled by caller middleware).
-func RegisterRoutes(r chi.Router, h *Handler) {
-	r.Post("/", h.Attach)
+// RegisterPublicRoutes registers the attachment endpoints that do not require authentication.
+func RegisterPublicRoutes(r chi.Router, h *Handler) {
 	r.Get("/", h.ListByTarget)
+}
+
+// RegisterProtectedRoutes registers the attachment endpoints that require authentication.
+func RegisterProtectedRoutes(r chi.Router, h *Handler) {
+	r.Post("/", h.Attach)
 	r.Delete("/{id}", h.Delete)
 	r.Patch("/reorder", h.Reorder)
 }
