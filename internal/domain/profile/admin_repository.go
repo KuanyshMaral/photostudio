@@ -33,14 +33,17 @@ func (r *AdminRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*A
 // Create creates a new admin profile
 func (r *AdminRepository) Create(ctx context.Context, profile *AdminProfile) error {
 	query := `
-		INSERT INTO admin_profiles (user_id, full_name, position, phone, is_active, created_by, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO admin_profiles (
+			user_id, full_name, position, phone, is_active,
+			avatar_url, avatar_upload_id, created_by, created_at, updated_at
+		) VAlUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.QueryRowContext(
 		ctx, query,
 		profile.UserID, profile.FullName, profile.Position, profile.Phone,
-		profile.IsActive, profile.CreatedBy, profile.CreatedAt, profile.UpdatedAt,
+		profile.IsActive, profile.AvatarURL, profile.AvatarUploadID,
+		profile.CreatedBy, profile.CreatedAt, profile.UpdatedAt,
 	).Scan(&profile.ID, &profile.CreatedAt, &profile.UpdatedAt)
 }
 
@@ -48,12 +51,14 @@ func (r *AdminRepository) Create(ctx context.Context, profile *AdminProfile) err
 func (r *AdminRepository) Update(ctx context.Context, profile *AdminProfile) error {
 	query := `
 		UPDATE admin_profiles
-		SET full_name = $2, position = $3, phone = $4, updated_at = $5
+		SET full_name = $2, position = $3, phone = $4,
+		    avatar_url = $5, avatar_upload_id = $6, updated_at = $7
 		WHERE id = $1
 	`
 	_, err := r.db.ExecContext(
 		ctx, query,
-		profile.ID, profile.FullName, profile.Position, profile.Phone, time.Now(),
+		profile.ID, profile.FullName, profile.Position, profile.Phone,
+		profile.AvatarURL, profile.AvatarUploadID, time.Now(),
 	)
 	return err
 }

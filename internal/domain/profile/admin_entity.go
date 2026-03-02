@@ -22,6 +22,10 @@ type AdminProfile struct {
 	LastLoginAt sql.NullTime   `db:"last_login_at" json:"last_login_at,omitempty" swaggertype:"string"`
 	LastLoginIP sql.NullString `db:"last_login_ip" json:"last_login_ip,omitempty" swaggertype:"string"`
 
+	// Avatar
+	AvatarURL      sql.NullString `db:"avatar_url" json:"avatar_url,omitempty" swaggertype:"string"`
+	AvatarUploadID uuid.NullUUID  `db:"avatar_upload_id" json:"avatar_upload_id,omitempty" swaggertype:"string"`
+
 	CreatedAt time.Time     `db:"created_at" json:"created_at"`
 	CreatedBy uuid.NullUUID `db:"created_by" json:"created_by,omitempty" swaggertype:"string"`
 	UpdatedAt time.Time     `db:"updated_at" json:"updated_at"`
