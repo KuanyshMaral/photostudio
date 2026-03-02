@@ -282,12 +282,10 @@ func main() {
 		})
 
 		reviewer := reviewHandler
-		r.Route("/reviews", func(r chi.Router) {
-			reviewer.RegisterRoutes(r, nil) // public
-			r.Group(func(r chi.Router) {    // protected
-				r.Use(middleware.ChiJWTAuth(jwtService))
-				reviewer.RegisterRoutes(nil, r)
-			})
+		reviewer.RegisterRoutes(r, nil) // public
+		r.Group(func(r chi.Router) {    // protected
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			reviewer.RegisterRoutes(nil, r)
 		})
 
 		r.Route("/attachments", func(r chi.Router) {
