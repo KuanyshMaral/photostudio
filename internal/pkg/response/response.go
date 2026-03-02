@@ -99,15 +99,37 @@ func Error(w http.ResponseWriter, statusCode int, code string, message string) {
 	})
 }
 
-// ErrorWithDetails — static message with extra context map
-func ErrorWithDetails(w http.ResponseWriter, statusCode int, code string, message string, details any) {
+// ErrorWithDetails — extracts message and always includes error trace for debugging
+func ErrorWithDetails(w http.ResponseWriter, statusCode int, code string, errOrMsg any) {
+	var err error
+	var msg string
+
+	switch v := errOrMsg.(type) {
+	case error:
+		err = v
+		msg = v.Error()
+	case string:
+		err = fmt.Errorf("%s", v)
+		msg = v
+	default:
+		err = fmt.Errorf("%v", v)
+		msg = fmt.Sprintf("%v", v)
+	}
+
+	body := H{
+		"code":    code,
+		"message": msg,
+	}
+
+	// Always include details and error_trace unconditionally for debugging
+	if err != nil {
+		body["details"] = err.Error()
+		body["error_trace"] = fmt.Sprintf("Error: %v\n\nStack Trace:\n%s", err.Error(), string(debug.Stack()))
+	}
+
 	JSON(w, statusCode, H{
 		"success": false,
-		"error": H{
-			"code":    code,
-			"message": message,
-			"details": details,
-		},
+		"error":   body,
 	})
 }
 
@@ -132,7 +154,7 @@ func CustomError(w http.ResponseWriter, r *http.Request, statusCode int, code st
 	}
 
 	errTrace := ""
-	if isDevMode() && err != nil {
+	if err != nil {
 		errTrace = fmt.Sprintf("Error: %v\n\nStack Trace:\n%s", err.Error(), string(debug.Stack()))
 		log.Printf("[ERROR] %s %s → %s: %s\n%s",
 			r.Method, r.URL.Path, code, msg, errTrace)
@@ -155,14 +177,14 @@ func CustomError(w http.ResponseWriter, r *http.Request, statusCode int, code st
 // ServerError — convenience wrapper for 500 errors arising from unexpected Go errors.
 func ServerError(w http.ResponseWriter, r *http.Request, err error) {
 	errTrace := ""
-	if isDevMode() && err != nil {
+	if err != nil {
 		errTrace = fmt.Sprintf("Error: %v\n\nStack Trace:\n%s", err.Error(), string(debug.Stack()))
 		log.Printf("[ERROR] 500 %s %s → INTERNAL_ERROR: %v\n%s",
 			r.Method, r.URL.Path, err, errTrace)
 	}
 
 	msg := "Internal Server Error"
-	if isDevMode() && err != nil {
+	if err != nil {
 		msg = err.Error()
 	}
 
