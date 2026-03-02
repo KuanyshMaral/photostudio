@@ -285,6 +285,10 @@ func main() {
 
 		r.Route("/attachments", func(r chi.Router) {
 			attachment.RegisterPublicRoutes(r, attachmentHandler)
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.ChiJWTAuth(jwtService))
+				attachment.RegisterProtectedRoutes(r, attachmentHandler)
+			})
 		})
 
 		// ---------------------------------------------------------
@@ -385,7 +389,6 @@ func main() {
 			r.Route("/favorites", func(r chi.Router) { favoriteHandler.RegisterRoutes(r) })
 			r.Route("/uploads", func(r chi.Router) { upload.RegisterRoutes(r, uploadHandler) })
 			r.Route("/relationships", func(r chi.Router) { relationship.RegisterRoutes(r, relationshipHandler) })
-			r.Route("/attachments", func(r chi.Router) { attachment.RegisterProtectedRoutes(r, attachmentHandler) })
 		})
 	})
 
