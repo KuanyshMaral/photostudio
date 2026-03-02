@@ -382,21 +382,22 @@ func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, sear
 		Table("users u").
 		Select(`
 			u.id,
-			u.name,
+			COALESCE(cp.full_name, u.email) as name,
 			u.email,
-			u.phone,
+			COALESCE(cp.phone, '') as phone,
 			COUNT(b.id) as total_bookings,
 			COALESCE(SUM(b.total_price), 0) as total_spent,
 			MAX(b.created_at) as last_booking_at
 		`).
 		Joins("JOIN bookings b ON b.user_id = u.id").
+		Joins("LEFT JOIN client_profiles cp ON cp.user_id = u.id").
 		Where("b.studio_id IN ?", studioIDs).
-		Group("u.id, u.name, u.email, u.phone")
+		Group("u.id, cp.full_name, u.email, cp.phone")
 
 	// ⚠️ SQLite+PG совместимый поиск
 	if search != "" {
 		query = query.Where(`
-			LOWER(u.name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(u.phone) LIKE LOWER(?)
+			LOWER(cp.full_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(cp.phone) LIKE LOWER(?)
 		`, "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 
