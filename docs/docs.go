@@ -2528,7 +2528,7 @@ const docTemplate = `{
                 "summary": "Register client",
                 "parameters": [
                     {
-                        "description": "payload",
+                        "description": "payload (email, password)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -8519,22 +8519,15 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
-                "name",
                 "password"
             ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "password": {
                     "type": "string",
                     "minLength": 6
-                },
-                "phone": {
-                    "type": "string"
                 }
             }
         },
@@ -10648,6 +10641,13 @@ const docTemplate = `{
         "profile.AdminProfile": {
             "type": "object",
             "properties": {
+                "avatar_upload_id": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "description": "Avatar",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -10688,6 +10688,9 @@ const docTemplate = `{
         "profile.ClientProfile": {
             "type": "object",
             "properties": {
+                "avatar_upload_id": {
+                    "type": "string"
+                },
                 "avatar_url": {
                     "type": "string"
                 },

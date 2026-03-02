@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
@@ -16,22 +17,22 @@ func NewReviewRepository(db *gorm.DB) *ReviewRepository {
 }
 
 type reviewModel struct {
-	ID            int64      `gorm:"column:id;primaryKey"`
-	AuthorID      int64      `gorm:"column:author_id"`
-	TargetType    TargetType `gorm:"column:target_type"`
-	TargetID      int64      `gorm:"column:target_id"`
-	ContextType   *string    `gorm:"column:context_type"`
-	ContextID     *int64     `gorm:"column:context_id"`
-	Rating        int        `gorm:"column:rating"`
-	Comment       *string    `gorm:"column:comment"`
-	Photos        []string   `gorm:"column:photos_deprecated;type:text[]"`
-	Criteria      []byte     `gorm:"column:criteria;type:jsonb;default:'{}'"`
-	OwnerResponse *string    `gorm:"column:owner_response"`
-	RespondedAt   *time.Time `gorm:"column:responded_at"`
-	IsVerified    bool       `gorm:"column:is_verified"`
-	IsHidden      bool       `gorm:"column:is_hidden"`
-	CreatedAt     time.Time  `gorm:"column:created_at"`
-	UpdatedAt     time.Time  `gorm:"column:updated_at"`
+	ID            int64          `gorm:"column:id;primaryKey"`
+	AuthorID      int64          `gorm:"column:author_id"`
+	TargetType    TargetType     `gorm:"column:target_type"`
+	TargetID      int64          `gorm:"column:target_id"`
+	ContextType   *string        `gorm:"column:context_type"`
+	ContextID     *int64         `gorm:"column:context_id"`
+	Rating        int            `gorm:"column:rating"`
+	Comment       *string        `gorm:"column:comment"`
+	Photos        pq.StringArray `gorm:"column:photos_deprecated;type:text[]"`
+	Criteria      string         `gorm:"column:criteria;type:jsonb;default:'{}'"`
+	OwnerResponse *string        `gorm:"column:owner_response"`
+	RespondedAt   *time.Time     `gorm:"column:responded_at"`
+	IsVerified    bool           `gorm:"column:is_verified"`
+	IsHidden      bool           `gorm:"column:is_hidden"`
+	CreatedAt     time.Time      `gorm:"column:created_at"`
+	UpdatedAt     time.Time      `gorm:"column:updated_at"`
 }
 
 func (reviewModel) TableName() string { return "reviews" }
@@ -50,8 +51,8 @@ func toDomainReview(m reviewModel) Review {
 		ContextID:     m.ContextID,
 		Rating:        m.Rating,
 		Comment:       comment,
-		Photos:        m.Photos,
-		Criteria:      m.Criteria,
+		Photos:        []string(m.Photos),
+		Criteria:      []byte(m.Criteria),
 		OwnerResponse: m.OwnerResponse,
 		RespondedAt:   m.RespondedAt,
 		IsVerified:    m.IsVerified,
@@ -76,8 +77,8 @@ func toReviewModel(r *Review) reviewModel {
 		ContextID:     r.ContextID,
 		Rating:        r.Rating,
 		Comment:       comment,
-		Photos:        r.Photos,
-		Criteria:      r.Criteria,
+		Photos:        pq.StringArray(r.Photos),
+		Criteria:      string(r.Criteria),
 		OwnerResponse: r.OwnerResponse,
 		RespondedAt:   r.RespondedAt,
 		IsVerified:    r.IsVerified,
@@ -90,7 +91,7 @@ func toReviewModel(r *Review) reviewModel {
 func (r *ReviewRepository) Create(ctx context.Context, rv *Review) error {
 	m := toReviewModel(rv)
 	if len(m.Criteria) == 0 {
-		m.Criteria = []byte("{}")
+		m.Criteria = "{}"
 	}
 	tx := r.db.WithContext(ctx).Create(&m)
 	if tx.Error != nil {

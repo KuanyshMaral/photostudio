@@ -2521,7 +2521,7 @@
                 "summary": "Register client",
                 "parameters": [
                     {
-                        "description": "payload",
+                        "description": "payload (email, password)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -8512,22 +8512,15 @@
             "type": "object",
             "required": [
                 "email",
-                "name",
                 "password"
             ],
             "properties": {
                 "email": {
                     "type": "string"
                 },
-                "name": {
-                    "type": "string"
-                },
                 "password": {
                     "type": "string",
                     "minLength": 6
-                },
-                "phone": {
-                    "type": "string"
                 }
             }
         },
@@ -10641,6 +10634,13 @@
         "profile.AdminProfile": {
             "type": "object",
             "properties": {
+                "avatar_upload_id": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "description": "Avatar",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -10681,6 +10681,9 @@
         "profile.ClientProfile": {
             "type": "object",
             "properties": {
+                "avatar_upload_id": {
+                    "type": "string"
+                },
                 "avatar_url": {
                     "type": "string"
                 },
