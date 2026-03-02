@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 
 	_ "photostudio/docs"
 	"photostudio/internal/config"
@@ -180,9 +182,19 @@ func main() {
 	cleanupService := notification.NewCleanupService(notifRepo, deviceTokenRepo)
 	cleanupConfig := notification.DefaultCleanupConfig()
 	stopCleanup := cleanupService.ScheduleCleanup(context.Background(), cleanupConfig)
-	defer close(stopCleanup)
+	if stopCleanup != nil {
+		defer close(stopCleanup)
+	}
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo)
+	preBookingTTLHours := 12
+	if v := os.Getenv("PRE_BOOKING_EXPIRATION_HOURS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			preBookingTTLHours = n
+		}
+	}
+	bookingService := booking.NewService(bookingRepo, roomRepo, notificationService, studioWorkingHoursRepo, time.Duration(preBookingTTLHours)*time.Hour, log.Printf)
+	stopPreBookingWorker := bookingService.StartPreBookingExpirationWorker(context.Background(), time.Minute)
+	defer stopPreBookingWorker()
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
@@ -337,6 +349,11 @@ func main() {
 		r.Route("/booking", func(r chi.Router) {
 			r.Use(middleware.ChiJWTAuth(jwtService))
 			bookingHandler.RegisterRoutes(r)
+		})
+
+		r.Route("/pre-bookings", func(r chi.Router) {
+			r.Use(middleware.ChiJWTAuth(jwtService))
+			bookingHandler.RegisterPreBookingRoutes(r)
 		})
 
 		r.Route("/subscriptions", func(r chi.Router) {

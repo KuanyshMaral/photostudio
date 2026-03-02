@@ -6,7 +6,9 @@ import (
 	"photostudio/internal/domain/auth"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type bookingRepository struct {
@@ -550,4 +552,188 @@ func (r *bookingRepository) GetBookingForManager(ctx context.Context, ownerID, b
 		return nil, err
 	}
 	return &row, nil
+}
+
+type preBookingModel struct {
+	ID        int64     `gorm:"column:id;primaryKey"`
+	UserID    int64     `gorm:"column:user_id"`
+	StudioID  int64     `gorm:"column:studio_id"`
+	StartTime time.Time `gorm:"column:start_time"`
+	EndTime   time.Time `gorm:"column:end_time"`
+	Status    string    `gorm:"column:status"`
+	ExpiresAt time.Time `gorm:"column:expires_at"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}
+
+func (preBookingModel) TableName() string { return "pre_bookings" }
+
+func toDomainPreBooking(m preBookingModel) *PreBooking {
+	return &PreBooking{
+		ID:        m.ID,
+		UserID:    m.UserID,
+		StudioID:  m.StudioID,
+		StartTime: m.StartTime,
+		EndTime:   m.EndTime,
+		Status:    PreBookingStatus(m.Status),
+		ExpiresAt: m.ExpiresAt,
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
+	}
+}
+
+func (r *bookingRepository) CreatePreBooking(ctx context.Context, b *PreBooking) error {
+	if err := r.db.WithContext(ctx).Table("pre_bookings").Create(b).Error; err != nil {
+		return mapPreBookingWriteError(err)
+	}
+	return nil
+}
+
+func (r *bookingRepository) CreatePreBookingAtomic(ctx context.Context, b *PreBooking, now time.Time) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if tx.Dialector.Name() == "postgres" {
+			if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", b.UserID).Error; err != nil {
+				return err
+			}
+			if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", -b.StudioID).Error; err != nil {
+				return err
+			}
+		}
+
+		var activeCount int64
+		if err := tx.Table("pre_bookings").
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("user_id = ?", b.UserID).
+			Where("(status = ? AND expires_at > ?) OR status = ?", PreBookingPending, now, PreBookingConfirmedUnpaid).
+			Count(&activeCount).Error; err != nil {
+			return err
+		}
+		if activeCount > 0 {
+			return ErrActivePreBookingExists
+		}
+
+		var bookingCount int64
+		if err := tx.Table("bookings").
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("studio_id = ?", b.StudioID).
+			Where("status NOT IN ('cancelled')").
+			Where("start_time < ? AND end_time > ?", b.EndTime, b.StartTime).
+			Count(&bookingCount).Error; err != nil {
+			return err
+		}
+		if bookingCount > 0 {
+			return ErrPreBookingConflict
+		}
+
+		var preBookingCount int64
+		if err := tx.Table("pre_bookings").
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("studio_id = ?", b.StudioID).
+			Where("status IN (?, ?) OR (status = ? AND expires_at > ?)", PreBookingConfirmedUnpaid, PreBookingPaidConfirmed, PreBookingPending, now).
+			Where("start_time < ? AND end_time > ?", b.EndTime, b.StartTime).
+			Count(&preBookingCount).Error; err != nil {
+			return err
+		}
+		if preBookingCount > 0 {
+			return ErrPreBookingConflict
+		}
+
+		if err := tx.Table("pre_bookings").Create(b).Error; err != nil {
+			return mapPreBookingWriteError(err)
+		}
+		return nil
+	})
+}
+
+func mapPreBookingWriteError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23P01" && pgErr.ConstraintName == "pre_bookings_no_overlap_active" {
+			return ErrPreBookingConflict
+		}
+	}
+	return err
+}
+
+func (r *bookingRepository) HasUserActivePreBooking(ctx context.Context, userID int64, now time.Time) (bool, error) {
+	var cnt int64
+	err := r.db.WithContext(ctx).Table("pre_bookings").
+		Where("user_id = ?", userID).
+		Where("(status = ? AND expires_at > ?) OR status = ?", PreBookingPending, now, PreBookingConfirmedUnpaid).
+		Count(&cnt).Error
+	if err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
+}
+
+func (r *bookingRepository) HasStudioTimeConflict(ctx context.Context, studioID int64, start, end, now time.Time) (bool, error) {
+	var bookingCnt int64
+	if err := r.db.WithContext(ctx).Table("bookings").
+		Where("studio_id = ?", studioID).
+		Where("status NOT IN ('cancelled')").
+		Where("start_time < ? AND end_time > ?", end, start).
+		Count(&bookingCnt).Error; err != nil {
+		return false, err
+	}
+	if bookingCnt > 0 {
+		return true, nil
+	}
+
+	var preBookingCnt int64
+	err := r.db.WithContext(ctx).Table("pre_bookings").
+		Where("studio_id = ?", studioID).
+		Where("status IN (?, ?, ?) OR (status = ? AND expires_at > ?)", PreBookingConfirmedUnpaid, PreBookingPaidConfirmed, PreBookingPending, PreBookingPending, now).
+		Where("start_time < ? AND end_time > ?", end, start).
+		Count(&preBookingCnt).Error
+	if err != nil {
+		return false, err
+	}
+	return preBookingCnt > 0, nil
+}
+
+func (r *bookingRepository) GetPreBookingByID(ctx context.Context, id int64) (*PreBooking, error) {
+	var m preBookingModel
+	if err := r.db.WithContext(ctx).Table("pre_bookings").First(&m, id).Error; err != nil {
+		return nil, err
+	}
+	return toDomainPreBooking(m), nil
+}
+
+func (r *bookingRepository) GetMyPreBookings(ctx context.Context, userID int64) ([]PreBooking, error) {
+	var rows []preBookingModel
+	if err := r.db.WithContext(ctx).Table("pre_bookings").Where("user_id = ?", userID).Order("created_at DESC").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]PreBooking, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, *toDomainPreBooking(row))
+	}
+	return out, nil
+}
+
+func (r *bookingRepository) UpdatePreBookingStatus(ctx context.Context, id int64, status PreBookingStatus) error {
+	return r.db.WithContext(ctx).Table("pre_bookings").Where("id = ?", id).Updates(map[string]any{
+		"status":     string(status),
+		"updated_at": time.Now().UTC(),
+	}).Error
+}
+
+func (r *bookingRepository) ExpireOldPreBookings(ctx context.Context, now time.Time) (int64, error) {
+	tx := r.db.WithContext(ctx).Table("pre_bookings").
+		Where("status = ? AND expires_at <= ?", PreBookingPending, now).
+		Updates(map[string]any{"status": string(PreBookingExpired), "updated_at": now})
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+	return tx.RowsAffected, nil
+}
+
+func (r *bookingRepository) IsStudioOwnedByUser(ctx context.Context, studioID, userID int64) (bool, error) {
+	var cnt int64
+	err := r.db.WithContext(ctx).Table("studios").Where("id = ? AND owner_id = ?", studioID, userID).Count(&cnt).Error
+	if err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
 }

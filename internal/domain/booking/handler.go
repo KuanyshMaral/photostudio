@@ -749,3 +749,216 @@ func (h *Handler) UpdateDeposit(w http.ResponseWriter, r *http.Request) {
 
 	response.Success(w, http.StatusOK, ToBookingResponse(booking, true))
 }
+
+type swaggerPreBookingResponse struct {
+	Success bool       `json:"success"`
+	Data    PreBooking `json:"data"`
+}
+
+type swaggerPreBookingListResponse struct {
+	Success bool         `json:"success"`
+	Data    []PreBooking `json:"data"`
+}
+
+// CreatePreBooking creates a preliminary booking without payment.
+//
+//	@Summary		Создать pre-booking
+//	@Description	Создает предварительную бронь без оплаты. Блокирует слот до ручного подтверждения владельцем.
+//	@Tags			PreBooking
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			request	body		CreateBookingRequest	true	"Данные pre-booking"
+//	@Success		201		{object}	swaggerPreBookingResponse
+//	@Failure		400		{object}	response.ErrorResponse
+//	@Failure		401		{object}	response.ErrorResponse
+//	@Failure		409		{object}	response.ErrorResponse
+//	@Router			/pre-bookings [post]
+func (h *Handler) CreatePreBooking(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		StudioID  int64  `json:"studio_id"`
+		StartTime string `json:"start_time"`
+		EndTime   string `json:"end_time"`
+	}
+	if err := response.BindJSON(r, &payload); err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body")
+		return
+	}
+	userID := chicontext.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+	startTime, err := parseBookingDateTime(payload.StartTime)
+	if err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid start_time")
+		return
+	}
+	endTime, err := parseBookingDateTime(payload.EndTime)
+	if err != nil {
+		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid end_time")
+		return
+	}
+	pb, err := h.service.CreatePreBooking(r.Context(), userID, payload.StudioID, startTime, endTime)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrValidation):
+			response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		case errors.Is(err, ErrActivePreBookingExists):
+			response.CustomError(w, r, http.StatusConflict, "ACTIVE_PRE_BOOKING_EXISTS", "User already has active pre-booking")
+		case errors.Is(err, ErrPreBookingConflict):
+			response.CustomError(w, r, http.StatusConflict, "PRE_BOOKING_CONFLICT", "Time slot conflict with booking/pre-booking")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create pre-booking")
+		}
+		return
+	}
+	response.Success(w, http.StatusCreated, pb)
+}
+
+// GetMyPreBookings returns pre-bookings of current user.
+//
+//	@Summary		Мои pre-bookings
+//	@Tags			PreBooking
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	swaggerPreBookingListResponse
+//	@Failure		401	{object}	response.ErrorResponse
+//	@Router			/pre-bookings/my [get]
+func (h *Handler) GetMyPreBookings(w http.ResponseWriter, r *http.Request) {
+	userID := chicontext.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+	items, err := h.service.GetMyPreBookings(r.Context(), userID)
+	if err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to fetch pre-bookings")
+		return
+	}
+	response.Success(w, http.StatusOK, items)
+}
+
+// CancelPreBooking cancels own pre-booking.
+//
+//	@Summary		Отменить pre-booking
+//	@Tags			PreBooking
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"ID pre-booking"
+//	@Success		200	{object}	swaggerPreBookingResponse
+//	@Failure		403	{object}	response.ErrorResponse
+//	@Router			/pre-bookings/{id}/cancel [post]
+func (h *Handler) CancelPreBooking(w http.ResponseWriter, r *http.Request) {
+	preBookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || preBookingID <= 0 {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid pre-booking ID")
+		return
+	}
+	userID := chicontext.UserIDFromCtx(r.Context())
+	pb, err := h.service.CancelPreBooking(r.Context(), preBookingID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrForbidden):
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "Cannot cancel this pre-booking")
+		case errors.Is(err, ErrInvalidPreBookingStatus):
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_STATUS", "Invalid pre-booking status")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to cancel pre-booking")
+		}
+		return
+	}
+	response.Success(w, http.StatusOK, pb)
+}
+
+// OwnerAcceptPreBooking accepts pre-booking by studio owner.
+//
+//	@Summary		Владелец принимает pre-booking
+//	@Tags			PreBooking
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"ID pre-booking"
+//	@Success		200	{object}	swaggerPreBookingResponse
+//	@Router			/pre-bookings/{id}/owner/accept [post]
+func (h *Handler) OwnerAcceptPreBooking(w http.ResponseWriter, r *http.Request) {
+	h.ownerStatusUpdate(w, r, "accept")
+}
+
+// OwnerConfirmPreBookingPayment marks pre-booking as paid_confirmed by owner.
+//
+//	@Summary		Владелец подтверждает оплату pre-booking
+//	@Tags			PreBooking
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"ID pre-booking"
+//	@Success		200	{object}	swaggerPreBookingResponse
+//	@Router			/pre-bookings/{id}/owner/confirm-payment [post]
+func (h *Handler) OwnerConfirmPreBookingPayment(w http.ResponseWriter, r *http.Request) {
+	h.ownerStatusUpdate(w, r, "confirm")
+}
+
+// OwnerCancelPreBooking rejects/cancels pre-booking by owner.
+//
+//	@Summary		Владелец отклоняет pre-booking
+//	@Tags			PreBooking
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"ID pre-booking"
+//	@Success		200	{object}	swaggerPreBookingResponse
+//	@Router			/pre-bookings/{id}/owner/cancel [post]
+func (h *Handler) OwnerCancelPreBooking(w http.ResponseWriter, r *http.Request) {
+	preBookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || preBookingID <= 0 {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid pre-booking ID")
+		return
+	}
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	pb, err := h.service.RejectPreBookingByOwner(r.Context(), preBookingID, ownerID)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrForbidden):
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "Only studio owner can perform this action")
+		case errors.Is(err, ErrInvalidPreBookingStatus):
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_STATUS", "Invalid pre-booking status transition")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update pre-booking")
+		}
+		return
+	}
+	response.Success(w, http.StatusOK, pb)
+}
+
+func (h *Handler) ownerStatusUpdate(w http.ResponseWriter, r *http.Request, action string) {
+	preBookingID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || preBookingID <= 0 {
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ID", "Invalid pre-booking ID")
+		return
+	}
+	ownerID := chicontext.UserIDFromCtx(r.Context())
+	if ownerID == 0 {
+		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
+		return
+	}
+	var pb *PreBooking
+	switch action {
+	case "accept":
+		pb, err = h.service.AcceptPreBookingByOwner(r.Context(), preBookingID, ownerID)
+	case "confirm":
+		pb, err = h.service.ConfirmPreBookingPaymentByOwner(r.Context(), preBookingID, ownerID)
+	default:
+		response.CustomError(w, r, http.StatusBadRequest, "INVALID_ACTION", "Invalid owner action")
+		return
+	}
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrForbidden):
+			response.CustomError(w, r, http.StatusForbidden, "FORBIDDEN", "Only studio owner can perform this action")
+		case errors.Is(err, ErrInvalidPreBookingStatus):
+			response.CustomError(w, r, http.StatusBadRequest, "INVALID_STATUS", "Invalid pre-booking status transition")
+		default:
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to update pre-booking")
+		}
+		return
+	}
+	response.Success(w, http.StatusOK, pb)
+}

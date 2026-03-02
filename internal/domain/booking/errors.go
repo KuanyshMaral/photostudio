@@ -11,4 +11,7 @@ var (
 	ErrForbidden               = errors.New("forbidden")
 	ErrInvalidStatusTransition = errors.New("invalid_status_transition")
 	ErrNotFound                = errors.New("not_found")
+	ErrActivePreBookingExists  = errors.New("active_pre_booking_exists")
+	ErrPreBookingConflict      = errors.New("pre_booking_conflict")
+	ErrInvalidPreBookingStatus = errors.New("invalid_pre_booking_status")
 )

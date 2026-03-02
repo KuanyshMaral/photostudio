@@ -3,6 +3,8 @@ package booking
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log"
 	"math"
 	"photostudio/internal/domain/auth"
 	"photostudio/internal/domain/catalog"
@@ -35,20 +37,32 @@ type Service struct {
 	bookings               BookingRepository
 	rooms                  RoomRepository
 	notifs                 NotificationSender
-	studioWorkingHoursRepo catalog.StudioWorkingHoursRepository // Добавляем поле
+	studioWorkingHoursRepo catalog.StudioWorkingHoursRepository
+	preBookingTTL          time.Duration
+	loggerf                func(format string, args ...interface{})
 }
 
 func NewService(
 	bookings BookingRepository,
 	rooms RoomRepository,
 	notifs NotificationSender,
-	studioWorkingHoursRepo catalog.StudioWorkingHoursRepository, // Добавляем параметр
+	studioWorkingHoursRepo catalog.StudioWorkingHoursRepository,
+	preBookingTTL time.Duration,
+	loggerf func(format string, args ...interface{}),
 ) *Service {
+	if preBookingTTL <= 0 {
+		preBookingTTL = 12 * time.Hour
+	}
+	if loggerf == nil {
+		loggerf = log.Printf
+	}
 	return &Service{
 		bookings:               bookings,
 		rooms:                  rooms,
 		notifs:                 notifs,
-		studioWorkingHoursRepo: studioWorkingHoursRepo, // Инициализируем
+		studioWorkingHoursRepo: studioWorkingHoursRepo,
+		preBookingTTL:          preBookingTTL,
+		loggerf:                loggerf,
 	}
 }
 
@@ -594,4 +608,146 @@ func (s *Service) UpdatePaymentStatusSystem(ctx context.Context, bookingID int64
 	}
 
 	return b, nil
+}
+
+func (s *Service) CreatePreBooking(ctx context.Context, userID, studioID int64, start, end time.Time) (*PreBooking, error) {
+	now := time.Now().UTC()
+	if userID <= 0 || studioID <= 0 || !end.After(start) || start.Before(now) {
+		return nil, ErrValidation
+	}
+
+	pb := &PreBooking{
+		UserID:    userID,
+		StudioID:  studioID,
+		StartTime: start,
+		EndTime:   end,
+		Status:    PreBookingPending,
+		ExpiresAt: now.Add(s.preBookingTTL),
+	}
+	if err := s.bookings.CreatePreBookingAtomic(ctx, pb, now); err != nil {
+		return nil, err
+	}
+	s.loggerf("level=info msg=pre_booking_created pre_booking_id=%d user_id=%d studio_id=%d expires_at=%s", pb.ID, userID, studioID, pb.ExpiresAt.Format(time.RFC3339))
+	return pb, nil
+}
+
+func (s *Service) GetMyPreBookings(ctx context.Context, userID int64) ([]PreBooking, error) {
+	return s.bookings.GetMyPreBookings(ctx, userID)
+}
+
+func (s *Service) CancelPreBooking(ctx context.Context, preBookingID, userID int64) (*PreBooking, error) {
+	pb, err := s.bookings.GetPreBookingByID(ctx, preBookingID)
+	if err != nil {
+		return nil, err
+	}
+	if pb.UserID != userID {
+		return nil, ErrForbidden
+	}
+	if pb.Status == PreBookingCancelled || pb.Status == PreBookingExpired || pb.Status == PreBookingPaidConfirmed {
+		return nil, ErrInvalidPreBookingStatus
+	}
+	if err := s.bookings.UpdatePreBookingStatus(ctx, preBookingID, PreBookingCancelled); err != nil {
+		return nil, err
+	}
+	return s.bookings.GetPreBookingByID(ctx, preBookingID)
+}
+
+func (s *Service) AcceptPreBookingByOwner(ctx context.Context, preBookingID, ownerID int64) (*PreBooking, error) {
+	pb, err := s.bookings.GetPreBookingByID(ctx, preBookingID)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := s.bookings.IsStudioOwnedByUser(ctx, pb.StudioID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
+	if pb.Status != PreBookingPending || pb.ExpiresAt.Before(time.Now().UTC()) {
+		return nil, ErrInvalidPreBookingStatus
+	}
+	if err := s.bookings.UpdatePreBookingStatus(ctx, preBookingID, PreBookingConfirmedUnpaid); err != nil {
+		return nil, err
+	}
+	s.loggerf("level=info msg=pre_booking_owner_accepted pre_booking_id=%d owner_id=%d", preBookingID, ownerID)
+	return s.bookings.GetPreBookingByID(ctx, preBookingID)
+}
+
+func (s *Service) ConfirmPreBookingPaymentByOwner(ctx context.Context, preBookingID, ownerID int64) (*PreBooking, error) {
+	pb, err := s.bookings.GetPreBookingByID(ctx, preBookingID)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := s.bookings.IsStudioOwnedByUser(ctx, pb.StudioID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
+	if pb.Status != PreBookingConfirmedUnpaid {
+		return nil, ErrInvalidPreBookingStatus
+	}
+	if err := s.bookings.UpdatePreBookingStatus(ctx, preBookingID, PreBookingPaidConfirmed); err != nil {
+		return nil, err
+	}
+	s.loggerf("level=info msg=pre_booking_payment_confirmed pre_booking_id=%d owner_id=%d", preBookingID, ownerID)
+	return s.bookings.GetPreBookingByID(ctx, preBookingID)
+}
+
+func (s *Service) RejectPreBookingByOwner(ctx context.Context, preBookingID, ownerID int64) (*PreBooking, error) {
+	pb, err := s.bookings.GetPreBookingByID(ctx, preBookingID)
+	if err != nil {
+		return nil, err
+	}
+	ok, err := s.bookings.IsStudioOwnedByUser(ctx, pb.StudioID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrForbidden
+	}
+	if pb.Status == PreBookingCancelled || pb.Status == PreBookingExpired || pb.Status == PreBookingPaidConfirmed {
+		return nil, ErrInvalidPreBookingStatus
+	}
+	if err := s.bookings.UpdatePreBookingStatus(ctx, preBookingID, PreBookingCancelled); err != nil {
+		return nil, err
+	}
+	return s.bookings.GetPreBookingByID(ctx, preBookingID)
+}
+
+func (s *Service) ExpireOldPreBookings(ctx context.Context) (int64, error) {
+	rows, err := s.bookings.ExpireOldPreBookings(ctx, time.Now().UTC())
+	if err != nil {
+		return 0, err
+	}
+	if rows > 0 {
+		s.loggerf("level=info msg=pre_booking_expired rows=%d", rows)
+	}
+	return rows, nil
+}
+
+func (s *Service) StartPreBookingExpirationWorker(ctx context.Context, interval time.Duration) func() {
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	stopCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if _, err := s.ExpireOldPreBookings(stopCtx); err != nil && !errors.Is(err, context.Canceled) {
+					s.loggerf("level=error msg=pre_booking_expiration_failed err=%v", err)
+				}
+			case <-stopCtx.Done():
+				s.loggerf("level=info msg=pre_booking_expiration_worker_stopped")
+				return
+			}
+		}
+	}()
+	s.loggerf("level=info msg=pre_booking_expiration_worker_started interval=%s", interval)
+	return cancel
 }

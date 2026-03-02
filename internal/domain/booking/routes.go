@@ -34,6 +34,16 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 	r.Patch("/{id}/deposit", h.UpdateDeposit)
 }
 
+// RegisterPreBookingRoutes registers pre-booking routes.
+func (h *Handler) RegisterPreBookingRoutes(r chi.Router) {
+	r.Post("/", h.CreatePreBooking)
+	r.Get("/my", h.GetMyPreBookings)
+	r.Post("/{id}/cancel", h.CancelPreBooking)
+	r.Post("/{id}/owner/accept", h.OwnerAcceptPreBooking)
+	r.Post("/{id}/owner/confirm-payment", h.OwnerConfirmPreBookingPayment)
+	r.Post("/{id}/owner/cancel", h.OwnerCancelPreBooking)
+}
+
 // RegisterStudioRoutes registers owner-specific studio booking routes.
 func (h *Handler) RegisterStudioRoutes(r chi.Router, ownershipChecker OwnershipMiddleware) {
 	r.Use(ownershipChecker.CheckStudioOwnership())
