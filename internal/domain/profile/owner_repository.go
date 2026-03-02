@@ -49,8 +49,8 @@ func (r *OwnerRepository) Create(ctx context.Context, profile *OwnerProfile) err
 		INSERT INTO owner_profiles (
 			user_id, company_name, bin, legal_address, contact_person, contact_position,
 			phone, email, website, verification_status, verification_docs,
-			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			avatar_url, avatar_upload_id, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 		RETURNING id, created_at, updated_at
 	`
 	return r.db.QueryRowContext(
@@ -58,7 +58,7 @@ func (r *OwnerRepository) Create(ctx context.Context, profile *OwnerProfile) err
 		profile.UserID, profile.CompanyName, profile.Bin, profile.LegalAddress,
 		profile.ContactPerson, profile.ContactPosition, profile.Phone, profile.Email,
 		profile.Website, profile.VerificationStatus, pq.Array(profile.VerificationDocs),
-		profile.CreatedAt, profile.UpdatedAt,
+		profile.AvatarURL, profile.AvatarUploadID, profile.CreatedAt, profile.UpdatedAt,
 	).Scan(&profile.ID, &profile.CreatedAt, &profile.UpdatedAt)
 }
 
@@ -67,14 +67,15 @@ func (r *OwnerRepository) Update(ctx context.Context, profile *OwnerProfile) err
 	query := `
 		UPDATE owner_profiles
 		SET company_name = $2, bin = $3, legal_address = $4, contact_person = $5,
-			contact_position = $6, phone = $7, email = $8, website = $9, updated_at = $10
+			contact_position = $6, phone = $7, email = $8, website = $9,
+			avatar_url = $10, avatar_upload_id = $11, updated_at = $12
 		WHERE id = $1
 	`
 	_, err := r.db.ExecContext(
 		ctx, query,
 		profile.ID, profile.CompanyName, profile.Bin, profile.LegalAddress,
 		profile.ContactPerson, profile.ContactPosition, profile.Phone, profile.Email,
-		profile.Website, time.Now(),
+		profile.Website, profile.AvatarURL, profile.AvatarUploadID, time.Now(),
 	)
 	return err
 }

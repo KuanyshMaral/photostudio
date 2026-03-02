@@ -154,7 +154,7 @@ func (s *Service) UpdateClientProfile(ctx context.Context, userID int64, req *Up
 
 	// Update fields if provided
 	if req.Name != nil {
-		profile.FullName = nullString(*req.Name)
+		profile.Name = nullString(*req.Name)
 	}
 	if req.Nickname != nil {
 		profile.Nickname = nullString(*req.Nickname)
