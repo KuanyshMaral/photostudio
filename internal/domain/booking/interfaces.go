@@ -34,6 +34,15 @@ type BookingRepository interface {
 	GetRecentByUserID(userID int64, limit int) ([]auth.RecentBookingRow, error)
 	GetStatsByUserID(userID int64) (*auth.BookingStats, error)
 	HasCompletedBookingForStudio(ctx context.Context, userID, studioID int64) (bool, error)
+	CreatePreBooking(ctx context.Context, b *PreBooking) error
+	CreatePreBookingAtomic(ctx context.Context, b *PreBooking, now time.Time) error
+	HasUserActivePreBooking(ctx context.Context, userID int64, now time.Time) (bool, error)
+	HasStudioTimeConflict(ctx context.Context, studioID int64, start, end, now time.Time) (bool, error)
+	GetPreBookingByID(ctx context.Context, id int64) (*PreBooking, error)
+	GetMyPreBookings(ctx context.Context, userID int64) ([]PreBooking, error)
+	UpdatePreBookingStatus(ctx context.Context, id int64, status PreBookingStatus) error
+	ExpireOldPreBookings(ctx context.Context, now time.Time) (int64, error)
+	IsStudioOwnedByUser(ctx context.Context, studioID, userID int64) (bool, error)
 	DB() *gorm.DB
 }
 

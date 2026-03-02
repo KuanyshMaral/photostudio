@@ -175,7 +175,7 @@ func setupTestSuite(t *testing.T) *E2ETestSuite {
 	catalogService := catalog.NewService(studioRepo, roomRepo, equipmentRepo, studioWorkingHoursRepo)
 	catalogHandler := catalog.NewHandler(catalogService, userRepo, nil)
 
-	bookingService := booking.NewService(bookingRepo, roomRepo, nil, studioWorkingHoursRepo)
+	bookingService := booking.NewService(bookingRepo, roomRepo, nil, studioWorkingHoursRepo, 12*time.Hour, nil)
 	bookingHandler := booking.NewHandler(bookingService)
 
 	reviewService := review.NewService(reviewRepo, bookingRepo, studioRepo)
