@@ -146,25 +146,7 @@ func (r *repository) GetMessages(ctx context.Context, roomID string, limit, offs
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&msgs).Error
-	if err != nil {
-		return nil, err
-	}
-
-	// Enrich with upload attachment data
-	for _, msg := range msgs {
-		if msg.UploadID.Valid {
-			var fileURL, origName, mimeType string
-			r.db.WithContext(ctx).
-				Table("uploads").
-				Select("file_url, original_name, mime_type").
-				Where("id = ?", msg.UploadID.String).
-				Row().Scan(&fileURL, &origName, &mimeType)
-			msg.AttachmentURL = fileURL
-			msg.AttachmentName = origName
-			msg.AttachmentMime = mimeType
-		}
-	}
-	return msgs, nil
+	return msgs, err
 }
 
 func (r *repository) CountUnread(ctx context.Context, roomID string, userID int64) (int, error) {

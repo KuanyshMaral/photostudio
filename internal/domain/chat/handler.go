@@ -268,7 +268,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": err.Error()})
 		return
 	}
-	msg, err := h.service.SendMessage(r.Context(), userID, roomID, req.Content, req.UploadID)
+	msg, err := h.service.SendMessage(r.Context(), userID, roomID, req.Content)
 	if err != nil {
 		handleRoomError(w, err)
 		return
@@ -562,11 +562,8 @@ func messageResponse(m *Message) response.H {
 		"is_read":    m.IsRead,
 		"created_at": m.CreatedAt,
 	}
-	if m.UploadID.Valid {
-		resp["upload_id"] = m.UploadID.String
-		resp["attachment_url"] = m.AttachmentURL
-		resp["attachment_name"] = m.AttachmentName
-		resp["attachment_mime"] = m.AttachmentMime
+	if len(m.Attachments) > 0 {
+		resp["attachments"] = m.Attachments
 	}
 	return resp
 }
@@ -602,8 +599,7 @@ type createGroupRequest struct {
 }
 
 type sendMessageRequest struct {
-	Content  string  `json:"content"`
-	UploadID *string `json:"upload_id"`
+	Content string `json:"content"`
 }
 
 type addMemberRequest struct {

@@ -6229,6 +6229,231 @@ const docTemplate = `{
                 }
             }
         },
+        "/pre-bookings": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Создает предварительную бронь без оплаты. Блокирует слот до ручного подтверждения владельцем.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Создать pre-booking",
+                "parameters": [
+                    {
+                        "description": "Данные pre-booking",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/booking.CreateBookingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pre-bookings/my": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Мои pre-bookings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pre-bookings/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Отменить pre-booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID pre-booking",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pre-bookings/{id}/owner/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Владелец принимает pre-booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID pre-booking",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pre-bookings/{id}/owner/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Владелец отклоняет pre-booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID pre-booking",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/pre-bookings/{id}/owner/confirm-payment": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PreBooking"
+                ],
+                "summary": "Владелец подтверждает оплату pre-booking",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID pre-booking",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/booking.swaggerPreBookingResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/profile/admin": {
             "get": {
                 "security": [
@@ -6586,6 +6811,37 @@ const docTemplate = `{
                         "description": "Ошибка сервера",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/references/cities": {
+            "get": {
+                "description": "Get a list of unique cities where active studios are located",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "References"
+                ],
+                "summary": "List cities",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -7645,6 +7901,59 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/studios/{id}/can-review": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Check if the user has a completed booking to leave a review",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reviews"
+                ],
+                "summary": "Check if user can review",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID студии",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
                         }
                     }
                 }
@@ -8972,6 +9281,55 @@ const docTemplate = `{
                 "PaymentRefunded"
             ]
         },
+        "booking.PreBooking": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/booking.PreBookingStatus"
+                },
+                "studio_id": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "booking.PreBookingStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "confirmed_unpaid",
+                "paid_confirmed",
+                "cancelled",
+                "expired"
+            ],
+            "x-enum-varnames": [
+                "PreBookingPending",
+                "PreBookingConfirmedUnpaid",
+                "PreBookingPaidConfirmed",
+                "PreBookingCancelled",
+                "PreBookingExpired"
+            ]
+        },
         "booking.TimeSlot": {
             "type": "object",
             "properties": {
@@ -9125,6 +9483,31 @@ const docTemplate = `{
                             }
                         }
                     }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerPreBookingListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/booking.PreBooking"
+                    }
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "booking.swaggerPreBookingResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/booking.PreBooking"
                 },
                 "success": {
                     "type": "boolean"
@@ -9581,9 +9964,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "content": {
-                    "type": "string"
-                },
-                "upload_id": {
                     "type": "string"
                 }
             }
