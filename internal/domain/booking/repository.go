@@ -433,7 +433,7 @@ func (r *bookingRepository) GetManagerBookings(
 			b.studio_id,
 			MAX(s.name) as studio_name,
 			b.user_id as client_id,
-			MAX(COALESCE(cp.full_name, u.email)) as client_name,
+			MAX(COALESCE(cp.name, u.email)) as client_name,
 			MAX(COALESCE(cp.phone, '')) as client_phone,
 			MAX(u.email) as client_email,
 			b.start_time,
@@ -472,7 +472,7 @@ func (r *bookingRepository) GetManagerBookings(
 
 	// ⚠️ чтобы работало и в SQLite, и в Postgres:
 	if filters.ClientName != "" {
-		query = query.Where("LOWER(cp.full_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?)", "%"+filters.ClientName+"%", "%"+filters.ClientName+"%")
+		query = query.Where("LOWER(cp.name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?)", "%"+filters.ClientName+"%", "%"+filters.ClientName+"%")
 	}
 
 	// 4) total count
@@ -527,7 +527,7 @@ func (r *bookingRepository) GetBookingForManager(ctx context.Context, ownerID, b
 			b.studio_id,
 			s.name as studio_name,
 			b.user_id as client_id,
-			COALESCE(cp.full_name, u.email) as client_name,
+			COALESCE(cp.name, u.email) as client_name,
 			COALESCE(cp.phone, '') as client_phone,
 			u.email as client_email,
 			b.start_time,

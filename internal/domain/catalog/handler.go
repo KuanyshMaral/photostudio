@@ -121,6 +121,33 @@ func (h *Handler) GetStudios(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetCities
+//
+//	@Summary		List cities
+//	@Description	Get a list of unique cities where active studios are located
+//	@Tags			References
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		500	{object}	map[string]interface{}
+//	@Router			/references/cities [get]
+func (h *Handler) GetCities(w http.ResponseWriter, r *http.Request) {
+	var cities []string
+	err := h.service.studioRepo.DB().Table("studios").
+		Where("deleted_at IS NULL").
+		Where("is_active = true").
+		Distinct("city").
+		Where("city IS NOT NULL AND city != ''").
+		Pluck("city", &cities).Error
+
+	if err != nil {
+		response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL", "Failed to fetch cities")
+		return
+	}
+
+	response.Success(w, http.StatusOK, response.H{"cities": cities})
+}
+
 // GetStudioByID
 //
 //	@Summary		Get studio by ID

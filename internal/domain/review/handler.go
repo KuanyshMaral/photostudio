@@ -210,3 +210,38 @@ func (h *Handler) AddOwnerResponse(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, response.H{"success": true, "data": rv})
 }
+
+// CanReview checks if the user is allowed to leave a review for a specific studio.
+//
+//	@Summary		Check if user can review
+//	@Description	Check if the user has a completed booking to leave a review
+//	@Tags			Reviews
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		int	true	"ID студии"
+//	@Success		200	{object}	map[string]interface{}
+//	@Failure		400	{object}	response.ErrorResponse
+//	@Failure		401	{object}	response.ErrorResponse
+//	@Failure		500	{object}	response.ErrorResponse
+//	@Router			/studios/{id}/can-review [get]
+func (h *Handler) CanReview(w http.ResponseWriter, r *http.Request) {
+	studioID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || studioID <= 0 {
+		response.JSON(w, http.StatusBadRequest, response.H{"success": false, "error": response.H{"code": "INVALID_ID", "message": "Invalid studio ID"}})
+		return
+	}
+
+	userID := chicontext.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		response.JSON(w, http.StatusUnauthorized, response.H{"success": false, "error": response.H{"code": "UNAUTHORIZED", "message": "Authentication required"}})
+		return
+	}
+
+	can, err := h.svc.bookings.HasCompletedBookingForStudio(r.Context(), userID, studioID)
+	if err != nil {
+		response.JSON(w, http.StatusInternalServerError, response.H{"success": false, "error": response.H{"code": "INTERNAL", "message": "Failed to check review eligibility"}})
+		return
+	}
+
+	response.JSON(w, http.StatusOK, response.H{"success": true, "data": response.H{"can_review": can}})
+}
