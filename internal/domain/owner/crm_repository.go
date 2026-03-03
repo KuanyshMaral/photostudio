@@ -382,7 +382,7 @@ func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, sear
 		Table("users u").
 		Select(`
 			u.id,
-			MAX(COALESCE(cp.full_name, u.email)) as name,
+			MAX(COALESCE(cp.name, u.email)) as name,
 			u.email,
 			MAX(COALESCE(cp.phone, '')) as phone,
 			COUNT(b.id) as total_bookings,
@@ -397,7 +397,7 @@ func (r *OwnerCRMRepository) GetClients(ctx context.Context, ownerID int64, sear
 	// ⚠️ SQLite+PG совместимый поиск
 	if search != "" {
 		query = query.Where(`
-			LOWER(cp.full_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(cp.phone) LIKE LOWER(?)
+			LOWER(cp.name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?) OR LOWER(cp.phone) LIKE LOWER(?)
 		`, "%"+search+"%", "%"+search+"%", "%"+search+"%")
 	}
 

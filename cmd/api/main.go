@@ -341,6 +341,10 @@ func main() {
 			r.Group(func(r chi.Router) { catalogHandler.RegisterPublicRoomTypes(r) })
 		})
 
+		r.Route("/references", func(r chi.Router) {
+			r.Get("/cities", catalogHandler.GetCities)
+		})
+
 		r.Route("/users", func(r chi.Router) {
 			r.Use(middleware.ChiJWTAuth(jwtService))
 			authHandler.RegisterProtectedRoutes(r)

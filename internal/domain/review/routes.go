@@ -16,5 +16,6 @@ func (h *Handler) RegisterRoutes(public, protected chi.Router) {
 	if protected != nil {
 		protected.Post("/reviews", h.Create)
 		protected.Post("/reviews/{id}/response", h.AddOwnerResponse)
+		protected.Get("/studios/{id}/can-review", h.CanReview)
 	}
 }
