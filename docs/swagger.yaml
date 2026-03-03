@@ -468,6 +468,41 @@ definitions:
     - PaymentUnpaid
     - PaymentPaid
     - PaymentRefunded
+  booking.PreBooking:
+    properties:
+      created_at:
+        type: string
+      end_time:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: integer
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/booking.PreBookingStatus'
+      studio_id:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  booking.PreBookingStatus:
+    enum:
+    - pending
+    - confirmed_unpaid
+    - paid_confirmed
+    - cancelled
+    - expired
+    type: string
+    x-enum-varnames:
+    - PreBookingPending
+    - PreBookingConfirmedUnpaid
+    - PreBookingPaidConfirmed
+    - PreBookingCancelled
+    - PreBookingExpired
   booking.TimeSlot:
     properties:
       end:
@@ -566,6 +601,22 @@ definitions:
               $ref: '#/definitions/booking.Booking'
             type: array
         type: object
+      success:
+        type: boolean
+    type: object
+  booking.swaggerPreBookingListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/booking.PreBooking'
+        type: array
+      success:
+        type: boolean
+    type: object
+  booking.swaggerPreBookingResponse:
+    properties:
+      data:
+        $ref: '#/definitions/booking.PreBooking'
       success:
         type: boolean
     type: object
@@ -877,8 +928,6 @@ definitions:
   chat.sendMessageRequest:
     properties:
       content:
-        type: string
-      upload_id:
         type: string
     type: object
   chat.swaggerListMembersResponse:
@@ -6065,6 +6114,145 @@ paths:
       summary: Отменить подписку
       tags:
       - Payment
+  /pre-bookings:
+    post:
+      consumes:
+      - application/json
+      description: Создает предварительную бронь без оплаты. Блокирует слот до ручного
+        подтверждения владельцем.
+      parameters:
+      - description: Данные pre-booking
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/booking.CreateBookingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать pre-booking
+      tags:
+      - PreBooking
+  /pre-bookings/{id}/cancel:
+    post:
+      parameters:
+      - description: ID pre-booking
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Отменить pre-booking
+      tags:
+      - PreBooking
+  /pre-bookings/{id}/owner/accept:
+    post:
+      parameters:
+      - description: ID pre-booking
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingResponse'
+      security:
+      - BearerAuth: []
+      summary: Владелец принимает pre-booking
+      tags:
+      - PreBooking
+  /pre-bookings/{id}/owner/cancel:
+    post:
+      parameters:
+      - description: ID pre-booking
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingResponse'
+      security:
+      - BearerAuth: []
+      summary: Владелец отклоняет pre-booking
+      tags:
+      - PreBooking
+  /pre-bookings/{id}/owner/confirm-payment:
+    post:
+      parameters:
+      - description: ID pre-booking
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingResponse'
+      security:
+      - BearerAuth: []
+      summary: Владелец подтверждает оплату pre-booking
+      tags:
+      - PreBooking
+  /pre-bookings/my:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/booking.swaggerPreBookingListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Мои pre-bookings
+      tags:
+      - PreBooking
   /profile/admin:
     get:
       description: Возвращает данные профиля текущего администратора.
@@ -6296,6 +6484,27 @@ paths:
       summary: Мой профиль
       tags:
       - Profile
+  /references/cities:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of unique cities where active studios are located
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List cities
+      tags:
+      - References
   /relationships/block:
     post:
       consumes:
@@ -6976,6 +7185,40 @@ paths:
       summary: Update studio
       tags:
       - Catalog
+  /studios/{id}/can-review:
+    get:
+      description: Check if the user has a completed booking to leave a review
+      parameters:
+      - description: ID студии
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Check if user can review
+      tags:
+      - Reviews
   /studios/{id}/photos:
     post:
       consumes:

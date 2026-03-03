@@ -220,7 +220,7 @@ func (s *Service) GetMembers(ctx context.Context, requesterID int64, roomID stri
 // ---- Messages ----
 
 // SendMessage sends a message to a room. Validates membership and block status.
-func (s *Service) SendMessage(ctx context.Context, senderID int64, roomID string, content string, uploadID *string) (*Message, error) {
+func (s *Service) SendMessage(ctx context.Context, senderID int64, roomID string, content string) (*Message, error) {
 	room, err := s.repo.GetRoomByID(ctx, roomID)
 	if err != nil {
 		return nil, err
@@ -250,9 +250,6 @@ func (s *Service) SendMessage(ctx context.Context, senderID int64, roomID string
 		SenderID:  senderID,
 		Content:   content,
 		CreatedAt: time.Now(),
-	}
-	if uploadID != nil && *uploadID != "" {
-		msg.UploadID = sql.NullString{String: *uploadID, Valid: true}
 	}
 
 	if err := s.repo.CreateMessage(ctx, msg); err != nil {
