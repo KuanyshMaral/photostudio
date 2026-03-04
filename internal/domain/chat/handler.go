@@ -188,6 +188,13 @@ func (h *Handler) ListRooms(w http.ResponseWriter, r *http.Request) {
 		item := roomResponse(rm.Room)
 		item["unread_count"] = rm.UnreadCount
 		item["member_count"] = len(rm.Members)
+		if rm.OtherUser != nil {
+			item["other_user"] = response.H{
+				"id":         rm.OtherUser.UserID,
+				"name":       rm.OtherUser.Name,
+				"avatar_url": rm.OtherUser.AvatarURL,
+			}
+		}
 		items = append(items, item)
 	}
 	response.JSON(w, http.StatusOK, response.H{"success": true, "data": items})

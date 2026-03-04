@@ -407,6 +407,10 @@ func main() {
 			r.Route("/profiles", func(r chi.Router) {
 				profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
 			})
+			// Alias: /profile (singular) for frontend compatibility
+			r.Route("/profile", func(r chi.Router) {
+				profile.RegisterRoutes(r, clientProfileHandler, ownerProfileHandler, adminProfileHandler)
+			})
 			r.Route("/chat", func(r chi.Router) { chat.RegisterRoutes(r, chatHandler) })
 			r.Route("/notifications/read", func(r chi.Router) {
 				// Special root alias to handle /notifications/read/all according to Swagger

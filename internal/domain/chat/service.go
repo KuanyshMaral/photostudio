@@ -276,9 +276,24 @@ func (s *Service) MarkAsRead(ctx context.Context, userID int64, roomID string) e
 	return s.repo.MarkRoomAsRead(ctx, roomID, userID)
 }
 
-// ListRooms returns all rooms the user is a member of.
+// ListRooms returns all rooms the user is a member of, enriched with other_user for direct rooms.
 func (s *Service) ListRooms(ctx context.Context, userID int64) ([]*RoomWithUnread, error) {
-	return s.repo.ListRoomsByUser(ctx, userID)
+	rooms, err := s.repo.ListRoomsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, rm := range rooms {
+		if rm.Room.Type == RoomTypeDirect {
+			for _, m := range rm.Members {
+				if m.UserID != userID {
+					info, _ := s.repo.GetUserInfo(ctx, m.UserID)
+					rm.OtherUser = info
+					break
+				}
+			}
+		}
+	}
+	return rooms, nil
 }
 
 // GetUnreadCount returns total unread messages across all rooms.
