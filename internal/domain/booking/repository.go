@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type bookingRepository struct {
@@ -602,7 +601,6 @@ func (r *bookingRepository) CreatePreBookingAtomic(ctx context.Context, b *PreBo
 
 		var activeCount int64
 		if err := tx.Table("pre_bookings").
-			Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("user_id = ?", b.UserID).
 			Where("(status = ? AND expires_at > ?) OR status = ?", PreBookingPending, now, PreBookingConfirmedUnpaid).
 			Count(&activeCount).Error; err != nil {
@@ -614,8 +612,7 @@ func (r *bookingRepository) CreatePreBookingAtomic(ctx context.Context, b *PreBo
 
 		var bookingCount int64
 		if err := tx.Table("bookings").
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("studio_id = ?", b.StudioID).
+			Where("room_id = ?", b.RoomID).
 			Where("status NOT IN ('cancelled')").
 			Where("start_time < ? AND end_time > ?", b.EndTime, b.StartTime).
 			Count(&bookingCount).Error; err != nil {
@@ -627,8 +624,7 @@ func (r *bookingRepository) CreatePreBookingAtomic(ctx context.Context, b *PreBo
 
 		var preBookingCount int64
 		if err := tx.Table("pre_bookings").
-			Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("studio_id = ?", b.StudioID).
+			Where("room_id = ?", b.RoomID).
 			Where("status IN (?, ?) OR (status = ? AND expires_at > ?)", PreBookingConfirmedUnpaid, PreBookingPaidConfirmed, PreBookingPending, now).
 			Where("start_time < ? AND end_time > ?", b.EndTime, b.StartTime).
 			Count(&preBookingCount).Error; err != nil {
