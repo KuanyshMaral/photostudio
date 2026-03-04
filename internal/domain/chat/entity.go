@@ -65,4 +65,5 @@ type RoomWithUnread struct {
 	*Room
 	UnreadCount int
 	Members     []*RoomMember
+	OtherUser   *ChatUserInfo // populated for direct rooms
 }

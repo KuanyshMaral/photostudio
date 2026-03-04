@@ -30,6 +30,9 @@ type Repository interface {
 	CountUnread(ctx context.Context, roomID string, userID int64) (int, error)
 	MarkRoomAsRead(ctx context.Context, roomID string, userID int64) error
 	CountTotalUnread(ctx context.Context, userID int64) (int, error)
+
+	// Users
+	GetUserInfo(ctx context.Context, userID int64) (*ChatUserInfo, error)
 }
 
 type repository struct {
@@ -180,4 +183,66 @@ func (r *repository) CountTotalUnread(ctx context.Context, userID int64) (int, e
 		Where("m.sender_id != ? AND (rm.last_read_at IS NULL OR m.created_at > rm.last_read_at)", userID).
 		Count(&total).Error
 	return int(total), err
+}
+
+// ChatUserInfo holds display data for a user shown in chat room lists.
+type ChatUserInfo struct {
+	UserID    int64
+	Name      string
+	AvatarURL string
+}
+
+// GetUserInfo fetches a user's display name and avatar by looking up
+// client_profiles first, then owner_profiles as fallback.
+func (r *repository) GetUserInfo(ctx context.Context, userID int64) (*ChatUserInfo, error) {
+	info := &ChatUserInfo{UserID: userID}
+
+	type profileRow struct {
+		Name      sql.NullString `gorm:"column:name"`
+		AvatarURL sql.NullString `gorm:"column:avatar_url"`
+	}
+
+	// Try client_profiles first
+	var client profileRow
+	err := r.db.WithContext(ctx).
+		Table("client_profiles").
+		Select("name, avatar_url").
+		Where("user_id = ?", userID).
+		Limit(1).
+		Scan(&client).Error
+	if err == nil && client.Name.Valid && client.Name.String != "" {
+		info.Name = client.Name.String
+		if client.AvatarURL.Valid {
+			info.AvatarURL = client.AvatarURL.String
+		}
+		return info, nil
+	}
+
+	// Fallback: owner_profiles (company_name field)
+	type ownerRow struct {
+		CompanyName string         `gorm:"column:company_name"`
+		AvatarURL   sql.NullString `gorm:"column:avatar_url"`
+	}
+	var owner ownerRow
+	err = r.db.WithContext(ctx).
+		Table("owner_profiles").
+		Select("company_name, avatar_url").
+		Where("user_id = ?", userID).
+		Limit(1).
+		Scan(&owner).Error
+	if err == nil && owner.CompanyName != "" {
+		info.Name = owner.CompanyName
+		if owner.AvatarURL.Valid {
+			info.AvatarURL = owner.AvatarURL.String
+		}
+		return info, nil
+	}
+
+	// Final fallback: user email
+	var email string
+	r.db.WithContext(ctx).Table("users").Select("email").Where("id = ?", userID).Scan(&email)
+	if email != "" {
+		info.Name = email
+	}
+	return info, nil
 }
