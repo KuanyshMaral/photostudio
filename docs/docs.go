@@ -9296,6 +9296,9 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "room_id": {
+                    "type": "integer"
+                },
                 "start_time": {
                     "type": "string"
                 },
