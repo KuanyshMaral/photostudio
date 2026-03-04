@@ -191,6 +191,8 @@ func parseBookingDateTimeAt(raw string, now time.Time) (time.Time, error) {
 
 	formats := []string{
 		time.RFC3339,
+		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:05",
 		"2006-01-02T15:04",
 		"2006-01-02 15:04",
 		"January 2, 2006 3:04 PM",
@@ -777,8 +779,10 @@ type swaggerPreBookingListResponse struct {
 func (h *Handler) CreatePreBooking(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		StudioID  int64  `json:"studio_id"`
+		RoomID    int64  `json:"room_id"`
 		StartTime string `json:"start_time"`
 		EndTime   string `json:"end_time"`
+		Notes     string `json:"notes"`
 	}
 	if err := response.BindJSON(r, &payload); err != nil {
 		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid request body")
