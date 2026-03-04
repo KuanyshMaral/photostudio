@@ -793,6 +793,10 @@ func (h *Handler) CreatePreBooking(w http.ResponseWriter, r *http.Request) {
 		response.CustomError(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required")
 		return
 	}
+	if payload.RoomID <= 0 || payload.StudioID <= 0 {
+		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "room_id and studio_id are required")
+		return
+	}
 	startTime, err := parseBookingDateTime(payload.StartTime)
 	if err != nil {
 		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid start_time")
@@ -803,7 +807,7 @@ func (h *Handler) CreatePreBooking(w http.ResponseWriter, r *http.Request) {
 		response.CustomError(w, r, http.StatusBadRequest, "VALIDATION_ERROR", "Invalid end_time")
 		return
 	}
-	pb, err := h.service.CreatePreBooking(r.Context(), userID, payload.StudioID, startTime, endTime)
+	pb, err := h.service.CreatePreBooking(r.Context(), userID, payload.StudioID, payload.RoomID, startTime, endTime)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrValidation):
@@ -813,7 +817,7 @@ func (h *Handler) CreatePreBooking(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrPreBookingConflict):
 			response.CustomError(w, r, http.StatusConflict, "PRE_BOOKING_CONFLICT", "Time slot conflict with booking/pre-booking")
 		default:
-			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", "Failed to create pre-booking")
+			response.CustomError(w, r, http.StatusInternalServerError, "INTERNAL_ERROR", err)
 		}
 		return
 	}

@@ -610,15 +610,16 @@ func (s *Service) UpdatePaymentStatusSystem(ctx context.Context, bookingID int64
 	return b, nil
 }
 
-func (s *Service) CreatePreBooking(ctx context.Context, userID, studioID int64, start, end time.Time) (*PreBooking, error) {
+func (s *Service) CreatePreBooking(ctx context.Context, userID, studioID, roomID int64, start, end time.Time) (*PreBooking, error) {
 	now := time.Now().UTC()
-	if userID <= 0 || studioID <= 0 || !end.After(start) || start.Before(now) {
+	if userID <= 0 || studioID <= 0 || roomID <= 0 || !end.After(start) || start.Before(now) {
 		return nil, ErrValidation
 	}
 
 	pb := &PreBooking{
 		UserID:    userID,
 		StudioID:  studioID,
+		RoomID:    roomID,
 		StartTime: start,
 		EndTime:   end,
 		Status:    PreBookingPending,
@@ -627,7 +628,7 @@ func (s *Service) CreatePreBooking(ctx context.Context, userID, studioID int64, 
 	if err := s.bookings.CreatePreBookingAtomic(ctx, pb, now); err != nil {
 		return nil, err
 	}
-	s.loggerf("level=info msg=pre_booking_created pre_booking_id=%d user_id=%d studio_id=%d expires_at=%s", pb.ID, userID, studioID, pb.ExpiresAt.Format(time.RFC3339))
+	s.loggerf("level=info msg=pre_booking_created pre_booking_id=%d user_id=%d studio_id=%d room_id=%d expires_at=%s", pb.ID, userID, studioID, roomID, pb.ExpiresAt.Format(time.RFC3339))
 	return pb, nil
 }
 
